@@ -1,0 +1,98 @@
+import { streamText } from "ai";
+import { z } from "zod";
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { prisma } from "@/lib/db";
+import { gpt4oMini, EXPLORATION_SYSTEM_PROMPT } from "@/lib/openai";
+
+// Input validation schema
+const exploreRequestSchema = z.object({
+  messages: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().min(1).max(4000),
+      })
+    )
+    .min(1)
+    .max(50),
+});
+
+// Sanitize text for prompt injection prevention
+function sanitizeForPrompt(text: string | null): string {
+  if (!text) return "";
+  return text
+    .replace(/(\[SYSTEM\]|\[ASSISTANT\]|\[USER\])/gi, "")
+    .replace(/```/g, "'''")
+    .substring(0, 500);
+}
+
+export async function POST(request: Request) {
+  try {
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return new Response("Unauthorized", {
+        status: 401,
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
+
+    const body = await request.json();
+    const validatedInput = exploreRequestSchema.parse(body);
+
+    // Fetch user's contacts for context (limit to prevent token overflow)
+    const contacts = await prisma.contact.findMany({
+      where: { userId: user.id },
+      include: { tags: true },
+      take: 50,
+      orderBy: { enrichmentScore: "desc" },
+    });
+
+    // Serialize contacts for prompt context with sanitization
+    const contactContext = contacts.map((c) => ({
+      id: c.id,
+      name: sanitizeForPrompt(c.name),
+      title: sanitizeForPrompt(c.title),
+      company: sanitizeForPrompt(c.company),
+      location: sanitizeForPrompt(c.location),
+      howWeMet: sanitizeForPrompt(c.howWeMet),
+      whyNow: sanitizeForPrompt(c.whyNow),
+      expertise: sanitizeForPrompt(c.expertise),
+      interests: sanitizeForPrompt(c.interests),
+      relationshipStrength: c.relationshipStrength,
+      tags: c.tags.map((t) => sanitizeForPrompt(t.text)),
+    }));
+
+    const systemPrompt = `${EXPLORATION_SYSTEM_PROMPT}
+
+User's contacts (${contacts.length} total):
+${JSON.stringify(contactContext, null, 2)}
+
+When suggesting contacts, use their exact ID from above in the [CONTACT: {id}] format.`;
+
+    const result = streamText({
+      model: gpt4oMini,
+      system: systemPrompt,
+      messages: validatedInput.messages,
+    });
+
+    const response = result.toTextStreamResponse();
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+    return response;
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return new Response("Invalid request body", {
+        status: 400,
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
+    console.error("Chat exploration error:", error);
+    return new Response("Failed to process chat request", {
+      status: 500,
+      headers: { "Cache-Control": "no-store" },
+    });
+  }
+}
