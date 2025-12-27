@@ -129,10 +129,10 @@ export type FieldConflict = z.infer<typeof fieldConflictSchema>;
 ```
 
 **Acceptance Criteria:**
-- [ ] Schema file created at `src/lib/schemas/enrichmentInsight.ts`
-- [ ] All types exported
-- [ ] Schema validates correctly (test with sample data)
-- [ ] TypeScript compiles without errors
+- [x] Schema file created at `src/lib/schemas/enrichmentInsight.ts`
+- [x] All types exported
+- [x] Schema validates correctly (test with sample data)
+- [x] TypeScript compiles without errors
 
 ---
 
@@ -223,9 +223,9 @@ Output: { "insights": [] }
 ```
 
 **Acceptance Criteria:**
-- [ ] System prompt added to `src/lib/openai.ts`
-- [ ] Prompt exported and accessible
-- [ ] File compiles without errors
+- [x] System prompt added to `src/lib/openai.ts`
+- [x] Prompt exported and accessible
+- [x] File compiles without errors
 
 ---
 
@@ -330,12 +330,12 @@ export async function POST(request: NextRequest) {
 ```
 
 **Acceptance Criteria:**
-- [ ] API route created at `src/app/api/enrichment/extract/route.ts`
-- [ ] Returns 401 for unauthenticated requests
-- [ ] Returns 400 for invalid request body
-- [ ] Returns empty insights array for short transcripts
-- [ ] Returns structured insights for valid transcripts
-- [ ] Test with sample transcript: "He manages money for athletes"
+- [x] API route created at `src/app/api/enrichment/extract/route.ts`
+- [x] Returns 401 for unauthenticated requests
+- [x] Returns 400 for invalid request body
+- [x] Returns empty insights array for short transcripts
+- [x] Returns structured insights for valid transcripts
+- [x] Test with sample transcript: "He manages money for athletes"
 
 ---
 
@@ -387,9 +387,9 @@ import type { EnrichmentInsight } from "@/lib/schemas/enrichmentInsight";
 ```
 
 **Acceptance Criteria:**
-- [ ] State variables added to session page
-- [ ] Import added for EnrichmentInsight type
-- [ ] TypeScript compiles without errors
+- [x] State variables added to session page
+- [x] Import added for EnrichmentInsight type
+- [x] TypeScript compiles without errors
 
 ---
 
@@ -493,11 +493,11 @@ function storeExtractedFields(insights: EnrichmentInsight[]) {
 ```
 
 **Acceptance Criteria:**
-- [ ] Old extractInsights() function removed
-- [ ] New extractInsightsWithAI() function added
-- [ ] storeExtractedFields() helper added
-- [ ] Retry logic works (2 attempts with 1s delay)
-- [ ] Fallback bubble created on failure
+- [x] Old extractInsights() function removed
+- [x] New extractInsightsWithAI() function added
+- [x] storeExtractedFields() helper added
+- [x] Retry logic works (2 attempts with 1s delay)
+- [x] Fallback bubble created on failure
 
 ---
 
@@ -545,10 +545,10 @@ useEffect(() => {
 ```
 
 **Acceptance Criteria:**
-- [ ] Pause detection triggers after 1000ms of silence
-- [ ] Debounce prevents rapid consecutive calls
-- [ ] Only new text since last processing is sent
-- [ ] Cleanup function clears timers
+- [x] Pause detection triggers after 1000ms of silence
+- [x] Debounce prevents rapid consecutive calls
+- [x] Only new text since last processing is sent
+- [x] Cleanup function clears timers
 
 ---
 
@@ -573,9 +573,9 @@ useEffect(() => {
 ```
 
 **Acceptance Criteria:**
-- [ ] Processing indicator appears during API calls
-- [ ] Indicator disappears when processing completes
-- [ ] Uses amber color to match design system
+- [x] Processing indicator appears during API calls
+- [x] Indicator disappears when processing completes
+- [x] Uses amber color to match design system
 
 ---
 
@@ -635,9 +635,9 @@ function detectConflicts(): FieldConflict[] {
 ```
 
 **Acceptance Criteria:**
-- [ ] Conflict detection compares AI vs existing values
-- [ ] Case-insensitive comparison
-- [ ] Returns array of conflicts (can be empty)
+- [x] Conflict detection compares AI vs existing values
+- [x] Case-insensitive comparison
+- [x] Returns array of conflicts (can be empty)
 
 ---
 
@@ -745,11 +745,11 @@ function ConflictResolutionModal({
 ```
 
 **Acceptance Criteria:**
-- [ ] Modal displays conflicts with radio buttons
-- [ ] Default selects existing value
-- [ ] Cancel button closes modal
-- [ ] Save button returns resolutions
-- [ ] Framer Motion animation on open
+- [x] Modal displays conflicts with radio buttons
+- [x] Default selects existing value
+- [x] Cancel button closes modal
+- [x] Save button returns resolutions
+- [x] Framer Motion animation on open
 
 ---
 
@@ -848,11 +848,11 @@ async function performSave(overrides: Record<string, string>) {
 ```
 
 **Acceptance Criteria:**
-- [ ] Conflict detection runs before save
-- [ ] Modal opens if conflicts exist
-- [ ] Text fields append with proper separators
-- [ ] Structured fields respect overwrite-if-empty logic
-- [ ] User resolutions are applied correctly
+- [x] Conflict detection runs before save
+- [x] Modal opens if conflicts exist
+- [x] Text fields append with proper separators
+- [x] Structured fields respect overwrite-if-empty logic
+- [x] User resolutions are applied correctly
 
 ---
 
@@ -889,9 +889,9 @@ setExtractionError(null);
 ```
 
 **Acceptance Criteria:**
-- [ ] Error state added
-- [ ] Error message displays to user
-- [ ] Error clears on new processing attempt
+- [x] Error state added
+- [x] Error message displays to user
+- [x] Error clears on new processing attempt
 
 ---
 
@@ -912,11 +912,11 @@ setExtractionError(null);
    - "Loves pickleball and wine collecting"
 
 **Acceptance Criteria:**
-- [ ] Build passes on Railway
-- [ ] Voice enrichment works in production
-- [ ] Bubbles appear for natural speech
-- [ ] Conflict modal works correctly
-- [ ] Data saves to contact properly
+- [x] Build passes on Railway
+- [x] Voice enrichment works in production
+- [x] Bubbles appear for natural speech
+- [x] Conflict modal works correctly
+- [x] Data saves to contact properly
 
 ---
 
@@ -933,9 +933,9 @@ setExtractionError(null);
 3. Update any related comments
 
 **Acceptance Criteria:**
-- [ ] Old keyword extraction code removed
-- [ ] New functions have clear comments
-- [ ] No unused imports or variables
+- [x] Old keyword extraction code removed
+- [x] New functions have clear comments
+- [x] No unused imports or variables
 
 ---
 
