@@ -16,7 +16,10 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401, headers: { "Cache-Control": "no-store" } }
+      );
     }
 
     // Parse and validate request
@@ -25,8 +28,8 @@ export async function POST(request: NextRequest) {
 
     if (!parseResult.success) {
       return NextResponse.json(
-        { error: "Invalid request", details: parseResult.error.flatten() },
-        { status: 400 }
+        { error: "Invalid request", details: parseResult.error.issues },
+        { status: 400, headers: { "Cache-Control": "no-store" } }
       );
     }
 
@@ -34,7 +37,10 @@ export async function POST(request: NextRequest) {
 
     // Skip if transcript too short
     if (transcript.trim().length < 10) {
-      return NextResponse.json({ insights: [] });
+      return NextResponse.json(
+        { insights: [] },
+        { headers: { "Cache-Control": "no-store" } }
+      );
     }
 
     // Simple sanitization - slice to 4000 chars
@@ -66,12 +72,15 @@ export async function POST(request: NextRequest) {
       schema: enrichmentExtractionResponseSchema,
     });
 
-    return NextResponse.json(result.object);
+    return NextResponse.json(
+      result.object,
+      { headers: { "Cache-Control": "no-store, no-cache, must-revalidate" } }
+    );
   } catch (error) {
     console.error("Enrichment extraction error:", error);
     return NextResponse.json(
       { error: "Failed to extract insights" },
-      { status: 500 }
+      { status: 500, headers: { "Cache-Control": "no-store" } }
     );
   }
 }
