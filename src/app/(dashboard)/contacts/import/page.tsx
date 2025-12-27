@@ -580,7 +580,7 @@ export default function ImportPage() {
           {/* Validation Warning */}
           {!hasFirstNameMapping && (
             <div className="text-center text-sm text-warning">
-              Please map a column to "First Name" to continue
+              Please map a column to &quot;First Name&quot; to continue
             </div>
           )}
         </div>
