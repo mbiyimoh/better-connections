@@ -28,6 +28,7 @@ import {
   type BubbleCategory,
 } from "@/components/enrichment/EnrichmentBubbles";
 import { getDisplayName } from "@/types/contact";
+import type { EnrichmentInsight } from "@/lib/schemas/enrichmentInsight";
 
 // Persist listening state across HMR to prevent mic toggling on every code change
 let persistedListeningState = false;
@@ -54,70 +55,114 @@ interface EnrichmentData {
   notes: string;
 }
 
-// AI-like extraction of insights from text (simplified for MVP)
-function extractInsights(text: string): { text: string; category: BubbleCategory }[] {
-  const insights: { text: string; category: BubbleCategory }[] = [];
-  const lowerText = text.toLowerCase();
+// Constants for AI extraction timing
+const PAUSE_THRESHOLD = 1000; // 1 second pause detection
+const DEBOUNCE_DELAY = 500;   // 500ms debounce after pause
 
-  // Relationship keywords
-  const relationshipKeywords = [
-    "met at", "introduced by", "worked with", "known from", "friend of",
-    "colleague", "conference", "event", "school", "university", "alumni",
-  ];
-  for (const keyword of relationshipKeywords) {
-    if (lowerText.includes(keyword)) {
-      const match = text.match(new RegExp(`${keyword}[^,.!?]*`, "i"));
-      if (match) {
-        insights.push({ text: match[0].trim(), category: "relationship" });
-      }
-    }
-  }
+// Conflict type for title/company resolution
+interface FieldConflict {
+  field: "title" | "company";
+  existingValue: string;
+  newValue: string;
+}
 
-  // Opportunity keywords
-  const opportunityKeywords = [
-    "investor", "investment", "funding", "advisor", "mentor", "partner",
-    "client", "customer", "lead", "prospect", "opportunity", "deal",
-    "intro", "introduction", "connect", "potential",
-  ];
-  for (const keyword of opportunityKeywords) {
-    if (lowerText.includes(keyword)) {
-      insights.push({ text: `${keyword.charAt(0).toUpperCase() + keyword.slice(1)} opportunity`, category: "opportunity" });
-    }
-  }
+// Conflict Resolution Modal Component
+function ConflictResolutionModal({
+  conflicts,
+  onResolve,
+  onCancel,
+}: {
+  conflicts: FieldConflict[];
+  onResolve: (resolutions: Record<string, string>) => void;
+  onCancel: () => void;
+}) {
+  const [resolutions, setResolutions] = useState<Record<string, string>>(() => {
+    // Default to keeping existing values
+    const initial: Record<string, string> = {};
+    conflicts.forEach((c) => {
+      initial[c.field] = c.existingValue;
+    });
+    return initial;
+  });
 
-  // Expertise keywords
-  const expertiseKeywords = [
-    "expert in", "specializes in", "experience in", "skilled at",
-    "background in", "worked on", "built", "created", "founded",
-    "engineering", "sales", "marketing", "product", "design",
-  ];
-  for (const keyword of expertiseKeywords) {
-    if (lowerText.includes(keyword)) {
-      const match = text.match(new RegExp(`${keyword}[^,.!?]*`, "i"));
-      if (match) {
-        insights.push({ text: match[0].trim(), category: "expertise" });
-      }
-    }
-  }
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 max-w-md w-full mx-4"
+      >
+        <h3 className="text-lg font-semibold text-white mb-4">
+          Review Conflicting Information
+        </h3>
+        <p className="text-zinc-400 text-sm mb-4">
+          The AI extracted information that differs from existing contact data.
+          Choose which value to keep for each field:
+        </p>
 
-  // Interest keywords
-  const interestKeywords = [
-    "loves", "enjoys", "passionate about", "interested in", "hobby",
-    "fan of", "into", "likes", "collects", "plays",
-  ];
-  for (const keyword of interestKeywords) {
-    if (lowerText.includes(keyword)) {
-      const match = text.match(new RegExp(`${keyword}[^,.!?]*`, "i"));
-      if (match) {
-        insights.push({ text: match[0].trim(), category: "interest" });
-      }
-    }
-  }
+        <div className="space-y-4">
+          {conflicts.map((conflict) => (
+            <div key={conflict.field} className="space-y-2">
+              <label className="text-sm font-medium text-zinc-300 capitalize">
+                {conflict.field}
+              </label>
+              <div className="space-y-2">
+                <label className="flex items-center gap-2 p-2 rounded-lg bg-zinc-800 cursor-pointer hover:bg-zinc-700">
+                  <input
+                    type="radio"
+                    name={conflict.field}
+                    checked={resolutions[conflict.field] === conflict.existingValue}
+                    onChange={() =>
+                      setResolutions((prev) => ({
+                        ...prev,
+                        [conflict.field]: conflict.existingValue,
+                      }))
+                    }
+                    className="text-amber-500"
+                  />
+                  <span className="text-zinc-300">
+                    Keep existing: <span className="text-white">{conflict.existingValue}</span>
+                  </span>
+                </label>
+                <label className="flex items-center gap-2 p-2 rounded-lg bg-zinc-800 cursor-pointer hover:bg-zinc-700">
+                  <input
+                    type="radio"
+                    name={conflict.field}
+                    checked={resolutions[conflict.field] === conflict.newValue}
+                    onChange={() =>
+                      setResolutions((prev) => ({
+                        ...prev,
+                        [conflict.field]: conflict.newValue,
+                      }))
+                    }
+                    className="text-amber-500"
+                  />
+                  <span className="text-zinc-300">
+                    Use new: <span className="text-green-400">{conflict.newValue}</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+          ))}
+        </div>
 
-  // Remove duplicates
-  return insights.filter((insight, index, self) =>
-    index === self.findIndex((i) => i.text.toLowerCase() === insight.text.toLowerCase())
-  ).slice(0, 8);
+        <div className="flex justify-end gap-3 mt-6">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-zinc-400 hover:text-white transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onResolve(resolutions)}
+            className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors"
+          >
+            Save
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
 }
 
 function EnrichmentSessionContent() {
@@ -154,6 +199,37 @@ function EnrichmentSessionContent() {
   const [savedTranscripts, setSavedTranscripts] = useState<string[]>([]);
   const hasRestoredListening = useRef(false);
 
+  // AI processing state
+  const [isProcessing, setIsProcessing] = useState(false);
+  const lastApiCallRef = useRef<number>(0);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // State for accumulated AI extractions
+  const [extractedFields, setExtractedFields] = useState<{
+    howWeMet: string[];
+    whyNow: string[];
+    expertise: string[];
+    interests: string[];
+    title: string | null;
+    company: string | null;
+    notes: string[];
+  }>({
+    howWeMet: [],
+    whyNow: [],
+    expertise: [],
+    interests: [],
+    title: null,
+    company: null,
+    notes: [],
+  });
+
+  // Conflict detection state
+  const [conflicts, setConflicts] = useState<FieldConflict[]>([]);
+  const [showConflictModal, setShowConflictModal] = useState(false);
+
+  // Error handling state
+  const [extractionError, setExtractionError] = useState<string | null>(null);
+
   // Restore listening state after HMR (dev mode only)
   useEffect(() => {
     if (process.env.NODE_ENV === "development" && !hasRestoredListening.current) {
@@ -179,29 +255,123 @@ function EnrichmentSessionContent() {
     }
   }, [contactId]);
 
-  // Process voice transcription as it comes in
-  useEffect(() => {
-    if (transcript.length > lastProcessedLength && isStarted) {
-      const newText = transcript.slice(lastProcessedLength).trim();
+  // Helper to accumulate extracted fields from AI insights
+  const storeExtractedFields = useCallback((insights: EnrichmentInsight[]) => {
+    setExtractedFields((prev) => {
+      const updated = { ...prev };
 
-      // Only process if we have substantial new text (at least a few words)
-      if (newText.length > 10) {
-        // Extract insights from new speech segment
-        const insights = extractInsights(newText);
-        if (insights.length > 0) {
-          const newBubbles = insights.map((i) => createBubble(i.text, i.category));
+      for (const insight of insights) {
+        if (insight.howWeMet) updated.howWeMet = [...updated.howWeMet, insight.howWeMet];
+        if (insight.whyNow) updated.whyNow = [...updated.whyNow, insight.whyNow];
+        if (insight.expertise) updated.expertise = [...updated.expertise, insight.expertise];
+        if (insight.interests) updated.interests = [...updated.interests, insight.interests];
+        if (insight.notes) updated.notes = [...updated.notes, insight.notes];
+
+        // For structured fields, keep latest non-null value
+        if (insight.title) updated.title = insight.title;
+        if (insight.company) updated.company = insight.company;
+      }
+
+      return updated;
+    });
+  }, []);
+
+  // AI extraction function with retry logic
+  const extractInsightsWithAI = useCallback(async (text: string): Promise<void> => {
+    if (text.trim().length < 10 || isProcessing) return;
+
+    setIsProcessing(true);
+    setExtractionError(null); // Clear previous error
+
+    const maxAttempts = 2;
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const response = await fetch("/api/enrichment/extract", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            transcript: text,
+            contactContext: contact
+              ? {
+                  name: `${contact.firstName || ""} ${contact.lastName || ""}`.trim(),
+                  title: contact.title,
+                  company: contact.company,
+                }
+              : undefined,
+          }),
+        });
+
+        if (!response.ok) throw new Error("Extraction failed");
+
+        const data = await response.json();
+
+        if (data.insights && data.insights.length > 0) {
+          const newBubbles = data.insights.map((insight: EnrichmentInsight) =>
+            createBubble(insight.capturedText, insight.category as BubbleCategory)
+          );
           setBubbles((prev) => [...prev, ...newBubbles]);
-        } else if (newText.length > 20) {
-          // If no keywords matched but we have meaningful text, add as general note
-          // Truncate to reasonable length for bubble display
-          const truncatedText = newText.length > 60 ? newText.slice(0, 57) + "..." : newText;
-          setBubbles((prev) => [...prev, createBubble(truncatedText, "relationship")]);
+
+          // Store field data for later merge
+          storeExtractedFields(data.insights);
+        }
+
+        setIsProcessing(false);
+        return; // Success - exit function
+
+      } catch (error) {
+        lastError = error as Error;
+        console.error(`AI extraction attempt ${attempt + 1} failed:`, error);
+
+        // Wait 1s before retry (only if not last attempt)
+        if (attempt < maxAttempts - 1) {
+          await new Promise(r => setTimeout(r, 1000));
         }
       }
-      // Don't store in notes here - consolidated in handleSave
-      setLastProcessedLength(transcript.length);
     }
-  }, [transcript, lastProcessedLength, isStarted]);
+
+    // All retries failed - fallback to generic bubble and show error
+    console.error("AI extraction failed after retries:", lastError);
+    setExtractionError("Couldn't process speech. Your transcript is saved.");
+    if (text.length > 20) {
+      const truncated = text.length > 60 ? text.slice(0, 57) + "..." : text;
+      setBubbles((prev) => [...prev, createBubble(truncated, "relationship")]);
+    }
+
+    setIsProcessing(false);
+  }, [contact, isProcessing, storeExtractedFields]);
+
+  // Speech pause detection effect
+  useEffect(() => {
+    if (!listening || !isStarted) return;
+
+    // Clear existing debounce timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Only process new text
+    const newText = transcript.slice(lastProcessedLength).trim();
+    if (newText.length < 10) return;
+
+    // Set up pause detection
+    debounceTimerRef.current = setTimeout(() => {
+      // Check if we haven't made a call recently (debounce)
+      const now = Date.now();
+      if (now - lastApiCallRef.current < DEBOUNCE_DELAY) return;
+
+      lastApiCallRef.current = now;
+      setLastProcessedLength(transcript.length);
+      extractInsightsWithAI(newText);
+    }, PAUSE_THRESHOLD + DEBOUNCE_DELAY);
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [transcript, listening, isStarted, lastProcessedLength, extractInsightsWithAI]);
 
   const fetchContact = async (id: string) => {
     try {
@@ -239,16 +409,10 @@ function EnrichmentSessionContent() {
   const handleAddInsight = () => {
     if (!inputText.trim()) return;
 
-    const insights = extractInsights(inputText);
-    if (insights.length > 0) {
-      const newBubbles = insights.map((i) => createBubble(i.text, i.category));
-      setBubbles((prev) => [...prev, ...newBubbles]);
-    } else {
-      // Default to notes if no specific category detected
-      setBubbles((prev) => [...prev, createBubble(inputText.trim(), "relationship")]);
-    }
+    // Use AI extraction for typed input as well
+    extractInsightsWithAI(inputText.trim());
 
-    // Also store in enrichment data
+    // Also store in enrichment data notes
     setEnrichmentData((prev) => ({
       ...prev,
       notes: prev.notes ? `${prev.notes}\n${inputText}` : inputText,
@@ -257,43 +421,94 @@ function EnrichmentSessionContent() {
     setInputText("");
   };
 
-  const handleSave = async () => {
+  // Detect conflicts between AI-extracted values and existing contact data
+  const detectConflicts = useCallback((): FieldConflict[] => {
+    const detected: FieldConflict[] = [];
+
+    if (
+      contact?.title &&
+      extractedFields.title &&
+      contact.title.toLowerCase() !== extractedFields.title.toLowerCase()
+    ) {
+      detected.push({
+        field: "title",
+        existingValue: contact.title,
+        newValue: extractedFields.title,
+      });
+    }
+
+    if (
+      contact?.company &&
+      extractedFields.company &&
+      contact.company.toLowerCase() !== extractedFields.company.toLowerCase()
+    ) {
+      detected.push({
+        field: "company",
+        existingValue: contact.company,
+        newValue: extractedFields.company,
+      });
+    }
+
+    return detected;
+  }, [contact, extractedFields]);
+
+  // Perform the actual save with optional overrides from conflict resolution
+  const performSave = async (overrides: Record<string, string>) => {
     if (!contact) return;
 
     setSaving(true);
     try {
-      // Compile enrichment data from bubbles
-      const relationshipBubbles = bubbles.filter((b) => b.category === "relationship");
-      const opportunityBubbles = bubbles.filter((b) => b.category === "opportunity");
-      const expertiseBubbles = bubbles.filter((b) => b.category === "expertise");
-      const interestBubbles = bubbles.filter((b) => b.category === "interest");
-
-      // Merge bubble data with existing enrichment data (don't overwrite)
-      const updateData = {
-        howWeMet: [
-          enrichmentData.howWeMet,
-          relationshipBubbles.map((b) => b.text).join(". "),
-        ].filter(Boolean).join(" "),
-        whyNow: [
-          enrichmentData.whyNow,
-          opportunityBubbles.map((b) => b.text).join(". "),
-        ].filter(Boolean).join(" "),
-        expertise: [
-          enrichmentData.expertise,
-          expertiseBubbles.map((b) => b.text).join(", "),
-        ].filter(Boolean).join(", "),
-        interests: [
-          enrichmentData.interests,
-          interestBubbles.map((b) => b.text).join(", "),
-        ].filter(Boolean).join(", "),
-        // Consolidate notes: existing + all voice transcripts
-        notes: [
-          enrichmentData.notes,
-          ...savedTranscripts,
-          transcript.trim(),
-        ].filter(Boolean).join("\n\n"),
+      const updateData: Record<string, unknown> = {
         lastEnrichedAt: new Date().toISOString(),
       };
+
+      // TEXT FIELDS: Append to existing
+      if (extractedFields.howWeMet.length > 0) {
+        const existing = enrichmentData.howWeMet || "";
+        const newContent = extractedFields.howWeMet.join(". ");
+        updateData.howWeMet = existing ? `${existing}. ${newContent}` : newContent;
+      }
+
+      if (extractedFields.whyNow.length > 0) {
+        const existing = enrichmentData.whyNow || "";
+        const newContent = extractedFields.whyNow.join(". ");
+        updateData.whyNow = existing ? `${existing}. ${newContent}` : newContent;
+      }
+
+      if (extractedFields.expertise.length > 0) {
+        const existing = enrichmentData.expertise || "";
+        const newContent = extractedFields.expertise.join(", ");
+        updateData.expertise = existing ? `${existing}, ${newContent}` : newContent;
+      }
+
+      if (extractedFields.interests.length > 0) {
+        const existing = enrichmentData.interests || "";
+        const newContent = extractedFields.interests.join(", ");
+        updateData.interests = existing ? `${existing}, ${newContent}` : newContent;
+      }
+
+      // STRUCTURED FIELDS: Overwrite if empty OR user approved override
+      if (extractedFields.title) {
+        if (!contact?.title || overrides.title) {
+          updateData.title = overrides.title || extractedFields.title;
+        }
+      }
+
+      if (extractedFields.company) {
+        if (!contact?.company || overrides.company) {
+          updateData.company = overrides.company || extractedFields.company;
+        }
+      }
+
+      // Notes: always append transcript
+      const transcriptToSave = transcript.trim();
+      if (transcriptToSave || extractedFields.notes.length > 0 || savedTranscripts.length > 0) {
+        const existingNotes = enrichmentData.notes || "";
+        const aiNotes = extractedFields.notes.join("\n");
+        updateData.notes = [existingNotes, aiNotes, ...savedTranscripts, transcriptToSave]
+          .filter(Boolean)
+          .join("\n\n");
+      }
 
       const res = await fetch(`/api/contacts/${contact.id}`, {
         method: "PUT",
@@ -309,6 +524,18 @@ function EnrichmentSessionContent() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSave = async () => {
+    const detectedConflicts = detectConflicts();
+
+    if (detectedConflicts.length > 0) {
+      setConflicts(detectedConflicts);
+      setShowConflictModal(true);
+      return;
+    }
+
+    await performSave({});
   };
 
   const handleSkip = async () => {
@@ -526,6 +753,19 @@ function EnrichmentSessionContent() {
               <span className="text-xs text-amber-400 uppercase tracking-wider font-medium">Live Transcript</span>
             </div>
             <p className="text-zinc-300 text-sm leading-relaxed">{transcript}</p>
+            {/* Processing Indicator */}
+            {isProcessing && (
+              <div className="flex items-center gap-2 text-amber-400 text-sm mt-3 pt-3 border-t border-amber-500/20">
+                <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                <span>Processing speech...</span>
+              </div>
+            )}
+            {/* Error Display */}
+            {extractionError && (
+              <div className="text-amber-400 text-sm mt-3 pt-3 border-t border-amber-500/20">
+                {extractionError}
+              </div>
+            )}
           </div>
         )}
 
@@ -626,6 +866,18 @@ function EnrichmentSessionContent() {
           </div>
         )}
       </div>
+
+      {/* Conflict Resolution Modal */}
+      {showConflictModal && (
+        <ConflictResolutionModal
+          conflicts={conflicts}
+          onResolve={(resolutions) => {
+            setShowConflictModal(false);
+            performSave(resolutions);
+          }}
+          onCancel={() => setShowConflictModal(false)}
+        />
+      )}
     </div>
   );
 }
