@@ -3,8 +3,19 @@
  * Score weights are defined per spec - "Why Now" is most valuable at 20 points.
  */
 export interface EnrichmentScoreInput {
-  name?: string | null;
-  email?: string | null;
+  // Name fields (split)
+  firstName?: string | null;
+  lastName?: string | null;
+
+  // Email fields (primary/secondary)
+  primaryEmail?: string | null;
+  secondaryEmail?: string | null;
+
+  // Phone fields (primary/secondary)
+  primaryPhone?: string | null;
+  secondaryPhone?: string | null;
+
+  // Other fields
   title?: string | null;
   company?: string | null;
   location?: string | null;
@@ -22,15 +33,26 @@ export function calculateEnrichmentScore(
 ): number {
   let score = 0;
 
-  if (contact.name) score += 10;
-  if (contact.email) score += 10;
+  // Name: 10 points total (firstName required, lastName bonus)
+  if (contact.firstName) score += 7;
+  if (contact.lastName) score += 3;
+
+  // Email: 10 points (primary gets full, secondary is bonus)
+  if (contact.primaryEmail) score += 8;
+  if (contact.secondaryEmail) score += 2;
+
+  // Phone: 5 points
+  if (contact.primaryPhone) score += 4;
+  if (contact.secondaryPhone) score += 1;
+
+  // Other fields (unchanged weights)
   if (contact.title) score += 10;
   if (contact.company) score += 10;
   if (contact.location) score += 5;
   if (contact.linkedinUrl) score += 5;
   if (contact.howWeMet) score += 15;
-  if (contact.whyNow) score += 20; // Most valuable field
-  if (contact.notes) score += 10;
+  if (contact.whyNow) score += 20; // Still most valuable field
+  if (contact.notes) score += 5;
   if (tagCount > 0) score += 5;
 
   return Math.min(score, 100);

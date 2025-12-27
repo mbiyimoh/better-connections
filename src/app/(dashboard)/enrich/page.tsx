@@ -1,11 +1,34 @@
-import { Sparkles } from 'lucide-react';
+'use client';
 
-export default function EnrichPage() {
+import { useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
+
+/**
+ * /enrich page - Redirects to voice-first enrichment session
+ *
+ * Routes:
+ * - /enrich?id=X → /enrichment/session?contact=X (voice-first experience)
+ * - Text-based fallback available at /enrich/text?id=X
+ */
+export default function EnrichRedirectPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const contactId = searchParams.get('id');
+
+  useEffect(() => {
+    // Redirect to voice-first session with contact param
+    if (contactId) {
+      router.replace(`/enrichment/session?contact=${contactId}`);
+    } else {
+      // No contact specified, go to enrichment queue
+      router.replace('/enrichment');
+    }
+  }, [contactId, router]);
+
   return (
-    <div className="flex h-full flex-col items-center justify-center p-6">
-      <Sparkles className="mb-4 h-12 w-12 text-gold-primary" />
-      <h1 className="mb-2 text-[28px] font-bold text-white">Enrichment Queue</h1>
-      <p className="text-text-tertiary">No contacts need enrichment right now</p>
+    <div className="flex h-full items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-gold-primary" />
     </div>
   );
 }

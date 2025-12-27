@@ -6,13 +6,27 @@ import { calculateEnrichmentScore } from '@/lib/enrichment';
 
 const importContactSchema = z.object({
   contact: z.object({
-    name: z.string().min(1),
-    email: z.string().email().optional().or(z.literal('')),
+    firstName: z.string().min(1),
+    lastName: z.string().optional(),
+    primaryEmail: z.string().email().optional().or(z.literal('')),
+    secondaryEmail: z.string().email().optional().or(z.literal('')),
+    primaryPhone: z.string().optional(),
+    secondaryPhone: z.string().optional(),
     title: z.string().optional(),
     company: z.string().optional(),
+    // URLs are stored as strings - CSV data may have partial URLs or profile names
+    linkedinUrl: z.string().optional(),
+    websiteUrl: z.string().optional(),
+    // Address fields
+    streetAddress: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    zipCode: z.string().optional(),
+    country: z.string().optional(),
     location: z.string().optional(),
-    phone: z.string().optional(),
-    linkedinUrl: z.string().url().optional().or(z.literal('')),
+    // Referral
+    referredBy: z.string().optional(),
+    // Enrichment fields
     howWeMet: z.string().optional(),
     whyNow: z.string().optional(),
     expertise: z.string().optional(),
@@ -34,6 +48,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Ensure user exists in Prisma database (Supabase Auth user may not have a corresponding Prisma User record)
+    await prisma.user.upsert({
+      where: { id: user.id },
+      update: {}, // No updates needed, just ensure exists
+      create: {
+        id: user.id,
+        email: user.email || '',
+        name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+      },
+    });
+
     const body = await request.json();
     const { contact, skipDuplicates } = importContactSchema.parse(body);
 
@@ -46,11 +71,11 @@ export async function POST(request: NextRequest) {
     ) as typeof contact;
 
     // Check for duplicate email if skipDuplicates is enabled
-    if (skipDuplicates && cleanContact.email) {
+    if (skipDuplicates && cleanContact.primaryEmail) {
       const existing = await prisma.contact.findFirst({
         where: {
           userId: user.id,
-          email: cleanContact.email,
+          primaryEmail: cleanContact.primaryEmail,
         },
       });
 
@@ -66,13 +91,26 @@ export async function POST(request: NextRequest) {
     const newContact = await prisma.contact.create({
       data: {
         userId: user.id,
-        name: cleanContact.name,
-        email: cleanContact.email || null,
+        firstName: cleanContact.firstName,
+        lastName: cleanContact.lastName || null,
+        primaryEmail: cleanContact.primaryEmail || null,
+        secondaryEmail: cleanContact.secondaryEmail || null,
+        primaryPhone: cleanContact.primaryPhone || null,
+        secondaryPhone: cleanContact.secondaryPhone || null,
         title: cleanContact.title || null,
         company: cleanContact.company || null,
-        location: cleanContact.location || null,
-        phone: cleanContact.phone || null,
         linkedinUrl: cleanContact.linkedinUrl || null,
+        websiteUrl: cleanContact.websiteUrl || null,
+        // Address fields
+        streetAddress: cleanContact.streetAddress || null,
+        city: cleanContact.city || null,
+        state: cleanContact.state || null,
+        zipCode: cleanContact.zipCode || null,
+        country: cleanContact.country || null,
+        location: cleanContact.location || null,
+        // Referral
+        referredBy: cleanContact.referredBy || null,
+        // Enrichment fields
         howWeMet: cleanContact.howWeMet || null,
         whyNow: cleanContact.whyNow || null,
         expertise: cleanContact.expertise || null,

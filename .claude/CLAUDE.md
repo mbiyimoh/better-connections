@@ -271,7 +271,7 @@ contextLayerId: rec.targetType === "LAYER" ? effectiveTargetId : null,
    - **Solution:** Full server restart required after changes:
    ```bash
    pkill -f "next dev" && pkill -f "inngest-cli" && rm -rf .next
-   PORT=3002 npm run dev &
+   PORT=3303 npm run dev &
    npx inngest-cli dev &
    ```
 
@@ -533,8 +533,8 @@ rm -rf node_modules/.cache
 npx prisma generate
 
 # 4. Start servers
-# Terminal 1: Next.js (port 3002)
-PORT=3002 npm run dev
+# Terminal 1: Next.js (port 3303)
+PORT=3303 npm run dev
 
 # Terminal 2: Inngest dev server
 npx inngest-cli dev
@@ -542,7 +542,7 @@ npx inngest-cli dev
 
 **Quick restart (no dependency changes):**
 ```bash
-npm run clean && PORT=3002 npm run dev
+npm run clean && PORT=3303 npm run dev
 ```
 
 **Why this is necessary:**
@@ -620,14 +620,14 @@ npm run test:e2e:report       # View results
 
 ## Port Assignments
 
-- **3002** - Next.js dev server
+- **3303** - Next.js dev server
 - **8288** - Inngest dev server
 - **5432** - PostgreSQL database
 - **5555** - Prisma Studio (`npx prisma studio`)
 
 **Check availability:**
 ```bash
-lsof -i :3002 -P -n | grep LISTEN || echo "Available"
+lsof -i :3303 -P -n | grep LISTEN || echo "Available"
 ```
 
 ---
@@ -712,14 +712,14 @@ if (newStatus === 'COMPLETED') {
 
 ```bash
 # Development servers
-PORT=3002 npm run dev              # Next.js
+PORT=3303 npm run dev              # Next.js
 npx inngest-cli dev                # Inngest
 
 # Clean restart (when broken)
-npm run clean && PORT=3002 npm run dev
+npm run clean && PORT=3303 npm run dev
 
 # Full rebuild (after major changes)
-npm run rebuild:full && PORT=3002 npm run dev
+npm run rebuild:full && PORT=3303 npm run dev
 
 # Database (ALWAYS backup first!)
 npm run db:backup                  # Create backup
@@ -751,8 +751,8 @@ npx tsc --noEmit                   # Check for errors
 
 | Problem | Solution |
 |---------|----------|
-| Port conflict | `lsof -ti:3002 \| xargs kill -9` |
-| Stale cache | `npm run clean && PORT=3002 npm run dev` |
+| Port conflict | `lsof -ti:3303 \| xargs kill -9` |
+| Stale cache | `npm run clean && PORT=3303 npm run dev` |
 | Prisma client error | `npx prisma generate` |
 | Research run stuck | Check Inngest UI at http://localhost:8288 |
 | Schema mismatch | `npm run db:backup && npm run migrate:safe -- fix` |
@@ -770,6 +770,6 @@ npx tsc --noEmit                   # Check for errors
 
 **Project:** Guru Builder System
 **Stack:** Next.js 15 + PostgreSQL + Prisma + OpenAI + Inngest + Supabase
-**Port:** 3002 (dev server)
+**Port:** 3303 (dev server)
 **Production:** https://guru-builder-production.up.railway.app
-**Last Updated:** 2025-12-12
+**Last Updated:** 2025-12-26

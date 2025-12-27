@@ -9,6 +9,7 @@ import { ContactCard } from "@/components/chat/ContactCard";
 import { DraftIntroModal } from "@/components/chat/DraftIntroModal";
 import { parseContactSuggestions } from "@/lib/chat-parser";
 import { useDebouncedCallback } from "use-debounce";
+import { getDisplayName } from "@/types/contact";
 
 interface ContactTag {
   id: string;
@@ -18,11 +19,12 @@ interface ContactTag {
 
 interface Contact {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string | null;
   title: string | null;
   company: string | null;
   location: string | null;
-  email: string | null;
+  primaryEmail: string | null;
   howWeMet: string | null;
   whyNow: string | null;
   expertise: string | null;
@@ -204,8 +206,8 @@ export default function ExplorePage() {
       const query = searchQuery.toLowerCase();
       result = contacts.filter(
         (c) =>
-          c.name.toLowerCase().includes(query) ||
-          c.email?.toLowerCase().includes(query) ||
+          getDisplayName(c).toLowerCase().includes(query) ||
+          c.primaryEmail?.toLowerCase().includes(query) ||
           c.company?.toLowerCase().includes(query)
       );
     } else {

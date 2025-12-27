@@ -18,11 +18,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { getDisplayName } from "@/types/contact";
 
 interface QueueContact {
   id: string;
-  name: string;
-  email: string | null;
+  firstName: string;
+  lastName: string | null;
+  primaryEmail: string | null;
   title: string | null;
   company: string | null;
   enrichmentScore: number;
@@ -224,13 +226,13 @@ function QueueItemCard({
           </div>
 
           {/* Avatar */}
-          <Avatar name={contact.name} size={44} />
+          <Avatar name={getDisplayName(contact)} size={44} />
 
           {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <h3 className="text-base font-semibold text-white">
-                {contact.name}
+                {getDisplayName(contact)}
               </h3>
               <PriorityBadge priority={contact.priorityLevel} />
             </div>

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { getDisplayName } from "@/types/contact";
 
 interface ContactTag {
   id: string;
@@ -22,11 +23,12 @@ interface ContactTag {
 
 interface Contact {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string | null;
   title: string | null;
   company: string | null;
   location: string | null;
-  email: string | null;
+  primaryEmail: string | null;
   howWeMet: string | null;
   whyNow: string | null;
   expertise: string | null;
@@ -137,13 +139,13 @@ export function ContactCard({
           <div className="flex gap-3">
             <div
               className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 text-sm font-semibold text-white/90"
-              style={{ background: getAvatarGradient(contact.name) }}
+              style={{ background: getAvatarGradient(getDisplayName(contact)) }}
             >
-              {getInitials(contact.name)}
+              {getInitials(getDisplayName(contact))}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-white truncate">{contact.name}</h3>
+                <h3 className="font-semibold text-white truncate">{getDisplayName(contact)}</h3>
                 {isPinned && <Pin size={12} className="text-[#C9A227] shrink-0" />}
               </div>
               <p className="text-sm text-zinc-500 truncate">

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   User,
@@ -12,7 +13,11 @@ import {
   ArrowRight,
   SkipForward,
   Send,
+  Mic,
+  MicOff,
+  Keyboard,
 } from "lucide-react";
+import SpeechRecognition, { useSpeechRecognition } from "react-speech-recognition";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { CircularTimer } from "@/components/enrichment/CircularTimer";
@@ -22,11 +27,20 @@ import {
   type EnrichmentBubble,
   type BubbleCategory,
 } from "@/components/enrichment/EnrichmentBubbles";
+import { getDisplayName } from "@/types/contact";
+
+// Persist listening state across HMR to prevent mic toggling on every code change
+let persistedListeningState = false;
+if (typeof window !== "undefined") {
+  // @ts-expect-error - HMR state persistence
+  persistedListeningState = window.__SPEECH_LISTENING__ || false;
+}
 
 interface Contact {
   id: string;
-  name: string;
-  email: string | null;
+  firstName: string;
+  lastName: string | null;
+  primaryEmail: string | null;
   title: string | null;
   company: string | null;
   enrichmentScore: number;
@@ -129,11 +143,56 @@ function EnrichmentSessionContent() {
     notes: "",
   });
 
+  // Voice input
+  const {
+    transcript,
+    listening,
+    resetTranscript,
+    browserSupportsSpeechRecognition,
+  } = useSpeechRecognition();
+  const [lastProcessedLength, setLastProcessedLength] = useState(0);
+  const [savedTranscripts, setSavedTranscripts] = useState<string[]>([]);
+  const hasRestoredListening = useRef(false);
+
+  // Restore listening state after HMR (dev mode only)
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development" && !hasRestoredListening.current) {
+      hasRestoredListening.current = true;
+      if (persistedListeningState && browserSupportsSpeechRecognition && !listening) {
+        SpeechRecognition.startListening({ continuous: true });
+      }
+    }
+  }, [browserSupportsSpeechRecognition, listening]);
+
+  // Persist listening state to window for HMR
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // @ts-expect-error - HMR state persistence
+      window.__SPEECH_LISTENING__ = listening;
+      persistedListeningState = listening;
+    }
+  }, [listening]);
+
   useEffect(() => {
     if (contactId) {
       fetchContact(contactId);
     }
   }, [contactId]);
+
+  // Process voice transcription as it comes in
+  useEffect(() => {
+    if (transcript.length > lastProcessedLength && isStarted) {
+      const newText = transcript.slice(lastProcessedLength);
+      // Extract insights from new speech segment
+      const insights = extractInsights(newText);
+      if (insights.length > 0) {
+        const newBubbles = insights.map((i) => createBubble(i.text, i.category));
+        setBubbles((prev) => [...prev, ...newBubbles]);
+      }
+      // Don't store in notes here - consolidated in handleSave
+      setLastProcessedLength(transcript.length);
+    }
+  }, [transcript, lastProcessedLength, isStarted]);
 
   const fetchContact = async (id: string) => {
     try {
@@ -161,7 +220,12 @@ function EnrichmentSessionContent() {
   const handleComplete = useCallback(() => {
     setIsPlaying(false);
     setSessionComplete(true);
-  }, []);
+    // Save transcript before stopping voice
+    if (transcript.trim()) {
+      setSavedTranscripts((prev) => [...prev, transcript.trim()]);
+    }
+    SpeechRecognition.stopListening();
+  }, [transcript]);
 
   const handleAddInsight = () => {
     if (!inputText.trim()) return;
@@ -195,12 +259,30 @@ function EnrichmentSessionContent() {
       const expertiseBubbles = bubbles.filter((b) => b.category === "expertise");
       const interestBubbles = bubbles.filter((b) => b.category === "interest");
 
+      // Merge bubble data with existing enrichment data (don't overwrite)
       const updateData = {
-        howWeMet: relationshipBubbles.map((b) => b.text).join(". ") || enrichmentData.howWeMet,
-        whyNow: opportunityBubbles.map((b) => b.text).join(". ") || enrichmentData.whyNow,
-        expertise: expertiseBubbles.map((b) => b.text).join(", ") || enrichmentData.expertise,
-        interests: interestBubbles.map((b) => b.text).join(", ") || enrichmentData.interests,
-        notes: enrichmentData.notes,
+        howWeMet: [
+          enrichmentData.howWeMet,
+          relationshipBubbles.map((b) => b.text).join(". "),
+        ].filter(Boolean).join(" "),
+        whyNow: [
+          enrichmentData.whyNow,
+          opportunityBubbles.map((b) => b.text).join(". "),
+        ].filter(Boolean).join(" "),
+        expertise: [
+          enrichmentData.expertise,
+          expertiseBubbles.map((b) => b.text).join(", "),
+        ].filter(Boolean).join(", "),
+        interests: [
+          enrichmentData.interests,
+          interestBubbles.map((b) => b.text).join(", "),
+        ].filter(Boolean).join(", "),
+        // Consolidate notes: existing + all voice transcripts
+        notes: [
+          enrichmentData.notes,
+          ...savedTranscripts,
+          transcript.trim(),
+        ].filter(Boolean).join("\n\n"),
         lastEnrichedAt: new Date().toISOString(),
       };
 
@@ -270,7 +352,7 @@ function EnrichmentSessionContent() {
                 <Sparkles size={32} className="text-green-400" />
               </motion.div>
               <h2 className="text-xl font-semibold text-white mb-1">
-                {contact.name} enriched
+                {getDisplayName(contact)} enriched
               </h2>
               <p className="text-zinc-400 text-sm">
                 We captured {bubbles.length} insights
@@ -345,12 +427,12 @@ function EnrichmentSessionContent() {
             <User size={40} className="text-white/60" />
           </div>
           <h2 className="text-2xl font-semibold text-white mb-1">
-            {contact.name}
+            {getDisplayName(contact)}
           </h2>
           <p className="text-zinc-500 text-sm">
             {contact.title && contact.company
               ? `${contact.title} at ${contact.company}`
-              : contact.email || "No details yet"}
+              : contact.primaryEmail || "No details yet"}
           </p>
           <p className="text-xs text-zinc-600 mt-2">
             Current score: {contact.enrichmentScore}%
@@ -370,6 +452,28 @@ function EnrichmentSessionContent() {
 
             <div className="flex gap-3">
               <Button
+                variant={listening ? "default" : "secondary"}
+                size="sm"
+                onClick={() => {
+                  if (listening) {
+                    // Save transcript before stopping
+                    if (transcript.trim()) {
+                      setSavedTranscripts((prev) => [...prev, transcript.trim()]);
+                    }
+                    SpeechRecognition.stopListening();
+                    resetTranscript();
+                    setLastProcessedLength(0);
+                  } else {
+                    SpeechRecognition.startListening({ continuous: true });
+                  }
+                }}
+                className={listening ? "bg-red-500 hover:bg-red-400 animate-pulse" : ""}
+                disabled={!browserSupportsSpeechRecognition}
+              >
+                {listening ? <MicOff size={16} /> : <Mic size={16} />}
+                {listening ? "Stop" : "Voice"}
+              </Button>
+              <Button
                 variant="secondary"
                 size="sm"
                 onClick={handleAddTime}
@@ -387,6 +491,21 @@ function EnrichmentSessionContent() {
                 {isPlaying ? "Pause" : "Resume"}
               </Button>
             </div>
+
+            {/* Category hints */}
+            <div className="flex gap-3 justify-center text-xs">
+              <span className="text-blue-400">Relationship</span>
+              <span className="text-green-400">Opportunity</span>
+              <span className="text-purple-400">Expertise</span>
+              <span className="text-amber-400">Interest</span>
+            </div>
+
+            {/* Browser support warning */}
+            {!browserSupportsSpeechRecognition && (
+              <p className="text-amber-500 text-xs text-center">
+                Voice input not supported in this browser. Use Chrome for best experience.
+              </p>
+            )}
           </div>
         )}
 
@@ -397,7 +516,7 @@ function EnrichmentSessionContent() {
           ) : (
             <p className="text-zinc-500 text-center py-8">
               {isStarted
-                ? "Type what you know about this contact below"
+                ? "Click Voice to speak or type below"
                 : "Start the session to begin enriching"}
             </p>
           )}
@@ -469,6 +588,19 @@ function EnrichmentSessionContent() {
               <Sparkles size={18} />
               Complete Session
             </Button>
+          </div>
+        )}
+
+        {/* Text fallback link */}
+        {contact && (
+          <div className="text-center pt-2">
+            <Link
+              href={`/enrich/text?id=${contact.id}`}
+              className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
+            >
+              <Keyboard size={14} />
+              Prefer typing? Use text-based enrichment
+            </Link>
           </div>
         )}
       </div>

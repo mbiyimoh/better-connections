@@ -23,13 +23,16 @@ import type { Contact, TagCategory } from '@/types/contact';
 import Link from 'next/link';
 
 const contactFormSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(255),
-  email: z.string().email('Invalid email').optional().or(z.literal('')),
+  firstName: z.string().min(1, 'First name is required').max(255),
+  lastName: z.string().max(255).optional().or(z.literal('')),
+  primaryEmail: z.string().email('Invalid email').optional().or(z.literal('')),
+  secondaryEmail: z.string().email('Invalid email').optional().or(z.literal('')),
+  primaryPhone: z.string().max(50).optional().or(z.literal('')),
+  secondaryPhone: z.string().max(50).optional().or(z.literal('')),
   title: z.string().max(255).optional(),
   company: z.string().max(255).optional(),
   location: z.string().max(255).optional(),
   linkedinUrl: z.string().url('Invalid URL').optional().or(z.literal('')),
-  phone: z.string().max(50).optional(),
   howWeMet: z.string().optional(),
   relationshipStrength: z.number().int().min(1).max(4),
   whyNow: z.string().optional(),
@@ -76,13 +79,16 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
   } = useForm<ContactFormData>({
     resolver: zodResolver(contactFormSchema),
     defaultValues: {
-      name: contact?.name || '',
-      email: contact?.email || '',
+      firstName: contact?.firstName || '',
+      lastName: contact?.lastName || '',
+      primaryEmail: contact?.primaryEmail || '',
+      secondaryEmail: contact?.secondaryEmail || '',
+      primaryPhone: contact?.primaryPhone || '',
+      secondaryPhone: contact?.secondaryPhone || '',
       title: contact?.title || '',
       company: contact?.company || '',
       location: contact?.location || '',
       linkedinUrl: contact?.linkedinUrl || '',
-      phone: contact?.phone || '',
       howWeMet: contact?.howWeMet || '',
       relationshipStrength: contact?.relationshipStrength || 1,
       whyNow: contact?.whyNow || '',
@@ -110,7 +116,11 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
     try {
       const payload = {
         ...data,
-        email: data.email || null,
+        lastName: data.lastName || null,
+        primaryEmail: data.primaryEmail || null,
+        secondaryEmail: data.secondaryEmail || null,
+        primaryPhone: data.primaryPhone || null,
+        secondaryPhone: data.secondaryPhone || null,
         linkedinUrl: data.linkedinUrl || null,
         tags,
       };
@@ -162,29 +172,58 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
           <h2 className="text-lg font-semibold text-white">Basic Information</h2>
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="name">Name *</Label>
+              <Label htmlFor="firstName">First Name *</Label>
               <Input
-                id="name"
-                {...register('name')}
-                placeholder="John Doe"
-                className={errors.name ? 'border-destructive' : ''}
+                id="firstName"
+                {...register('firstName')}
+                placeholder="John"
+                className={errors.firstName ? 'border-destructive' : ''}
               />
-              {errors.name && (
-                <p className="text-sm text-destructive">{errors.name.message}</p>
+              {errors.firstName && (
+                <p className="text-sm text-destructive">{errors.firstName.message}</p>
               )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="lastName">Last Name</Label>
               <Input
-                id="email"
-                type="email"
-                {...register('email')}
-                placeholder="john@example.com"
-                className={errors.email ? 'border-destructive' : ''}
+                id="lastName"
+                {...register('lastName')}
+                placeholder="Doe"
               />
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="primaryEmail">Primary Email</Label>
+              <Input
+                id="primaryEmail"
+                type="email"
+                {...register('primaryEmail')}
+                placeholder="john@example.com"
+                className={errors.primaryEmail ? 'border-destructive' : ''}
+              />
+              {errors.primaryEmail && (
+                <p className="text-sm text-destructive">{errors.primaryEmail.message}</p>
               )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="secondaryEmail">Secondary Email</Label>
+              <Input
+                id="secondaryEmail"
+                type="email"
+                {...register('secondaryEmail')}
+                placeholder="john.doe@work.com"
+                className={errors.secondaryEmail ? 'border-destructive' : ''}
+              />
+              {errors.secondaryEmail && (
+                <p className="text-sm text-destructive">{errors.secondaryEmail.message}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="primaryPhone">Primary Phone</Label>
+              <Input id="primaryPhone" {...register('primaryPhone')} placeholder="+1 (555) 123-4567" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="secondaryPhone">Secondary Phone</Label>
+              <Input id="secondaryPhone" {...register('secondaryPhone')} placeholder="+1 (555) 987-6543" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="title">Title</Label>
@@ -199,10 +238,6 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
               <Input id="location" {...register('location')} placeholder="San Francisco, CA" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
-              <Input id="phone" {...register('phone')} placeholder="+1 (555) 123-4567" />
-            </div>
-            <div className="space-y-2 md:col-span-2">
               <Label htmlFor="linkedinUrl">LinkedIn URL</Label>
               <Input
                 id="linkedinUrl"

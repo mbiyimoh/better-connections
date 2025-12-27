@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Papa from 'papaparse';
@@ -11,6 +11,11 @@ import {
   Check,
   AlertCircle,
   Loader2,
+  ChevronDown,
+  ChevronUp,
+  Pencil,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -23,52 +28,61 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import {
+  analyzeCSV,
+  SYSTEM_FIELDS,
+  buildContactFromRow,
+  hasRequiredFields,
+  getFieldLabel,
+  type AnalysisResult,
+  type ColumnAnalysis,
+} from '@/lib/csv-analysis';
 
 type ParsedData = {
   headers: string[];
   rows: string[][];
 };
 
-type FieldMapping = Record<string, string>;
-
-const contactFields = [
-  { value: '', label: 'Skip this column' },
-  { value: 'name', label: 'Name *', required: true },
-  { value: 'email', label: 'Email' },
-  { value: 'title', label: 'Title' },
-  { value: 'company', label: 'Company' },
-  { value: 'location', label: 'Location' },
-  { value: 'phone', label: 'Phone' },
-  { value: 'linkedinUrl', label: 'LinkedIn URL' },
-  { value: 'howWeMet', label: 'How We Met' },
-  { value: 'whyNow', label: 'Why Now' },
-  { value: 'expertise', label: 'Expertise' },
-  { value: 'interests', label: 'Interests' },
-  { value: 'notes', label: 'Notes' },
-];
-
-type ImportStep = 'upload' | 'mapping' | 'preview' | 'importing' | 'complete';
+type ImportStep = 'upload' | 'mapping' | 'importing' | 'complete';
 
 export default function ImportPage() {
   const router = useRouter();
   const { toast } = useToast();
 
+  // Step state
   const [step, setStep] = useState<ImportStep>('upload');
   const [parsedData, setParsedData] = useState<ParsedData | null>(null);
-  const [fieldMapping, setFieldMapping] = useState<FieldMapping>({});
+  const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+
+  // Mapping state
+  const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({});
+  const [selectedUnmapped, setSelectedUnmapped] = useState<Set<number>>(new Set());
+  const [isEditingMappings, setIsEditingMappings] = useState(false);
+  const [showEmptyColumns, setShowEmptyColumns] = useState(false);
+
+  // Import options
   const [skipDuplicates, setSkipDuplicates] = useState(true);
+
+  // Import progress
   const [importProgress, setImportProgress] = useState(0);
   const [importResults, setImportResults] = useState<{ success: number; skipped: number; errors: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
+  // Compute if we have required fields mapped
+  const hasFirstNameMapping = useMemo(() => {
+    return Object.values(fieldMapping).includes('firstName');
+  }, [fieldMapping]);
+
+  // Handle file drop
   const handleFileDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
 
     const file = e.dataTransfer.files[0];
-    if (file && file.type === 'text/csv') {
+    if (file && (file.type === 'text/csv' || file.name.endsWith('.csv'))) {
       parseCSV(file);
     } else {
       toast({
@@ -79,6 +93,7 @@ export default function ImportPage() {
     }
   }, [toast]);
 
+  // Handle file select
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -86,6 +101,7 @@ export default function ImportPage() {
     }
   }, []);
 
+  // Parse CSV and analyze
   const parseCSV = (file: File) => {
     Papa.parse(file, {
       complete: (results) => {
@@ -100,31 +116,42 @@ export default function ImportPage() {
         }
 
         const headers = data[0] ?? [];
-        const rows = data.slice(1).filter((row): row is string[] => Array.isArray(row) && row.some(cell => cell?.trim()));
+        const rows = data.slice(1).filter((row): row is string[] =>
+          Array.isArray(row) && row.some(cell => cell?.trim())
+        );
 
         setParsedData({ headers, rows });
 
-        // Auto-detect field mappings
-        const autoMapping: FieldMapping = {};
-        headers.forEach((header, index) => {
-          const normalizedHeader = header.toLowerCase().trim();
-          const matchingField = contactFields.find(f => {
-            const normalizedField = f.value.toLowerCase();
-            return normalizedField === normalizedHeader ||
-                   normalizedHeader.includes(normalizedField) ||
-                   (normalizedField === 'name' && (normalizedHeader.includes('name') || normalizedHeader === 'full name')) ||
-                   (normalizedField === 'email' && normalizedHeader.includes('email')) ||
-                   (normalizedField === 'phone' && (normalizedHeader.includes('phone') || normalizedHeader.includes('mobile'))) ||
-                   (normalizedField === 'company' && (normalizedHeader.includes('company') || normalizedHeader.includes('organization'))) ||
-                   (normalizedField === 'title' && (normalizedHeader.includes('title') || normalizedHeader.includes('position') || normalizedHeader.includes('job'))) ||
-                   (normalizedField === 'location' && (normalizedHeader.includes('location') || normalizedHeader.includes('city') || normalizedHeader.includes('address'))) ||
-                   (normalizedField === 'linkedinUrl' && normalizedHeader.includes('linkedin'));
-          });
-          if (matchingField && matchingField.value) {
-            autoMapping[index.toString()] = matchingField.value;
+        // Analyze CSV to get column statistics and auto-mappings
+        const analysisResult = analyzeCSV(headers, rows);
+        setAnalysis(analysisResult);
+
+        // Build initial field mapping from auto-detected mappings
+        const autoMapping: Record<string, string> = {};
+        analysisResult.mappedColumns.forEach(col => {
+          if (col.suggestedField) {
+            autoMapping[col.index.toString()] = col.suggestedField;
           }
         });
         setFieldMapping(autoMapping);
+
+        // Pre-select unmapped columns that have data (user can uncheck)
+        const initialSelected = new Set<number>();
+        analysisResult.unmappedColumns.forEach(col => {
+          // Auto-select columns that look useful (not photo, labels, etc.)
+          const lowerHeader = col.header.toLowerCase();
+          const isLikelyUseful = !lowerHeader.includes('photo') &&
+                                  !lowerHeader.includes('group') &&
+                                  !lowerHeader.includes('label') &&
+                                  !lowerHeader.includes('type') &&
+                                  !lowerHeader.includes('yomi') &&
+                                  !lowerHeader.includes('phonetic');
+          if (isLikelyUseful) {
+            initialSelected.add(col.index);
+          }
+        });
+        setSelectedUnmapped(initialSelected);
+
         setStep('mapping');
       },
       error: (error) => {
@@ -137,6 +164,7 @@ export default function ImportPage() {
     });
   };
 
+  // Handle mapping change
   const handleMappingChange = (columnIndex: string, field: string) => {
     setFieldMapping(prev => ({
       ...prev,
@@ -144,10 +172,32 @@ export default function ImportPage() {
     }));
   };
 
-  const hasNameMapping = Object.values(fieldMapping).includes('name');
+  // Toggle unmapped column selection
+  const toggleUnmappedColumn = (index: number) => {
+    setSelectedUnmapped(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  };
 
+  // Select/deselect all unmapped
+  const toggleAllUnmapped = () => {
+    if (!analysis) return;
+    if (selectedUnmapped.size === analysis.unmappedColumns.length) {
+      setSelectedUnmapped(new Set());
+    } else {
+      setSelectedUnmapped(new Set(analysis.unmappedColumns.map(c => c.index)));
+    }
+  };
+
+  // Start import
   const handleStartImport = async () => {
-    if (!parsedData || !hasNameMapping) return;
+    if (!parsedData || !analysis || !hasFirstNameMapping) return;
 
     setStep('importing');
     setImportProgress(0);
@@ -155,22 +205,25 @@ export default function ImportPage() {
     const results = { success: 0, skipped: 0, errors: 0 };
     const totalRows = parsedData.rows.length;
 
+    // Get unmapped columns that are selected for notes merge
+    const unmappedForNotes = analysis.unmappedColumns
+      .filter(col => selectedUnmapped.has(col.index))
+      .map(col => ({ index: col.index, header: col.header }));
+
     for (let i = 0; i < totalRows; i++) {
       const row = parsedData.rows[i];
       if (!row) continue;
 
-      const contact: Record<string, string> = {};
+      // Build contact from row
+      const contact = buildContactFromRow(
+        row,
+        fieldMapping,
+        unmappedForNotes,
+        true // include unmapped in notes
+      );
 
-      // Map row data to contact fields
-      Object.entries(fieldMapping).forEach(([columnIndex, field]) => {
-        const cellValue = row[parseInt(columnIndex)];
-        if (field && cellValue) {
-          contact[field] = cellValue.trim();
-        }
-      });
-
-      // Skip if no name
-      if (!contact.name) {
+      // Skip if missing required fields
+      if (!hasRequiredFields(contact)) {
         results.skipped++;
         setImportProgress(((i + 1) / totalRows) * 100);
         continue;
@@ -204,8 +257,49 @@ export default function ImportPage() {
     setStep('complete');
   };
 
+  // Render column mapping row
+  const renderMappingRow = (col: ColumnAnalysis, editable: boolean = false) => (
+    <div
+      key={col.index}
+      className="flex items-center gap-4 py-2 border-b border-border last:border-b-0"
+    >
+      <div className="w-48 text-text-secondary truncate" title={col.header}>
+        {col.header}
+      </div>
+      <div className="text-text-tertiary">→</div>
+      {editable ? (
+        <Select
+          value={fieldMapping[col.index.toString()] || '__skip__'}
+          onValueChange={(value) => handleMappingChange(col.index.toString(), value)}
+        >
+          <SelectTrigger className="w-48 bg-bg-tertiary border-border">
+            <SelectValue placeholder="Select field" />
+          </SelectTrigger>
+          <SelectContent className="bg-bg-secondary border-border">
+            {SYSTEM_FIELDS.map((field) => (
+              <SelectItem key={field.value} value={field.value}>
+                {field.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : (
+        <div className="w-48 text-text-primary">
+          {getFieldLabel(fieldMapping[col.index.toString()] || col.suggestedField || '')}
+        </div>
+      )}
+      <div className="flex-1 text-sm text-text-tertiary truncate" title={col.sampleValue}>
+        Sample: {col.sampleValue || '(empty)'}
+      </div>
+      <Badge variant="secondary" className="text-xs">
+        {col.populationPercent}%
+      </Badge>
+    </div>
+  );
+
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="h-full overflow-y-auto">
+    <div className="p-6 max-w-4xl mx-auto pb-12">
       {/* Header */}
       <div className="mb-6">
         <Link href="/contacts" className="inline-flex items-center text-text-secondary hover:text-text-primary mb-4">
@@ -218,8 +312,8 @@ export default function ImportPage() {
 
       {/* Step Indicator */}
       <div className="flex items-center gap-2 mb-8">
-        {['Upload', 'Map Fields', 'Import'].map((label, index) => {
-          const stepIndex = ['upload', 'mapping', 'preview', 'importing', 'complete'].indexOf(step);
+        {['Upload', 'Review Mapping', 'Import'].map((label, index) => {
+          const stepIndex = ['upload', 'mapping', 'importing', 'complete'].indexOf(step);
           const isActive = index <= Math.min(stepIndex, 2);
           const isCurrent = (index === 0 && step === 'upload') ||
                            (index === 1 && step === 'mapping') ||
@@ -280,87 +374,177 @@ export default function ImportPage() {
         </Card>
       )}
 
-      {/* Mapping Step */}
-      {step === 'mapping' && parsedData && (
+      {/* Mapping Step - Smart Review */}
+      {step === 'mapping' && parsedData && analysis && (
         <div className="space-y-6">
+          {/* Summary Banner */}
           <Card className="bg-bg-secondary border-border">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileSpreadsheet className="h-5 w-5" />
-                Map CSV Columns
-              </CardTitle>
-              <CardDescription>
-                Match your CSV columns to contact fields. Name is required.
-              </CardDescription>
+            <CardContent className="pt-6">
+              <div className="flex flex-wrap gap-6 text-center">
+                <div>
+                  <div className="text-2xl font-bold text-gold-primary">{analysis.totalRows}</div>
+                  <div className="text-sm text-text-tertiary">Contacts Found</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-text-primary">{parsedData.headers.length}</div>
+                  <div className="text-sm text-text-tertiary">Total Columns</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-success">{analysis.populatedColumns.length}</div>
+                  <div className="text-sm text-text-tertiary">With Data</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-text-tertiary">{analysis.emptyColumns.length}</div>
+                  <div className="text-sm text-text-tertiary">Empty (Hidden)</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Confirmed Mappings Card */}
+          <Card className="bg-bg-secondary border-border">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Check className="h-5 w-5 text-success" />
+                  Confirmed Mappings
+                </CardTitle>
+                <CardDescription>
+                  {analysis.mappedColumns.length} columns auto-mapped to system fields
+                </CardDescription>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsEditingMappings(!isEditingMappings)}
+              >
+                {isEditingMappings ? (
+                  <>
+                    <ChevronUp className="h-4 w-4 mr-1" />
+                    Done
+                  </>
+                ) : (
+                  <>
+                    <Pencil className="h-4 w-4 mr-1" />
+                    Edit
+                  </>
+                )}
+              </Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {parsedData.headers.map((header, index) => (
-                  <div key={index} className="flex items-center gap-4">
-                    <div className="w-48 text-text-secondary truncate">{header}</div>
-                    <div className="text-text-tertiary">→</div>
-                    <Select
-                      value={fieldMapping[index.toString()] || ''}
-                      onValueChange={(value) => handleMappingChange(index.toString(), value)}
-                    >
-                      <SelectTrigger className="w-48 bg-bg-tertiary border-border">
-                        <SelectValue placeholder="Select field" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-bg-secondary border-border">
-                        {contactFields.map((field) => (
-                          <SelectItem key={field.value} value={field.value}>
-                            {field.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <div className="text-sm text-text-tertiary truncate flex-1">
-                      Sample: {parsedData.rows[0]?.[index] || '(empty)'}
-                    </div>
+              <div className="space-y-1">
+                {analysis.mappedColumns.map(col => renderMappingRow(col, isEditingMappings))}
+              </div>
+
+              {/* Show unmapped columns when editing */}
+              {isEditingMappings && analysis.unmappedColumns.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-border">
+                  <div className="text-sm text-text-tertiary mb-2">
+                    Unmapped columns with data (assign a field or leave for notes):
                   </div>
-                ))}
-              </div>
+                  <div className="space-y-1">
+                    {analysis.unmappedColumns.map(col => renderMappingRow(col, true))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Preview */}
-          <Card className="bg-bg-secondary border-border">
-            <CardHeader>
-              <CardTitle>Preview (First 5 Rows)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border">
-                      {Object.entries(fieldMapping)
-                        .filter(([, field]) => field)
-                        .map(([index, field]) => (
-                          <th key={index} className="px-3 py-2 text-left text-text-tertiary font-medium">
-                            {contactFields.find(f => f.value === field)?.label}
-                          </th>
-                        ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {parsedData.rows.slice(0, 5).map((row, rowIndex) => (
-                      <tr key={rowIndex} className="border-b border-border">
-                        {Object.entries(fieldMapping)
-                          .filter(([, field]) => field)
-                          .map(([index]) => (
-                            <td key={index} className="px-3 py-2 text-text-secondary truncate max-w-[200px]">
-                              {row[parseInt(index)] || '-'}
-                            </td>
-                          ))}
-                      </tr>
+          {/* Extra Data Card (Unmapped Columns) */}
+          {analysis.unmappedColumns.length > 0 && (
+            <Card className="bg-bg-secondary border-border">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5 text-warning" />
+                    Extra Data (Not Mapped)
+                  </CardTitle>
+                  <CardDescription>
+                    Select columns to include in the Notes field
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleAllUnmapped}
+                >
+                  {selectedUnmapped.size === analysis.unmappedColumns.length ? 'Deselect All' : 'Select All'}
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {analysis.unmappedColumns.map(col => (
+                    <div
+                      key={col.index}
+                      className="flex items-center gap-4 py-2 border-b border-border last:border-b-0"
+                    >
+                      <Checkbox
+                        id={`unmapped-${col.index}`}
+                        checked={selectedUnmapped.has(col.index)}
+                        onCheckedChange={() => toggleUnmappedColumn(col.index)}
+                      />
+                      <label
+                        htmlFor={`unmapped-${col.index}`}
+                        className="flex-1 flex items-center gap-4 cursor-pointer"
+                      >
+                        <div className="w-40 text-text-secondary truncate" title={col.header}>
+                          {col.header}
+                        </div>
+                        <div className="flex-1 text-sm text-text-tertiary truncate" title={col.sampleValue}>
+                          Sample: {col.sampleValue || '(empty)'}
+                        </div>
+                        <Badge variant="secondary" className="text-xs">
+                          {col.populationPercent}%
+                        </Badge>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 p-3 bg-bg-tertiary rounded-lg text-sm text-text-secondary">
+                  Selected items will be added to Notes as: [FieldName: value] [FieldName2: value2]
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Empty Columns (Collapsible) */}
+          {analysis.emptyColumns.length > 0 && (
+            <Card className="bg-bg-secondary border-border">
+              <CardHeader
+                className="cursor-pointer"
+                onClick={() => setShowEmptyColumns(!showEmptyColumns)}
+              >
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-text-tertiary">
+                    {showEmptyColumns ? (
+                      <Eye className="h-5 w-5" />
+                    ) : (
+                      <EyeOff className="h-5 w-5" />
+                    )}
+                    {analysis.emptyColumns.length} Empty Columns (Hidden)
+                  </span>
+                  {showEmptyColumns ? (
+                    <ChevronUp className="h-4 w-4 text-text-tertiary" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-text-tertiary" />
+                  )}
+                </CardTitle>
+              </CardHeader>
+              {showEmptyColumns && (
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {analysis.emptyColumns.map((header, i) => (
+                      <Badge key={i} variant="outline" className="text-text-tertiary">
+                        {header}
+                      </Badge>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+          )}
 
-          {/* Options */}
+          {/* Import Options */}
           <Card className="bg-bg-secondary border-border">
             <CardContent className="pt-6">
               <div className="flex items-center gap-2">
@@ -378,14 +562,27 @@ export default function ImportPage() {
 
           {/* Actions */}
           <div className="flex justify-between">
-            <Button variant="outline" onClick={() => setStep('upload')}>
+            <Button variant="outline" onClick={() => {
+              setStep('upload');
+              setParsedData(null);
+              setAnalysis(null);
+              setFieldMapping({});
+              setSelectedUnmapped(new Set());
+            }}>
               Back
             </Button>
-            <Button onClick={handleStartImport} disabled={!hasNameMapping}>
-              {!hasNameMapping && <AlertCircle className="mr-2 h-4 w-4" />}
-              Import {parsedData.rows.length} Contacts
+            <Button onClick={handleStartImport} disabled={!hasFirstNameMapping}>
+              {!hasFirstNameMapping && <AlertCircle className="mr-2 h-4 w-4" />}
+              Import {analysis.totalRows} Contacts
             </Button>
           </div>
+
+          {/* Validation Warning */}
+          {!hasFirstNameMapping && (
+            <div className="text-center text-sm text-warning">
+              Please map a column to "First Name" to continue
+            </div>
+          )}
         </div>
       )}
 
@@ -430,6 +627,7 @@ export default function ImportPage() {
           </CardContent>
         </Card>
       )}
+      </div>
     </div>
   );
 }

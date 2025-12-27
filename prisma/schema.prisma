@@ -32,14 +32,34 @@ model Contact {
   userId                String
   user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Name fields
+  firstName             String    @default("")
+  lastName              String?
+
+  // Email fields
+  primaryEmail          String?
+  secondaryEmail        String?
+
+  // Phone fields
+  primaryPhone          String?
+  secondaryPhone        String?
+
   // Basic Info
-  name                  String
-  email                 String?
   title                 String?
   company               String?
-  location              String?
   linkedinUrl           String?
-  phone                 String?
+  websiteUrl            String?   // Portfolio, blog, or company profile page
+
+  // Address fields (Google-style breakdown)
+  streetAddress         String?
+  city                  String?
+  state                 String?
+  zipCode               String?
+  country               String?
+  location              String?   // Legacy: formatted location or city fallback
+
+  // Referral
+  referredBy            String?   // Who introduced/connected you to this person
 
   // Relationship Context
   howWeMet              String?   @db.Text
@@ -66,8 +86,9 @@ model Contact {
   tags                  Tag[]
 
   @@index([userId])
-  @@index([name])
-  @@index([email])
+  @@index([firstName])
+  @@index([lastName])
+  @@index([primaryEmail])
   @@index([enrichmentScore])
 }
 

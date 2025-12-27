@@ -11,13 +11,24 @@ export interface Tag {
 export interface Contact {
   id: string;
   userId: string;
-  name: string;
-  email: string | null;
+
+  // Name fields (split)
+  firstName: string;
+  lastName: string | null;
+
+  // Email fields (primary/secondary)
+  primaryEmail: string | null;
+  secondaryEmail: string | null;
+
+  // Phone fields (primary/secondary)
+  primaryPhone: string | null;
+  secondaryPhone: string | null;
+
+  // Other fields
   title: string | null;
   company: string | null;
   location: string | null;
   linkedinUrl: string | null;
-  phone: string | null;
   howWeMet: string | null;
   relationshipStrength: number;
   lastContactDate: string | null;
@@ -32,6 +43,34 @@ export interface Contact {
   updatedAt: string;
   lastEnrichedAt: string | null;
   tags: Tag[];
+}
+
+// Helper function for display name
+export function getDisplayName(contact: { firstName: string; lastName?: string | null }): string {
+  return contact.lastName
+    ? `${contact.firstName} ${contact.lastName}`
+    : contact.firstName;
+}
+
+// Helper for sorting (lastName first)
+export function getSortableName(contact: { firstName: string; lastName?: string | null }): string {
+  return contact.lastName
+    ? `${contact.lastName}, ${contact.firstName}`
+    : contact.firstName;
+}
+
+// Helper for initials
+export function getInitials(contact: { firstName: string; lastName?: string | null }): string {
+  const first = contact.firstName.charAt(0).toUpperCase();
+  const last = contact.lastName?.charAt(0).toUpperCase() || '';
+  return first + last;
+}
+
+// Helper for avatar gradient color based on name
+export function getAvatarColor(contact: { firstName: string; lastName?: string | null }): string {
+  const name = `${contact.firstName}${contact.lastName || ''}`;
+  const hue = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
+  return `linear-gradient(135deg, hsl(${hue}, 60%, 40%), hsl(${(hue + 60) % 360}, 60%, 30%))`;
 }
 
 export interface ContactsResponse {

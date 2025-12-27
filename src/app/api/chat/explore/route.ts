@@ -54,7 +54,8 @@ export async function POST(request: Request) {
     // Serialize contacts for prompt context with sanitization
     const contactContext = contacts.map((c) => ({
       id: c.id,
-      name: sanitizeForPrompt(c.name),
+      name: `${sanitizeForPrompt(c.firstName)}${c.lastName ? ' ' + sanitizeForPrompt(c.lastName) : ''}`,
+      email: sanitizeForPrompt(c.primaryEmail),
       title: sanitizeForPrompt(c.title),
       company: sanitizeForPrompt(c.company),
       location: sanitizeForPrompt(c.location),

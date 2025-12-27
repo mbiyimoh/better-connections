@@ -51,8 +51,12 @@ export async function GET(request: NextRequest) {
       });
       const priorityLevel = getPriorityLevel(priority);
       const reason = getEnrichmentReason({
-        name: contact.name,
-        email: contact.email,
+        firstName: contact.firstName,
+        lastName: contact.lastName,
+        primaryEmail: contact.primaryEmail,
+        secondaryEmail: contact.secondaryEmail,
+        primaryPhone: contact.primaryPhone,
+        secondaryPhone: contact.secondaryPhone,
         title: contact.title,
         company: contact.company,
         location: contact.location,

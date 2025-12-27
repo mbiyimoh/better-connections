@@ -1,13 +1,23 @@
 import { z } from 'zod';
 
 export const contactCreateSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(255),
-  email: z.string().email('Invalid email').optional().nullable(),
+  // Name fields (split)
+  firstName: z.string().min(1, 'First name is required').max(255),
+  lastName: z.string().max(255).optional().nullable(),
+
+  // Email fields (primary/secondary)
+  primaryEmail: z.string().email('Invalid email').optional().nullable().or(z.literal('')),
+  secondaryEmail: z.string().email('Invalid email').optional().nullable().or(z.literal('')),
+
+  // Phone fields (primary/secondary)
+  primaryPhone: z.string().max(50).optional().nullable(),
+  secondaryPhone: z.string().max(50).optional().nullable(),
+
+  // Other fields
   title: z.string().max(255).optional().nullable(),
   company: z.string().max(255).optional().nullable(),
   location: z.string().max(255).optional().nullable(),
-  linkedinUrl: z.string().url('Invalid URL').max(500).optional().nullable(),
-  phone: z.string().max(50).optional().nullable(),
+  linkedinUrl: z.string().url('Invalid URL').max(500).optional().nullable().or(z.literal('')),
   howWeMet: z.string().optional().nullable(),
   relationshipStrength: z.number().int().min(1).max(4).default(1),
   lastContactDate: z.string().datetime().optional().nullable(),
@@ -34,8 +44,8 @@ export const contactUpdateSchema = contactCreateSchema.partial().extend({
 
 export const contactQuerySchema = z.object({
   search: z.string().optional(),
-  sort: z.enum(['name', 'email', 'company', 'lastContactDate', 'enrichmentScore', 'createdAt']).optional(),
-  order: z.enum(['asc', 'desc']).optional(),
+  sort: z.enum(['firstName', 'lastName', 'primaryEmail', 'company', 'lastContactDate', 'enrichmentScore', 'createdAt']).default('lastName'),
+  order: z.enum(['asc', 'desc']).default('asc'),
   category: z.enum(['RELATIONSHIP', 'OPPORTUNITY', 'EXPERTISE', 'INTEREST']).optional(),
   source: z.enum(['MANUAL', 'CSV', 'GOOGLE', 'LINKEDIN', 'ICLOUD', 'OUTLOOK']).optional(),
   relationship: z.coerce.number().int().min(1).max(4).optional(),

@@ -40,9 +40,12 @@ export async function GET(request: NextRequest) {
     // Search filter
     if (query.search) {
       where.OR = [
-        { name: { contains: query.search, mode: 'insensitive' } },
-        { email: { contains: query.search, mode: 'insensitive' } },
+        { firstName: { contains: query.search, mode: 'insensitive' } },
+        { lastName: { contains: query.search, mode: 'insensitive' } },
+        { primaryEmail: { contains: query.search, mode: 'insensitive' } },
+        { secondaryEmail: { contains: query.search, mode: 'insensitive' } },
         { company: { contains: query.search, mode: 'insensitive' } },
+        { title: { contains: query.search, mode: 'insensitive' } },
         { notes: { contains: query.search, mode: 'insensitive' } },
       ];
     }
@@ -75,9 +78,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Build order by
+    // Build order by - default sort by lastName
     const orderBy: Prisma.ContactOrderByWithRelationInput = {};
-    const sortField = query.sort || 'name';
+    const sortField = query.sort || 'lastName';
     orderBy[sortField as keyof Prisma.ContactOrderByWithRelationInput] = query.order || 'asc';
 
     // Get total count
@@ -125,6 +128,17 @@ export async function POST(request: NextRequest) {
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    // Ensure user exists in Prisma database (Supabase Auth user may not have a corresponding Prisma User record)
+    await prisma.user.upsert({
+      where: { id: user.id },
+      update: {}, // No updates needed, just ensure exists
+      create: {
+        id: user.id,
+        email: user.email || '',
+        name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+      },
+    });
 
     const body = await request.json();
     const data = contactCreateSchema.parse(body);

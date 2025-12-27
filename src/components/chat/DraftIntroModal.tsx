@@ -10,10 +10,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { getDisplayName } from "@/types/contact";
 
 interface Contact {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string | null;
   title: string | null;
   company: string | null;
   howWeMet: string | null;
@@ -76,7 +78,7 @@ export function DraftIntroModal({ contact, isOpen, onClose }: DraftIntroModalPro
       <DialogContent className="bg-zinc-900 border-white/10 text-white max-w-lg">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
-            Draft Intro for {contact.name}
+            Draft Intro for {getDisplayName(contact)}
           </DialogTitle>
         </DialogHeader>
 
@@ -84,7 +86,7 @@ export function DraftIntroModal({ contact, isOpen, onClose }: DraftIntroModalPro
           {/* Context */}
           <div className="bg-white/5 rounded-lg p-4 space-y-2">
             <p className="text-sm text-zinc-400">
-              <span className="text-zinc-500">Contact:</span> {contact.name}
+              <span className="text-zinc-500">Contact:</span> {getDisplayName(contact)}
               {contact.title && contact.company && (
                 <span className="text-zinc-500">
                   {" "}

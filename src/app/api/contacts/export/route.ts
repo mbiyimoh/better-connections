@@ -38,8 +38,10 @@ export async function GET(request: NextRequest) {
 
     if (query.search) {
       where.OR = [
-        { name: { contains: query.search, mode: 'insensitive' } },
-        { email: { contains: query.search, mode: 'insensitive' } },
+        { firstName: { contains: query.search, mode: 'insensitive' } },
+        { lastName: { contains: query.search, mode: 'insensitive' } },
+        { primaryEmail: { contains: query.search, mode: 'insensitive' } },
+        { secondaryEmail: { contains: query.search, mode: 'insensitive' } },
         { company: { contains: query.search, mode: 'insensitive' } },
         { notes: { contains: query.search, mode: 'insensitive' } },
       ];
@@ -72,18 +74,21 @@ export async function GET(request: NextRequest) {
     // Get contacts
     const contacts = await prisma.contact.findMany({
       where,
-      orderBy: { name: 'asc' },
+      orderBy: { lastName: 'asc' },
       include: { tags: true },
     });
 
     // Build CSV
     const headers = [
-      'Name',
-      'Email',
+      'First Name',
+      'Last Name',
+      'Primary Email',
+      'Secondary Email',
+      'Primary Phone',
+      'Secondary Phone',
       'Title',
       'Company',
       'Location',
-      'Phone',
       'LinkedIn URL',
       'How We Met',
       'Relationship Strength',
@@ -117,12 +122,15 @@ export async function GET(request: NextRequest) {
     };
 
     const rows = contacts.map((contact) => [
-      escapeCSV(contact.name),
-      escapeCSV(contact.email),
+      escapeCSV(contact.firstName),
+      escapeCSV(contact.lastName),
+      escapeCSV(contact.primaryEmail),
+      escapeCSV(contact.secondaryEmail),
+      escapeCSV(contact.primaryPhone),
+      escapeCSV(contact.secondaryPhone),
       escapeCSV(contact.title),
       escapeCSV(contact.company),
       escapeCSV(contact.location),
-      escapeCSV(contact.phone),
       escapeCSV(contact.linkedinUrl),
       escapeCSV(contact.howWeMet),
       escapeCSV(relationshipLabels[contact.relationshipStrength] || ''),

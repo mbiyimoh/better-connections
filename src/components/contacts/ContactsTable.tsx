@@ -62,21 +62,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Contact, ContactsResponse, TagCategory } from '@/types/contact';
+import { getDisplayName, getInitials as getContactInitials, getAvatarColor } from '@/types/contact';
 import Link from 'next/link';
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
-
-function getAvatarColor(name: string): string {
-  const hue = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
-  return `linear-gradient(135deg, hsl(${hue}, 60%, 40%), hsl(${(hue + 60) % 360}, 60%, 30%))`;
-}
 
 function getRelativeTime(dateString: string | null): string {
   if (!dateString) return 'Never';
@@ -118,7 +105,7 @@ function TagBadge({ tag }: { tag: { text: string; category: TagCategory } }) {
   );
 }
 
-type SortField = 'name' | 'lastContactDate' | 'enrichmentScore';
+type SortField = 'firstName' | 'lastName' | 'primaryEmail' | 'company' | 'lastContactDate' | 'enrichmentScore' | 'createdAt';
 type SortOrder = 'asc' | 'desc';
 
 export function ContactsTable() {
@@ -138,7 +125,7 @@ export function ContactsTable() {
   const currentPage = Number(searchParams.get('page') || '1');
   const limit = Number(searchParams.get('limit') || '25');
   const searchQuery = searchParams.get('search') || '';
-  const sortField = (searchParams.get('sort') || 'name') as SortField;
+  const sortField = (searchParams.get('sort') || 'lastName') as SortField;
   const sortOrder = (searchParams.get('order') || 'asc') as SortOrder;
   const sourceFilter = searchParams.get('source') || '';
   const relationshipFilter = searchParams.get('relationship') || '';
@@ -528,14 +515,32 @@ export function ContactsTable() {
                   </TableHead>
                   <TableHead
                     className="cursor-pointer text-text-tertiary"
-                    onClick={() => handleSort('name')}
+                    onClick={() => handleSort('firstName')}
                   >
                     <div className="flex items-center">
-                      Name
-                      <SortIcon field="name" />
+                      First Name
+                      <SortIcon field="firstName" />
                     </div>
                   </TableHead>
-                  <TableHead className="text-text-tertiary">Title</TableHead>
+                  <TableHead
+                    className="cursor-pointer text-text-tertiary"
+                    onClick={() => handleSort('lastName')}
+                  >
+                    <div className="flex items-center">
+                      Last Name
+                      <SortIcon field="lastName" />
+                    </div>
+                  </TableHead>
+                  <TableHead
+                    className="cursor-pointer text-text-tertiary"
+                    onClick={() => handleSort('primaryEmail')}
+                  >
+                    <div className="flex items-center">
+                      Email
+                      <SortIcon field="primaryEmail" />
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-text-tertiary">Title / Company</TableHead>
                   <TableHead className="text-text-tertiary">Tags</TableHead>
                   <TableHead
                     className="cursor-pointer text-text-tertiary"
@@ -580,26 +585,32 @@ export function ContactsTable() {
                         <div className="flex items-center gap-3">
                           <Avatar className="h-9 w-9">
                             <AvatarFallback
-                              style={{ background: getAvatarColor(contact.name) }}
+                              style={{ background: getAvatarColor(contact) }}
                               className="text-xs font-medium text-white/90"
                             >
-                              {getInitials(contact.name)}
+                              {getContactInitials(contact)}
                             </AvatarFallback>
                           </Avatar>
-                          <div className="min-w-0">
-                            <div className="truncate font-medium text-white">
-                              {contact.name}
-                            </div>
-                            <div className="truncate text-sm text-text-tertiary">
-                              {contact.email}
-                            </div>
-                          </div>
+                          <span className="font-medium text-white truncate">
+                            {contact.firstName}
+                          </span>
                         </div>
+                      </TableCell>
+                      <TableCell className="font-medium text-white">
+                        <span className="truncate">{contact.lastName || '—'}</span>
+                      </TableCell>
+                      <TableCell className="text-text-secondary">
+                        <span className="truncate">{contact.primaryEmail || '—'}</span>
                       </TableCell>
                       <TableCell className="text-text-secondary">
                         <div className="truncate">
-                          {contact.title}
-                          {contact.company && ` · ${contact.company}`}
+                          {contact.title || contact.company ? (
+                            <>
+                              {contact.title}
+                              {contact.title && contact.company && ' · '}
+                              {contact.company}
+                            </>
+                          ) : '—'}
                         </div>
                       </TableCell>
                       <TableCell>

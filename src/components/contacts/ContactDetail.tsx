@@ -28,20 +28,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import type { Contact, TagCategory } from '@/types/contact';
-
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-}
-
-function getAvatarColor(name: string): string {
-  const hue = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
-  return `linear-gradient(135deg, hsl(${hue}, 60%, 40%), hsl(${(hue + 60) % 360}, 60%, 30%))`;
-}
+import { getDisplayName, getInitials as getContactInitials, getAvatarColor } from '@/types/contact';
 
 function formatDate(dateString: string | null): string {
   if (!dateString) return 'Not set';
@@ -110,14 +97,14 @@ export function ContactDetail({ contact }: ContactDetailProps) {
           <div className="flex gap-5">
             <Avatar className="h-20 w-20">
               <AvatarFallback
-                style={{ background: getAvatarColor(contact.name) }}
+                style={{ background: getAvatarColor(contact) }}
                 className="text-2xl font-semibold text-white/90"
               >
-                {getInitials(contact.name)}
+                {getContactInitials(contact)}
               </AvatarFallback>
             </Avatar>
             <div>
-              <h1 className="text-2xl font-bold text-white">{contact.name}</h1>
+              <h1 className="text-2xl font-bold text-white">{getDisplayName(contact)}</h1>
               {(contact.title || contact.company) && (
                 <p className="mt-1 text-text-secondary">
                   {contact.title}
@@ -199,19 +186,35 @@ export function ContactDetail({ contact }: ContactDetailProps) {
               Contact Information
             </h2>
             <div className="space-y-4">
-              {contact.email && (
+              {contact.primaryEmail && (
                 <div className="flex items-center gap-3">
                   <Mail className="h-4 w-4 text-text-tertiary" />
-                  <a href={`mailto:${contact.email}`} className="text-white hover:text-gold-primary">
-                    {contact.email}
+                  <a href={`mailto:${contact.primaryEmail}`} className="text-white hover:text-gold-primary">
+                    {contact.primaryEmail}
                   </a>
                 </div>
               )}
-              {contact.phone && (
+              {contact.secondaryEmail && (
+                <div className="flex items-center gap-3">
+                  <Mail className="h-4 w-4 text-text-tertiary opacity-50" />
+                  <a href={`mailto:${contact.secondaryEmail}`} className="text-text-tertiary hover:text-gold-primary">
+                    {contact.secondaryEmail}
+                  </a>
+                </div>
+              )}
+              {contact.primaryPhone && (
                 <div className="flex items-center gap-3">
                   <Phone className="h-4 w-4 text-text-tertiary" />
-                  <a href={`tel:${contact.phone}`} className="text-white hover:text-gold-primary">
-                    {contact.phone}
+                  <a href={`tel:${contact.primaryPhone}`} className="text-white hover:text-gold-primary">
+                    {contact.primaryPhone}
+                  </a>
+                </div>
+              )}
+              {contact.secondaryPhone && (
+                <div className="flex items-center gap-3">
+                  <Phone className="h-4 w-4 text-text-tertiary opacity-50" />
+                  <a href={`tel:${contact.secondaryPhone}`} className="text-text-tertiary hover:text-gold-primary">
+                    {contact.secondaryPhone}
                   </a>
                 </div>
               )}

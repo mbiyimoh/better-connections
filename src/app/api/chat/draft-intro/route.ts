@@ -50,8 +50,11 @@ export async function POST(request: Request) {
     }
 
     // Build context for the intro
+    const contactName = contact.lastName
+      ? `${contact.firstName} ${contact.lastName}`
+      : contact.firstName;
     const contextParts: string[] = [];
-    contextParts.push(`Contact: ${contact.name}`);
+    contextParts.push(`Contact: ${contactName}`);
     if (contact.title && contact.company) {
       contextParts.push(`Role: ${contact.title} at ${contact.company}`);
     }
@@ -84,7 +87,7 @@ export async function POST(request: Request) {
         intro: text,
         contact: {
           id: contact.id,
-          name: contact.name,
+          name: contactName,
           title: contact.title,
           company: contact.company,
         },
