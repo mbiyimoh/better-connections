@@ -182,12 +182,21 @@ function EnrichmentSessionContent() {
   // Process voice transcription as it comes in
   useEffect(() => {
     if (transcript.length > lastProcessedLength && isStarted) {
-      const newText = transcript.slice(lastProcessedLength);
-      // Extract insights from new speech segment
-      const insights = extractInsights(newText);
-      if (insights.length > 0) {
-        const newBubbles = insights.map((i) => createBubble(i.text, i.category));
-        setBubbles((prev) => [...prev, ...newBubbles]);
+      const newText = transcript.slice(lastProcessedLength).trim();
+
+      // Only process if we have substantial new text (at least a few words)
+      if (newText.length > 10) {
+        // Extract insights from new speech segment
+        const insights = extractInsights(newText);
+        if (insights.length > 0) {
+          const newBubbles = insights.map((i) => createBubble(i.text, i.category));
+          setBubbles((prev) => [...prev, ...newBubbles]);
+        } else if (newText.length > 20) {
+          // If no keywords matched but we have meaningful text, add as general note
+          // Truncate to reasonable length for bubble display
+          const truncatedText = newText.length > 60 ? newText.slice(0, 57) + "..." : newText;
+          setBubbles((prev) => [...prev, createBubble(truncatedText, "relationship")]);
+        }
       }
       // Don't store in notes here - consolidated in handleSave
       setLastProcessedLength(transcript.length);
@@ -509,6 +518,17 @@ function EnrichmentSessionContent() {
           </div>
         )}
 
+        {/* Live Transcript Display */}
+        {listening && transcript && (
+          <div className="bg-zinc-800/50 backdrop-blur-xl rounded-xl border border-amber-500/30 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-xs text-amber-400 uppercase tracking-wider font-medium">Live Transcript</span>
+            </div>
+            <p className="text-zinc-300 text-sm leading-relaxed">{transcript}</p>
+          </div>
+        )}
+
         {/* Bubble Canvas */}
         <div className="bg-zinc-900/85 backdrop-blur-xl rounded-xl border border-white/[0.08] p-6 min-h-[180px]">
           {bubbles.length > 0 ? (
@@ -516,7 +536,9 @@ function EnrichmentSessionContent() {
           ) : (
             <p className="text-zinc-500 text-center py-8">
               {isStarted
-                ? "Click Voice to speak or type below"
+                ? listening
+                  ? "Listening... Try saying 'met at a conference' or 'investor in AI'"
+                  : "Click Voice to speak or type below"
                 : "Start the session to begin enriching"}
             </p>
           )}
