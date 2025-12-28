@@ -146,20 +146,49 @@ export default function EnrichTextPage() {
 
     setIsSaving(true);
     try {
+      // Prepare update data
+      const updateData = {
+        ...formData,
+        lastEnrichedAt: new Date().toISOString(),
+      };
+
+      // Intelligently merge notes with AI if content was modified
+      const existingNotes = selectedContact.notes || '';
+      const notesChanged = formData.notes !== existingNotes;
+      let notesChangeSummary = '';
+      if (notesChanged && formData.notes && formData.notes.trim().length >= 20) {
+        try {
+          const refineRes = await fetch('/api/enrichment/refine-notes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              existingNotes,
+              newContent: formData.notes,
+            }),
+          });
+          if (refineRes.ok) {
+            const { refinedNotes, changeSummary } = await refineRes.json();
+            updateData.notes = refinedNotes || formData.notes;
+            notesChangeSummary = changeSummary || '';
+          }
+        } catch (refineError) {
+          console.error('Failed to merge notes, using raw:', refineError);
+        }
+      }
+
       const res = await fetch(`/api/contacts/${selectedContact.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...formData,
-          lastEnrichedAt: new Date().toISOString(),
-        }),
+        body: JSON.stringify(updateData),
       });
 
       if (!res.ok) throw new Error('Failed to save');
 
       toast({
         title: 'Saved',
-        description: 'Contact enrichment saved successfully',
+        description: notesChangeSummary
+          ? `Notes updated: ${notesChangeSummary}`
+          : 'Contact enrichment saved successfully',
       });
 
       // Refresh queue and contact (force refresh)

@@ -105,7 +105,7 @@ Cards:    16px
 
 ---
 
-## Tech Stack (Recommended)
+## Tech Stack (Actual)
 
 ### Core
 - **Frontend:** Next.js 14+ (App Router) + React + TypeScript
@@ -114,14 +114,15 @@ Cards:    16px
 - **Icons:** Lucide React
 
 ### Backend
-- **API:** Next.js API routes or Express.js
-- **Database:** PostgreSQL (Supabase, Neon, or Railway)
+- **API:** Next.js API routes
+- **Database:** Supabase PostgreSQL (hosted at `pooler.supabase.com`)
 - **ORM:** Prisma
-- **Auth:** NextAuth.js or Supabase Auth
+- **Auth:** Supabase Auth (email/password)
 
 ### AI Integration
-- **Chat/Exploration:** Claude API (Anthropic)
-- **Intro Drafting:** Claude API
+- **Enrichment Extraction:** OpenAI GPT-4o-mini (via Vercel AI SDK)
+- **Notes Merging:** OpenAI GPT-4o-mini
+- **Chat/Exploration:** OpenAI GPT-4o-mini
 
 ### Special Features
 - **Speech-to-Text:** react-speech-recognition (Web Speech API)
@@ -430,7 +431,8 @@ They use Framer Motion for animations and Lucide React for icons.
 ## Quick Reference
 
 **Project:** Better Connections (Personal CRM)
-**Stack:** Next.js + PostgreSQL + Prisma + Claude API + shadcn/ui
+**Stack:** Next.js 14 + Supabase PostgreSQL + Prisma + OpenAI GPT-4o-mini + shadcn/ui
+**Auth:** Supabase Auth (email/password)
 **Design:** Dark theme, gold accents (#C9A227), glassmorphism
 **Core Feature:** "Why Now" contextual relevance for contacts
-**Last Updated:** 2025-12-12
+**Last Updated:** 2025-12-27

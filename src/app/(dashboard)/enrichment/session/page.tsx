@@ -10,7 +10,6 @@ import {
   Pause,
   Play,
   Sparkles,
-  ArrowRight,
   SkipForward,
   Send,
   Mic,
@@ -27,8 +26,10 @@ import {
   type EnrichmentBubble,
   type BubbleCategory,
 } from "@/components/enrichment/EnrichmentBubbles";
+import { CompletionCelebration } from "@/components/enrichment/completion";
 import { getDisplayName } from "@/types/contact";
 import type { EnrichmentInsight } from "@/lib/schemas/enrichmentInsight";
+import type { MentionMatch } from "@/lib/schemas/mentionExtraction";
 
 // Persist listening state across HMR to prevent mic toggling on every code change
 let persistedListeningState = false;
@@ -179,6 +180,16 @@ function EnrichmentSessionContent() {
   const [sessionComplete, setSessionComplete] = useState(false);
   const [saving, setSaving] = useState(false);
   const [inputText, setInputText] = useState("");
+
+  // Completion celebration state
+  const [previousScore, setPreviousScore] = useState(0);
+  const [completionData, setCompletionData] = useState<{
+    ranking: { currentRank: number; previousRank: number; totalContacts: number };
+    streak: { count: number };
+    scoreDelta: number;
+  } | null>(null);
+  const [notesChangeSummary, setNotesChangeSummary] = useState("");
+  const [mentionedPeople, setMentionedPeople] = useState<MentionMatch[]>([]);
 
   const [enrichmentData, setEnrichmentData] = useState<EnrichmentData>({
     howWeMet: "",
@@ -388,6 +399,10 @@ function EnrichmentSessionContent() {
   };
 
   const handleStart = () => {
+    // Save current score before starting enrichment
+    if (contact) {
+      setPreviousScore(contact.enrichmentScore);
+    }
     setIsStarted(true);
     setIsPlaying(true);
   };
@@ -395,16 +410,6 @@ function EnrichmentSessionContent() {
   const handleAddTime = () => {
     setRemainingTime((prev) => Math.min(prev + 30, 90));
   };
-
-  const handleComplete = useCallback(() => {
-    setIsPlaying(false);
-    setSessionComplete(true);
-    // Save transcript before stopping voice
-    if (transcript.trim()) {
-      setSavedTranscripts((prev) => [...prev, transcript.trim()]);
-    }
-    SpeechRecognition.stopListening();
-  }, [transcript]);
 
   const handleAddInsight = () => {
     if (!inputText.trim()) return;
@@ -500,14 +505,47 @@ function EnrichmentSessionContent() {
         }
       }
 
-      // Notes: always append transcript
+      // Notes: collect raw content, merge with existing using AI
       const transcriptToSave = transcript.trim();
       if (transcriptToSave || extractedFields.notes.length > 0 || savedTranscripts.length > 0) {
         const existingNotes = enrichmentData.notes || "";
         const aiNotes = extractedFields.notes.join("\n");
-        updateData.notes = [existingNotes, aiNotes, ...savedTranscripts, transcriptToSave]
+
+        // Combine all new notes content
+        const rawNewNotes = [aiNotes, ...savedTranscripts, transcriptToSave]
           .filter(Boolean)
           .join("\n\n");
+
+        // Intelligently merge with existing notes using AI
+        // This will deduplicate, update outdated info, and organize logically
+        if (rawNewNotes.length >= 20) {
+          try {
+            const refineRes = await fetch("/api/enrichment/refine-notes", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                existingNotes,
+                newContent: rawNewNotes,
+              }),
+            });
+            if (refineRes.ok) {
+              const { refinedNotes, changeSummary } = await refineRes.json();
+              updateData.notes = refinedNotes || existingNotes || rawNewNotes;
+              if (changeSummary) {
+                setNotesChangeSummary(changeSummary);
+              }
+            } else {
+              // Fall back to simple append on API error
+              updateData.notes = [existingNotes, rawNewNotes].filter(Boolean).join("\n\n");
+            }
+          } catch (refineError) {
+            console.error("Failed to merge notes, using simple append:", refineError);
+            updateData.notes = [existingNotes, rawNewNotes].filter(Boolean).join("\n\n");
+          }
+        } else if (rawNewNotes) {
+          // Very short new content - just append
+          updateData.notes = [existingNotes, rawNewNotes].filter(Boolean).join("\n\n");
+        }
       }
 
       const res = await fetch(`/api/contacts/${contact.id}`, {
@@ -517,14 +555,110 @@ function EnrichmentSessionContent() {
       });
 
       if (res.ok) {
-        router.push("/enrichment");
+        const updatedContact = await res.json();
+        // Update contact with new enrichment score
+        setContact(updatedContact);
+        // Fetch completion celebration data
+        await fetchCompletionData(contact.id, previousScore);
+        return true;
       }
+      return false;
     } catch (error) {
       console.error("Failed to save enrichment:", error);
+      return false;
     } finally {
       setSaving(false);
     }
   };
+
+  // Fetch completion celebration data (ranking, streak)
+  const fetchCompletionData = async (contactId: string, prevScore: number) => {
+    try {
+      const res = await fetch(
+        `/api/enrichment/completion-data?contactId=${contactId}&previousScore=${prevScore}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setCompletionData(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch completion data:", error);
+    }
+  };
+
+  // Extract and match mentions of other people from transcript
+  const extractAndMatchMentions = async (): Promise<MentionMatch[]> => {
+    if (!contact) return [];
+
+    const fullTranscript = [...savedTranscripts, transcript.trim()]
+      .filter(Boolean)
+      .join("\n\n");
+
+    if (fullTranscript.length < 20) return [];
+
+    try {
+      // 1. Extract mentions from transcript
+      const extractRes = await fetch("/api/enrichment/extract-mentions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transcript: fullTranscript,
+          primaryContactName: `${contact.firstName} ${contact.lastName || ""}`.trim(),
+        }),
+      });
+
+      if (!extractRes.ok) return [];
+      const { mentions } = await extractRes.json();
+
+      if (!mentions || mentions.length === 0) return [];
+
+      // 2. Save mentions to DB and match against contacts
+      const matchRes = await fetch("/api/contacts/match-mentions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mentions,
+          sourceContactId: contact.id,
+        }),
+      });
+
+      if (!matchRes.ok) return [];
+      const { matches } = await matchRes.json();
+
+      return matches || [];
+    } catch (error) {
+      console.error("Failed to extract mentions:", error);
+      return [];
+    }
+  };
+
+  const handleComplete = useCallback(async () => {
+    setIsPlaying(false);
+    // Save transcript before stopping voice
+    if (transcript.trim()) {
+      setSavedTranscripts((prev) => [...prev, transcript.trim()]);
+    }
+    SpeechRecognition.stopListening();
+
+    // Check for conflicts before saving
+    const conflicts = detectConflicts();
+    if (conflicts.length > 0) {
+      setConflicts(conflicts);
+      setShowConflictModal(true);
+      return;
+    }
+
+    // Save data first, then show celebration with updated score
+    setSaving(true);
+    const success = await performSave({});
+    if (success) {
+      // Extract mentions after successful save
+      const mentions = await extractAndMatchMentions();
+      setMentionedPeople(mentions);
+      setSessionComplete(true);
+    }
+    setSaving(false);
+  }, [transcript, detectConflicts, performSave, extractAndMatchMentions]);
 
   const handleSave = async () => {
     const detectedConflicts = detectConflicts();
@@ -549,8 +683,36 @@ function EnrichmentSessionContent() {
     }
   };
 
-  const handleNextContact = async () => {
-    await handleSave();
+  // Handler for "Enrich Next Contact" button in completion screen
+  const handleEnrichNext = async () => {
+    setSaving(true);
+    try {
+      // Fetch queue to get next contact
+      const res = await fetch("/api/enrichment/queue?limit=2");
+      if (res.ok) {
+        const queue = await res.json();
+        // Find next contact that isn't the current one
+        const nextContact = queue.find(
+          (c: { id: string }) => c.id !== contact?.id
+        );
+        if (nextContact) {
+          router.push(`/enrichment/session?contact=${nextContact.id}`);
+        } else {
+          router.push("/enrichment");
+        }
+      } else {
+        router.push("/enrichment");
+      }
+    } catch (error) {
+      console.error("Failed to fetch next contact:", error);
+      router.push("/enrichment");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleBackToQueue = () => {
+    router.push("/enrichment");
   };
 
   if (loading) {
@@ -576,75 +738,24 @@ function EnrichmentSessionContent() {
 
   if (sessionComplete) {
     return (
-      <div className="min-h-screen bg-[#0D0D0F]">
-        <div className="max-w-lg mx-auto p-6">
-          <div className="bg-zinc-900/85 backdrop-blur-xl rounded-xl border border-white/[0.08] p-8">
-            <div className="text-center mb-6">
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4"
-              >
-                <Sparkles size={32} className="text-green-400" />
-              </motion.div>
-              <h2 className="text-xl font-semibold text-white mb-1">
-                {getDisplayName(contact)} enriched
-              </h2>
-              <p className="text-zinc-400 text-sm">
-                We captured {bubbles.length} insights
-              </p>
-            </div>
-
-            {/* Summary by category */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
-              {(["relationship", "opportunity", "interest", "expertise"] as const).map(
-                (cat) => {
-                  const catBubbles = bubbles.filter((b) => b.category === cat);
-                  return (
-                    <div key={cat}>
-                      <h3 className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-                        {cat}
-                      </h3>
-                      <div className="flex flex-col gap-1">
-                        {catBubbles.length > 0 ? (
-                          catBubbles.map((b) => (
-                            <div
-                              key={b.id}
-                              className="text-[13px] text-zinc-400"
-                            >
-                              • {b.text}
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-[13px] text-zinc-600 italic">
-                            (none captured)
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                }
-              )}
-            </div>
-
-            <Button
-              size="lg"
-              className="w-full bg-[#C9A227] hover:bg-[#E5C766] text-black font-semibold"
-              onClick={handleNextContact}
-              disabled={saving}
-            >
-              {saving ? (
-                "Saving..."
-              ) : (
-                <>
-                  <ArrowRight size={16} />
-                  Save & Return to Queue
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      </div>
+      <CompletionCelebration
+        contact={contact}
+        previousScore={previousScore}
+        newScore={contact.enrichmentScore}
+        bubbles={bubbles}
+        completionData={completionData}
+        notesChangeSummary={notesChangeSummary}
+        sourceContactId={contact.id}
+        mentionedPeople={mentionedPeople}
+        onMentionProcessed={(id) => {
+          setMentionedPeople((prev) =>
+            prev.filter((m) => (m.mentionId || m.name) !== id)
+          );
+        }}
+        onEnrichNext={handleEnrichNext}
+        onBackToQueue={handleBackToQueue}
+        saving={saving}
+      />
     );
   }
 
@@ -871,9 +982,14 @@ function EnrichmentSessionContent() {
       {showConflictModal && (
         <ConflictResolutionModal
           conflicts={conflicts}
-          onResolve={(resolutions) => {
+          onResolve={async (resolutions) => {
             setShowConflictModal(false);
-            performSave(resolutions);
+            setSaving(true);
+            const success = await performSave(resolutions);
+            setSaving(false);
+            if (success) {
+              setSessionComplete(true);
+            }
           }}
           onCancel={() => setShowConflictModal(false)}
         />

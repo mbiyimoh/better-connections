@@ -25,6 +25,9 @@ model User {
 
   // Relations
   contacts              Contact[]
+  enrichmentStreaks     EnrichmentStreak[]
+  contactRelationships  ContactRelationship[]
+  contactMentions       ContactMention[]
 }
 
 model Contact {
@@ -85,6 +88,14 @@ model Contact {
   // Relations
   tags                  Tag[]
 
+  // Relationships (bidirectional)
+  relationshipsA        ContactRelationship[] @relation("RelationshipA")
+  relationshipsB        ContactRelationship[] @relation("RelationshipB")
+
+  // Mentions
+  mentionsAsSource      ContactMention[] @relation("MentionSource")
+  mentionsAsTarget      ContactMention[] @relation("MentionTarget")
+
   @@index([userId])
   @@index([firstName])
   @@index([lastName])
@@ -116,4 +127,103 @@ enum TagCategory {
   OPPORTUNITY
   EXPERTISE
   INTEREST
+}
+
+model EnrichmentStreak {
+  id                String    @id @default(uuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  weekStart         DateTime  // Monday 00:00:00 UTC of the streak week
+  contactsEnriched  Int       @default(0)
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([userId, weekStart])
+  @@index([userId])
+}
+
+// ============================================
+// Contact Relationships & Mentions
+// ============================================
+
+// Bidirectional relationship between contacts
+model ContactRelationship {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Both contacts in the relationship (order doesn't matter - bidirectional)
+  contactAId     String
+  contactA       Contact  @relation("RelationshipA", fields: [contactAId], references: [id], onDelete: Cascade)
+
+  contactBId     String
+  contactB       Contact  @relation("RelationshipB", fields: [contactBId], references: [id], onDelete: Cascade)
+
+  // How this relationship was discovered
+  sourceType     RelationshipSource @default(ENRICHMENT_MENTION)
+  sourceContext  String?  @db.Text  // What was said that established this link
+
+  createdAt      DateTime @default(now())
+
+  @@unique([contactAId, contactBId])
+  @@index([userId])
+  @@index([contactAId])
+  @@index([contactBId])
+}
+
+enum RelationshipSource {
+  ENRICHMENT_MENTION
+  MANUAL
+  IMPORT
+}
+
+// Pending mentions awaiting user action
+model ContactMention {
+  id                 String        @id @default(uuid())
+  userId             String
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Contact being enriched when mention was detected
+  sourceContactId    String
+  sourceContact      Contact       @relation("MentionSource", fields: [sourceContactId], references: [id], onDelete: Cascade)
+
+  // Matched contact (null until linked or created)
+  mentionedContactId String?
+  mentionedContact   Contact?      @relation("MentionTarget", fields: [mentionedContactId], references: [id], onDelete: SetNull)
+
+  // Extraction data
+  mentionedName      String        // Original name as spoken
+  normalizedName     String        // Cleaned version for matching
+  extractedContext   String        @db.Text  // What was said about them
+  inferredFields     Json?         // { title?, company?, expertise? }
+
+  // Matching data
+  matchConfidence    Float         @default(0)  // 0-1
+  matchType          MatchType?    // EXACT, FUZZY, PHONETIC, NONE
+
+  // Workflow state
+  status             MentionStatus @default(PENDING)
+
+  createdAt          DateTime      @default(now())
+  processedAt        DateTime?
+
+  @@index([userId])
+  @@index([sourceContactId])
+  @@index([status])
+}
+
+enum MentionStatus {
+  PENDING    // Awaiting user action
+  LINKED     // User confirmed link to existing contact
+  CREATED    // User created new contact
+  DISMISSED  // User dismissed
+}
+
+enum MatchType {
+  EXACT      // firstName + lastName exact match
+  FUZZY      // pg_trgm similarity match
+  PHONETIC   // Reserved: Metaphone phonetic match (not yet implemented)
+  NONE       // No match found
 }
