@@ -56,9 +56,27 @@ export async function POST(request: NextRequest) {
       temperature: 0.3,
     });
 
-    return NextResponse.json(object, {
-      headers: { "Cache-Control": "no-store" },
-    });
+    // 6. Validate and sanitize mentions
+    const validatedMentions = object.mentions
+      .filter((m) => {
+        const normalized = m.normalizedName.trim();
+        // Filter out empty, too short, or too long names
+        return normalized.length >= 2 && normalized.length <= 100;
+      })
+      .map((m) => ({
+        ...m,
+        normalizedName: m.normalizedName.trim(),
+        name: m.name.trim(),
+        context: m.context.trim().slice(0, 500), // Prevent context bloat
+      }));
+
+    return NextResponse.json(
+      {
+        mentions: validatedMentions,
+        primaryContactContext: object.primaryContactContext?.trim() || null,
+      },
+      { headers: { "Cache-Control": "no-store" } }
+    );
   } catch (error) {
     console.error("Mention extraction error:", error);
 

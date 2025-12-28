@@ -32,6 +32,7 @@ export function MentionedPersonCard({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showAlternatives, setShowAlternatives] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [processedAction, setProcessedAction] = useState<string | null>(null);
 
   const isConfidentMatch =
     mention.matchType === "EXACT" || mention.confidence >= 0.7;
@@ -59,7 +60,14 @@ export function MentionedPersonCard({
       return;
     }
 
+    // Prevent duplicate submissions
+    const actionKey = `${action}-${linkedContactId || "none"}`;
+    if (isProcessing || processedAction === actionKey) {
+      return;
+    }
+
     setIsProcessing(true);
+    setProcessedAction(actionKey);
     setError(null);
     try {
       const body: Record<string, unknown> = { action };
@@ -92,10 +100,12 @@ export function MentionedPersonCard({
         const errorText = await res.text();
         console.error("Failed to process mention:", errorText);
         setError("Failed to process. Please try again.");
+        setProcessedAction(null); // Allow retry
       }
     } catch (err) {
       console.error("Error processing mention:", err);
       setError("Network error. Please try again.");
+      setProcessedAction(null); // Allow retry
     } finally {
       setIsProcessing(false);
     }

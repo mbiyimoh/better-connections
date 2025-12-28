@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
+import { calculateEnrichmentScore } from "@/lib/enrichment";
 
 export const dynamic = "force-dynamic";
 
@@ -93,7 +94,7 @@ export async function PATCH(
             notes: mention.extractedContext,
             expertise: inferredFields?.expertise || null,
             whyNow: inferredFields?.whyNow || null,
-            enrichmentScore: calculateInitialEnrichmentScore({
+            enrichmentScore: calculateEnrichmentScore({
               firstName: newContactData.firstName,
               lastName: newContactData.lastName,
               title: newContactData.title || inferredFields?.title,
@@ -101,7 +102,7 @@ export async function PATCH(
               notes: mention.extractedContext,
               expertise: inferredFields?.expertise,
               whyNow: inferredFields?.whyNow,
-            }),
+            }, 0), // 0 tags for new contact
           },
         });
         targetContactId = newContact.id;
@@ -176,7 +177,10 @@ async function addContextToContact(
   context: string,
   inferredFields: unknown
 ) {
-  const contact = await prisma.contact.findUnique({ where: { id: contactId } });
+  const contact = await prisma.contact.findUnique({
+    where: { id: contactId },
+    include: { tags: true },
+  });
   if (!contact) return;
 
   const updates: Record<string, unknown> = {};
@@ -200,25 +204,28 @@ async function addContextToContact(
     }
   }
 
+  // Recalculate enrichment score with new fields
+  const updatedContact = { ...contact, ...updates };
+  updates.enrichmentScore = calculateEnrichmentScore(
+    {
+      firstName: updatedContact.firstName as string,
+      lastName: updatedContact.lastName as string | null,
+      primaryEmail: updatedContact.primaryEmail as string | null,
+      title: updatedContact.title as string | null,
+      company: updatedContact.company as string | null,
+      location: updatedContact.location as string | null,
+      linkedinUrl: updatedContact.linkedinUrl as string | null,
+      howWeMet: updatedContact.howWeMet as string | null,
+      whyNow: updatedContact.whyNow as string | null,
+      notes: updatedContact.notes as string | null,
+      expertise: updatedContact.expertise as string | null,
+    },
+    contact.tags.length
+  );
+
+  // Update lastEnrichedAt since we're adding context
+  updates.lastEnrichedAt = new Date();
+
   await prisma.contact.update({ where: { id: contactId }, data: updates });
 }
 
-function calculateInitialEnrichmentScore(data: {
-  firstName?: string;
-  lastName?: string | null;
-  title?: string | null;
-  company?: string | null;
-  notes?: string | null;
-  expertise?: string | null;
-  whyNow?: string | null;
-}): number {
-  let score = 0;
-  if (data.firstName) score += 10;
-  if (data.lastName) score += 5;
-  if (data.title) score += 10;
-  if (data.company) score += 10;
-  if (data.notes) score += 10;
-  if (data.expertise) score += 10;
-  if (data.whyNow) score += 20;
-  return score;
-}
