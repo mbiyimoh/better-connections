@@ -128,6 +128,175 @@ Cards:    16px
 - **Speech-to-Text:** react-speech-recognition (Web Speech API)
 - **Split Panels:** react-resizable-panels
 - **Countdown Timer:** react-countdown-circle-timer (for enrichment flow)
+- **VCF Parsing:** vcard4-ts (TypeScript-first vCard 3.0/4.0 parser)
+
+---
+
+## Agent Protocols & Patterns
+
+### VCF Import Pattern
+
+**What it does:** Imports contacts from .vcf files (iCloud, Outlook exports) with smart duplicate detection and per-field conflict resolution.
+
+**Key files:**
+- `src/lib/vcf-parser.ts` - VCF parsing with field extraction
+- `src/app/api/contacts/import/vcf/route.ts` - Upload and duplicate detection
+- `src/app/api/contacts/import/vcf/commit/route.ts` - Apply merge decisions
+- `src/components/import/VcfImportFlow.tsx` - Multi-step import wizard
+- `src/components/import/ImportMergeReview.tsx` - Conflict resolution modal
+
+**Dependencies:**
+- `vcard4-ts` - TypeScript vCard parser (complex nested types)
+
+**Critical Gotchas:**
+
+1. **vcard4-ts Type Complexity**
+   ```typescript
+   // WRONG - vCard types are objects with nested arrays
+   const name = vcard.N.value[0]; // Type error!
+
+   // CORRECT - Use named properties
+   const name = vcard.N.value.familyNames?.[0];
+   ```
+
+2. **React Hooks Rules in Modals**
+   ```typescript
+   // WRONG - Hooks called after early return
+   if (!data) return null;
+   useEffect(() => { ... }); // Violation!
+
+   // CORRECT - All hooks before any returns
+   useEffect(() => { ... });
+   if (!data) return null;
+   ```
+
+3. **Case-Insensitive Email Matching**
+   ```typescript
+   // CORRECT - Prisma mode for case-insensitive
+   where: {
+     OR: emails.map(email => ({
+       primaryEmail: { equals: email, mode: 'insensitive' }
+     }))
+   }
+   ```
+
+**Extending this:**
+- Phone priority: cell > mobile > work > home (in `extractPhones()`)
+- Email priority: Uses vCard PREF parameter
+- Auto-merge: Empty fields filled, notes appended (never replaced)
+
+---
+
+### Enrichment Mentioned Contacts Pattern
+
+**What it does:** Discovers network connections by extracting person mentions from enrichment notes and matching them to existing contacts.
+
+**Key files:**
+- `src/lib/schemas/mentionExtraction.ts` - Zod schemas for GPT-4o extraction
+- `src/app/api/enrichment/extract-mentions/route.ts` - AI mention extraction
+- `src/app/api/contacts/match-mentions/route.ts` - Fuzzy matching to contacts
+- `src/components/enrichment/completion/MentionedPeopleSection.tsx` - UI display
+
+**Database models:**
+```prisma
+model MentionedPerson {
+  id          String   @id @default(cuid())
+  contactId   String   // Primary contact being enriched
+  name        String   // Extracted mention
+  context     String?  // How they're related
+  matchedContactId String? // FK to matched Contact
+  isConfirmed Boolean @default(false)
+}
+```
+
+**Integration points:**
+- Triggered after enrichment completion
+- Uses GPT-4o-mini with structured outputs (Zod schemas)
+- Fuzzy matching with similarity scoring
+- Creates bidirectional relationship suggestions
+
+**Gotchas:**
+- Exclude primary contact from mention suggestions
+- Handle partial name matches (first name only)
+- Deduplication: Same person mentioned multiple ways
+
+---
+
+### Voice Enrichment Pattern
+
+**What it does:** Voice-first enrichment input using Web Speech API with real-time transcription and AI extraction.
+
+**Key files:**
+- `src/app/(dashboard)/enrichment/session/page.tsx` - Voice UI (lines 150-250)
+- `src/app/api/enrichment/extract/route.ts` - GPT-4o extraction from transcript
+- `src/lib/schemas/enrichmentInsight.ts` - Structured output schema
+
+**Dependencies:**
+- `react-speech-recognition` - Web Speech API wrapper
+- Browser support: Chrome, Edge, Safari (webkit)
+
+**Integration pattern:**
+```typescript
+const {
+  transcript,
+  listening,
+  resetTranscript,
+  browserSupportsSpeechRecognition
+} = useSpeechRecognition();
+
+// Start/stop listening
+SpeechRecognition.startListening({ continuous: true });
+SpeechRecognition.stopListening();
+```
+
+**AI Extraction:**
+```typescript
+// Uses GPT-4o-mini with structured outputs
+const extraction = await generateObject({
+  model: openai('gpt-4o-mini'),
+  schema: enrichmentInsightSchema,
+  prompt: `Extract structured data from: ${transcript}`
+});
+```
+
+**Gotchas:**
+- Chrome requires HTTPS (localhost OK for dev)
+- Safari needs user permission
+- Transcripts can be noisy - AI extraction cleans them
+- No built-in profanity filter - handle in extraction
+
+---
+
+### Enrichment Completion Gamification
+
+**What it does:** Celebration UI with animations, sounds, and score improvements after enrichment.
+
+**Key files:**
+- `src/components/enrichment/completion/CompletionCelebration.tsx` - Main celebration
+- `src/components/enrichment/completion/RankCelebration.tsx` - Rank-up animations
+- `src/components/enrichment/completion/useCelebrationSounds.ts` - Sound effects
+- `src/app/api/enrichment/completion-data/route.ts` - Score calculation
+
+**Integration points:**
+- Triggered after enrichment save
+- Compares before/after enrichment scores
+- Shows rank promotions (0-25, 26-50, 51-75, 76-100)
+- Plays sound effects (optional, user-controlled)
+
+**Rank Thresholds:**
+```typescript
+const ranks = [
+  { min: 0, max: 25, name: 'Getting Started', color: '#A0A0A8' },
+  { min: 26, max: 50, name: 'Building Depth', color: '#3B82F6' },
+  { min: 51, max: 75, name: 'Well Connected', color: '#A855F7' },
+  { min: 76, max: 100, name: 'Fully Enriched', color: '#C9A227' }
+];
+```
+
+**Sound effects:**
+- Rank up: Triumph sound
+- Score increase: Success chime
+- Streaks: Achievement unlock
 
 ---
 
@@ -246,16 +415,21 @@ POST /api/auth/apple         - OAuth with Apple
 
 ### Contacts
 ```
-GET    /api/contacts                - List contacts (with search, filter, sort, pagination)
-GET    /api/contacts/:id            - Get single contact
-POST   /api/contacts                - Create contact
-PUT    /api/contacts/:id            - Update contact
-DELETE /api/contacts/:id            - Delete contact
-DELETE /api/contacts/bulk           - Bulk delete
+GET    /api/contacts                       - List contacts (with search, filter, sort, pagination)
+GET    /api/contacts/:id                   - Get single contact
+POST   /api/contacts                       - Create contact
+PUT    /api/contacts/:id                   - Update contact
+DELETE /api/contacts/:id                   - Delete contact
+DELETE /api/contacts/bulk                  - Bulk delete
 
-POST   /api/contacts/import/csv     - Import from CSV
-POST   /api/contacts/import/google  - Import from Google Contacts
-GET    /api/contacts/export         - Export all contacts as CSV
+POST   /api/contacts/import/csv            - Import from CSV
+POST   /api/contacts/import/vcf            - Upload VCF, analyze duplicates
+POST   /api/contacts/import/vcf/commit     - Commit VCF import with merge decisions
+POST   /api/contacts/import/google         - Import from Google Contacts
+GET    /api/contacts/export                - Export all contacts as CSV
+
+POST   /api/contacts/match-mentions        - Match mentioned people to contacts
+GET    /api/contacts/mentions/:id          - Get mentioned people for contact
 ```
 
 ### Tags
@@ -265,11 +439,15 @@ POST   /api/contacts/:id/tags       - Add tag to contact
 DELETE /api/contacts/:id/tags/:tagId - Remove tag from contact
 ```
 
-### Enrichment Queue
+### Enrichment
 ```
-GET    /api/enrichment/queue        - Get prioritized queue
-GET    /api/enrichment/stats        - Get enrichment stats
-POST   /api/enrichment/:id/skip     - Skip contact in queue
+GET    /api/enrichment/queue             - Get prioritized queue
+GET    /api/enrichment/stats             - Get enrichment stats
+POST   /api/enrichment/:id/skip          - Skip contact in queue
+POST   /api/enrichment/extract           - Extract structured data from voice transcript
+POST   /api/enrichment/extract-mentions  - Extract mentioned people from notes
+POST   /api/enrichment/refine-notes      - Refine/clean notes with AI
+GET    /api/enrichment/completion-data   - Get before/after scores for celebration
 ```
 
 ### AI / Chat (Claude Integration)
@@ -435,4 +613,4 @@ They use Framer Motion for animations and Lucide React for icons.
 **Auth:** Supabase Auth (email/password)
 **Design:** Dark theme, gold accents (#C9A227), glassmorphism
 **Core Feature:** "Why Now" contextual relevance for contacts
-**Last Updated:** 2025-12-27
+**Last Updated:** 2024-12-29
