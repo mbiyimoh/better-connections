@@ -56,12 +56,40 @@ export async function POST(request: NextRequest) {
       temperature: 0.3,
     });
 
-    // 6. Validate and sanitize mentions
+    // 6. Validate, sanitize, and filter out primary contact
+    const primaryNameLower = primaryContactName.toLowerCase().trim();
+    const primaryNameParts = primaryNameLower.split(/\s+/);
+
     const validatedMentions = object.mentions
       .filter((m) => {
         const normalized = m.normalizedName.trim();
+        const normalizedLower = normalized.toLowerCase();
+
         // Filter out empty, too short, or too long names
-        return normalized.length >= 2 && normalized.length <= 100;
+        if (normalized.length < 2 || normalized.length > 100) {
+          return false;
+        }
+
+        // Filter out the primary contact (the one being enriched)
+        // Check exact match
+        if (normalizedLower === primaryNameLower) {
+          return false;
+        }
+
+        // Check if mention matches any part of primary contact name
+        // e.g., "John" should be filtered if primary is "John Smith"
+        if (primaryNameParts.some(part => part === normalizedLower)) {
+          return false;
+        }
+
+        // Check if primary name is contained in mention or vice versa
+        // e.g., "John Smith" mention when enriching "John"
+        const mentionParts = normalizedLower.split(/\s+/);
+        if (mentionParts.some(part => primaryNameParts.includes(part) && part.length > 2)) {
+          return false;
+        }
+
+        return true;
       })
       .map((m) => ({
         ...m,
