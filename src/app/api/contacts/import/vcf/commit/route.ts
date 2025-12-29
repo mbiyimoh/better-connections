@@ -210,14 +210,15 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('VCF commit error:', error);
-
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+      return NextResponse.json(
+        { success: false, summary: { created: 0, updated: 0, skipped: 0, errors: [{ tempId: 'request', error: 'Invalid request body' }] } },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json(
-      { error: 'Import failed', details: error instanceof Error ? error.message : 'Unknown error' },
+      { success: false, summary: { created: 0, updated: 0, skipped: 0, errors: [{ tempId: 'unknown', error: error instanceof Error ? error.message : 'Import failed' }] } },
       { status: 500 }
     );
   }

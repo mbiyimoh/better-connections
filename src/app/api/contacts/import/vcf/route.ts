@@ -122,17 +122,19 @@ export async function POST(
       );
     }
 
-    // Collect emails for duplicate check
+    // Collect emails for duplicate check (normalize to lowercase)
     const emails = parseResult.contacts
-      .map(c => c.primaryEmail)
-      .filter((e): e is string => e !== null);
+      .map(c => c.primaryEmail?.toLowerCase())
+      .filter((e): e is string => e !== undefined && e !== null);
 
-    // Query existing contacts
+    // Query existing contacts (case-insensitive match)
     const existingContacts = emails.length > 0
       ? await prisma.contact.findMany({
           where: {
             userId: user.id,
-            primaryEmail: { in: emails },
+            OR: emails.map(email => ({
+              primaryEmail: { equals: email, mode: 'insensitive' }
+            })),
           },
           select: {
             id: true,
@@ -202,8 +204,7 @@ export async function POST(
         skipped: parseResult.skipped,
       },
     });
-  } catch (error) {
-    console.error('VCF upload error:', error);
+  } catch {
     return NextResponse.json(
       { success: false, error: { code: 'PARSE_FAILED', message: 'Failed to process VCF file' } },
       { status: 500 }
