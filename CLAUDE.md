@@ -267,6 +267,117 @@ const extraction = await generateObject({
 
 ---
 
+### Alphabet Quick-Jump Navigation
+
+**What it does:** Vertical A-Z letter strip on the right edge of contact lists for instant filtering by first letter.
+
+**Key files:**
+- `src/components/ui/AlphabetSlider.tsx` - Reusable alphabet navigation component
+- `src/app/(dashboard)/enrichment/page.tsx` - Integrated into enrichment queue (lines ~200-220)
+- `src/lib/area-codes.ts` - US area code data (160 codes)
+
+**Integration pattern:**
+```typescript
+const [letterFilter, setLetterFilter] = useState<string | null>(null);
+
+// Clear letter filter when search is used
+useEffect(() => {
+  if (searchQuery) setLetterFilter(null);
+}, [searchQuery]);
+
+// Filter logic
+const matchesLetter = !letterFilter ||
+  contact.firstName[0]?.toUpperCase() === letterFilter;
+
+<AlphabetSlider
+  items={contacts}
+  selectedLetter={letterFilter}
+  onLetterSelect={setLetterFilter}
+/>
+```
+
+**UI Behavior:**
+- Shows "All" button at top to clear filter
+- Letters with contacts are highlighted, others dimmed/disabled
+- Shows count on hover (e.g., "A (12 contacts)")
+- Clicking same letter again clears filter
+- Hidden on mobile (`hidden md:flex`) to avoid cramped UI
+- Auto-clears when search query is entered
+
+**Gotchas:**
+- Component uses `useMemo` for performance with large contact lists
+- Letter availability and counts are computed from items array
+- Expects `firstName` property on items (configurable via `useLastName` prop)
+
+**Extending this:**
+- To use on contacts page: Import and add state management
+- To filter by lastName: Pass `useLastName={true}` prop
+- To customize styling: Pass `className` prop
+
+---
+
+### Phone Area Code Hometown Suggestion
+
+**What it does:** Suggests hometown location based on US phone number area code when adding/editing contacts.
+
+**Key files:**
+- `src/lib/area-codes.ts` - 160 US area codes mapped to city/state
+- `src/components/contacts/HometownSuggestion.tsx` - Suggestion UI with accept/dismiss
+- `src/components/contacts/ContactForm.tsx` - Integrated below location field (lines 242-246)
+
+**Integration pattern:**
+```typescript
+// In ContactForm
+const primaryPhone = watch('primaryPhone');
+const location = watch('location');
+
+<HometownSuggestion
+  phone={primaryPhone}
+  currentLocation={location}
+  onAccept={(suggested) => setValue('location', suggested)}
+/>
+```
+
+**Area Code Parsing:**
+```typescript
+// Handles various phone formats
+extractAreaCode('+1 (415) 555-1234') → '415'
+extractAreaCode('415-555-1234')      → '415'
+extractAreaCode('4155551234')        → '415'
+
+// Returns city, state
+getAreaCodeInfo('+1-415-555-1234')   → {
+  code: '415',
+  city: 'San Francisco',
+  state: 'California',
+  stateAbbr: 'CA'
+}
+```
+
+**UI Behavior:**
+- Only shows if phone has valid area code AND location is empty
+- Displays: "Based on area code (415), this might be: San Francisco, CA"
+- Two buttons: "Use This" (fills location) or "Dismiss" (hides suggestion)
+- Uses Framer Motion for smooth appear/disappear animation
+- Resets dismissed state when phone number changes
+
+**Coverage:**
+- 160 major US metro areas across all 50 states
+- Includes: NYC, LA, SF, Chicago, Houston, Seattle, Boston, Austin, etc.
+
+**Gotchas:**
+- Only works for US/Canada phone numbers (+1 country code)
+- Won't show if location field already has a value
+- User dismissal persists until phone number changes
+- Accuracy varies by area code (some cover large regions)
+
+**Extending this:**
+- To add more area codes: Update `US_AREA_CODES` in `area-codes.ts`
+- To support international: Add country code detection logic
+- To use elsewhere: Import `HometownSuggestion` component (reusable)
+
+---
+
 ### Enrichment Completion Gamification
 
 **What it does:** Celebration UI with animations, sounds, and score improvements after enrichment.
@@ -297,6 +408,108 @@ const ranks = [
 - Rank up: Triumph sound
 - Score increase: Success chime
 - Streaks: Achievement unlock
+
+---
+
+### E2E Testing Pattern (Quick-Check)
+
+**What it does:** Ephemeral Playwright E2E tests that validate feature functionality and auto-delete after execution. Used for quick verification, not persistent test suites.
+
+**Key files:**
+- `.quick-checks/playwright.config.ts` - Playwright config (baseURL, timeout, headless settings)
+- `.quick-checks/auth-helper.ts` - Login helper with test user credentials
+- `.quick-checks/setup-test-user.ts` - Script to create Supabase test user programmatically
+- `.quick-checks/test-*.spec.ts` - Ephemeral test files (auto-deleted after run)
+
+**Test Infrastructure:**
+```typescript
+// Test user credentials (in auth-helper.ts)
+export const TEST_USER = {
+  email: 'e2e-test@betterconnections.dev',
+  password: 'TestPassword123!',
+};
+
+// Login helper pattern
+export async function loginViaUI(page: Page) {
+  await page.goto('/login');
+  await page.getByLabel('Email').fill(TEST_USER.email);
+  await page.getByLabel('Password').fill(TEST_USER.password);
+  await page.getByRole('button', { name: /sign in/i }).click();
+  await page.waitForURL('**/contacts', { timeout: 10000 });
+}
+```
+
+**Creating Test User:**
+```typescript
+// Uses Supabase Admin API (requires service role key)
+const { data, error } = await supabase.auth.admin.createUser({
+  email: TEST_USER.email,
+  password: TEST_USER.password,
+  email_confirm: true, // Skip email verification
+  user_metadata: { name: TEST_USER.name },
+});
+```
+
+**Running Tests:**
+```bash
+cd .quick-checks
+npx playwright test test-name.spec.ts --headed  # Visual debugging
+npx playwright test --ui                        # Interactive mode
+```
+
+**Critical Gotchas:**
+
+1. **Strict Mode Locator Violations**
+   ```typescript
+   // WRONG - .or() can match multiple elements (strict mode error)
+   const btn = page.getByRole('button', { name: /Submit/ }).or(page.getByText('Submit'));
+
+   // CORRECT - Check visibility individually
+   const submitBtn = page.getByRole('button', { name: /Submit/i });
+   const isVisible = await submitBtn.isVisible().catch(() => false);
+   ```
+
+2. **Multiple Fields with Similar Labels**
+   ```typescript
+   // WRONG - Matches both "Primary Phone" and "Secondary Phone"
+   const phone = page.getByLabel(/Phone/i);
+
+   // CORRECT - Use exact label
+   const phone = page.getByLabel('Primary Phone');
+   ```
+
+3. **VCF Import Dual-Flow Testing**
+   - First run: Auto-imports new contacts (no duplicates)
+   - Subsequent runs: Shows duplicate review flow
+   - Solution: Make tests handle both scenarios gracefully
+   ```typescript
+   const isComplete = await page.getByText(/Import Complete/i).isVisible().catch(() => false);
+   const isReview = await page.getByText(/Review Import Conflicts/i).isVisible().catch(() => false);
+
+   if (isReview) {
+     // Handle duplicate review...
+   } else if (isComplete) {
+     // Handle completion...
+   }
+   ```
+
+4. **Async UI Updates**
+   - Enrichment completion triggers async score calculation
+   - Mentioned contacts extraction happens after enrichment save
+   - Solution: Add explicit waits with `.waitForTimeout(2000)` after state changes
+
+**Test Coverage (Validated Features):**
+- ✅ VCF file upload with duplicate detection and merge review
+- ✅ Mentioned contacts extraction and matching
+- ✅ Enrichment completion gamification (celebration UI)
+- ✅ Alphabet slider navigation (A-Z filtering)
+- ✅ Phone area code → hometown suggestion
+
+**Extending this:**
+- To add new test: Create `.quick-checks/test-feature.spec.ts`
+- To create test data: Use factories or inline test objects
+- To debug: Use `--headed` flag to see browser
+- To skip cleanup: Manually save test file outside `.quick-checks/`
 
 ---
 
@@ -613,4 +826,4 @@ They use Framer Motion for animations and Lucide React for icons.
 **Auth:** Supabase Auth (email/password)
 **Design:** Dark theme, gold accents (#C9A227), glassmorphism
 **Core Feature:** "Why Now" contextual relevance for contacts
-**Last Updated:** 2024-12-29
+**Last Updated:** 2026-01-03
