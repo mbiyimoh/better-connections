@@ -9,19 +9,37 @@ export interface ParsedContactSuggestion {
   reason: string;
 }
 
-const CONTACT_PATTERN = /\[CONTACT:\s*([a-zA-Z0-9-]+)\]\s*([^-\n]+)\s*-\s*([^\n\[]+)/g;
+/**
+ * Pattern string for matching contact references in AI responses.
+ * Format: [CONTACT: id] Name - Reason
+ * Groups: (1) contactId, (2) name, (3) reason
+ *
+ * @example
+ * "[CONTACT: abc123] John Smith - Expert in AI"
+ * Groups: ["abc123", "John Smith", "Expert in AI"]
+ *
+ * IMPORTANT: Always create a new RegExp with 'g' flag when using this pattern
+ * to avoid shared state issues between modules.
+ */
+export const CONTACT_PATTERN_STRING = "\\[CONTACT:\\s*([a-zA-Z0-9_-]+)\\]\\s*([^-\\n]+)\\s*-\\s*([^\\n\\[]+)";
+
+/**
+ * Creates a fresh regex instance for matching contact patterns.
+ * Use this instead of a shared global regex to avoid lastIndex state issues.
+ */
+export function createContactPattern(): RegExp {
+  return new RegExp(CONTACT_PATTERN_STRING, "g");
+}
 
 /**
  * Extract contact suggestions from AI response text
  */
 export function parseContactSuggestions(text: string): ParsedContactSuggestion[] {
   const suggestions: ParsedContactSuggestion[] = [];
+  const pattern = createContactPattern();
   let match;
 
-  // Reset regex state
-  CONTACT_PATTERN.lastIndex = 0;
-
-  while ((match = CONTACT_PATTERN.exec(text)) !== null) {
+  while ((match = pattern.exec(text)) !== null) {
     const contactId = match[1];
     const name = match[2];
     const reason = match[3];
@@ -43,7 +61,7 @@ export function parseContactSuggestions(text: string): ParsedContactSuggestion[]
  */
 export function cleanResponseText(text: string): string {
   return text
-    .replace(CONTACT_PATTERN, "**$2** - $3")
+    .replace(createContactPattern(), "**$2** - $3")
     .trim();
 }
 
@@ -51,8 +69,7 @@ export function cleanResponseText(text: string): string {
  * Check if a response contains contact suggestions
  */
 export function hasContactSuggestions(text: string): boolean {
-  CONTACT_PATTERN.lastIndex = 0;
-  return CONTACT_PATTERN.test(text);
+  return createContactPattern().test(text);
 }
 
 /**

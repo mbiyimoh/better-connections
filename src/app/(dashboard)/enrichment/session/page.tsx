@@ -715,6 +715,27 @@ function EnrichmentSessionContent() {
     router.push("/enrichment");
   };
 
+  const handleContinueEnriching = () => {
+    // Reset to enrichment state, keeping existing data
+    setSessionComplete(false);
+    // Clear transcript for new input
+    resetTranscript();
+    setLastProcessedLength(0);
+    // Restart the session
+    setIsStarted(true);
+    setIsPlaying(true);
+    setRemainingTime(30);
+  };
+
+  // Bubble edit handlers
+  const handleUpdateBubble = (id: string, updates: Partial<EnrichmentBubble>) => {
+    setBubbles(prev => prev.map(b => b.id === id ? { ...b, ...updates } : b));
+  };
+
+  const handleDeleteBubble = (id: string) => {
+    setBubbles(prev => prev.filter(b => b.id !== id));
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0D0D0F] flex items-center justify-center">
@@ -754,6 +775,7 @@ function EnrichmentSessionContent() {
         }}
         onEnrichNext={handleEnrichNext}
         onBackToQueue={handleBackToQueue}
+        onContinueEnriching={handleContinueEnriching}
         saving={saving}
       />
     );
@@ -883,7 +905,12 @@ function EnrichmentSessionContent() {
         {/* Bubble Canvas */}
         <div className="bg-zinc-900/85 backdrop-blur-xl rounded-xl border border-white/[0.08] p-6 min-h-[180px]">
           {bubbles.length > 0 ? (
-            <EnrichmentBubbles bubbles={bubbles} />
+            <EnrichmentBubbles
+              bubbles={bubbles}
+              editable
+              onUpdate={handleUpdateBubble}
+              onDelete={handleDeleteBubble}
+            />
           ) : (
             <p className="text-zinc-500 text-center py-8">
               {isStarted

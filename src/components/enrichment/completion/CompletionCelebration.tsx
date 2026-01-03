@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, ChevronLeft } from "lucide-react";
+import { Sparkles, ChevronLeft, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScoreImprovementBar } from "./ScoreImprovementBar";
 import { RankCelebration } from "./RankCelebration";
@@ -45,6 +45,7 @@ interface CompletionCelebrationProps {
   onMentionProcessed?: (mentionId: string) => void;
   onEnrichNext: () => void;
   onBackToQueue: () => void;
+  onContinueEnriching?: () => void;
   saving?: boolean;
 }
 
@@ -68,6 +69,7 @@ export function CompletionCelebration({
   onMentionProcessed,
   onEnrichNext,
   onBackToQueue,
+  onContinueEnriching,
   saving = false,
 }: CompletionCelebrationProps) {
   const [phase, setPhase] = useState<AnimationPhase>("initial");
@@ -255,6 +257,19 @@ export function CompletionCelebration({
                     </>
                   )}
                 </Button>
+
+                {onContinueEnriching && (
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="w-full border-zinc-600 text-white hover:bg-zinc-800"
+                    onClick={onContinueEnriching}
+                    disabled={saving}
+                  >
+                    <Plus size={16} />
+                    Continue Enriching {contact.firstName}
+                  </Button>
+                )}
 
                 <button
                   onClick={onBackToQueue}

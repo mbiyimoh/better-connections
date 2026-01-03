@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import type { Contact, TagCategory } from '@/types/contact';
 import Link from 'next/link';
+import { HometownSuggestion } from './HometownSuggestion';
 
 const contactFormSchema = z.object({
   firstName: z.string().min(1, 'First name is required').max(255),
@@ -99,6 +100,8 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
   });
 
   const relationshipStrength = watch('relationshipStrength');
+  const primaryPhone = watch('primaryPhone');
+  const location = watch('location');
 
   const addTag = () => {
     if (newTagText.trim()) {
@@ -236,6 +239,11 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
             <div className="space-y-2">
               <Label htmlFor="location">Location</Label>
               <Input id="location" {...register('location')} placeholder="San Francisco, CA" />
+              <HometownSuggestion
+                phone={primaryPhone}
+                currentLocation={location}
+                onAccept={(suggested) => setValue('location', suggested)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="linkedinUrl">LinkedIn URL</Label>

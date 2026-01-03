@@ -15,10 +15,14 @@ import {
   Zap,
   ArrowRight,
   Calendar,
+  Search,
+  X,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getDisplayName } from "@/types/contact";
+import { AlphabetSlider } from "@/components/ui/AlphabetSlider";
 
 interface QueueContact {
   id: string;
@@ -373,10 +377,22 @@ export default function EnrichmentQueuePage() {
   const [queue, setQueue] = useState<QueueContact[]>([]);
   const [stats, setStats] = useState<EnrichmentStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [totalContacts, setTotalContacts] = useState(0);
+  const [displayLimit, setDisplayLimit] = useState(50);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [letterFilter, setLetterFilter] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Clear letter filter when search is used
+  useEffect(() => {
+    if (searchQuery) {
+      setLetterFilter(null);
+    }
+  }, [searchQuery]);
 
   const fetchData = async () => {
     try {
@@ -387,7 +403,8 @@ export default function EnrichmentQueuePage() {
 
       if (queueRes.ok) {
         const queueData = await queueRes.json();
-        setQueue(queueData.contacts);
+        setQueue(queueData.contacts ?? []);
+        setTotalContacts(queueData.total ?? queueData.contacts?.length ?? 0);
       }
 
       if (statsRes.ok) {
@@ -426,9 +443,42 @@ export default function EnrichmentQueuePage() {
     }
   };
 
+  const handleShowMore = async () => {
+    if (isLoadingMore) return; // Prevent concurrent requests
+
+    setIsLoadingMore(true);
+    try {
+      const newLimit = displayLimit + 25;
+      const res = await fetch(`/api/enrichment/queue?limit=${newLimit}`);
+      if (res.ok) {
+        const data = await res.json();
+        setQueue(data.contacts ?? []);
+        setDisplayLimit(newLimit);
+        setTotalContacts(data.total ?? data.contacts?.length ?? 0);
+      }
+    } catch (error) {
+      console.error("Failed to load more contacts:", error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
+
   const filteredQueue = queue.filter((contact) => {
-    if (activeFilter === "all") return true;
-    return contact.priorityLevel === activeFilter;
+    // Apply priority filter
+    const matchesPriority = activeFilter === "all" || contact.priorityLevel === activeFilter;
+
+    // Apply search filter
+    const searchLower = searchQuery.toLowerCase();
+    const matchesSearch = !searchQuery ||
+      getDisplayName(contact).toLowerCase().includes(searchLower) ||
+      (contact.primaryEmail?.toLowerCase().includes(searchLower)) ||
+      (contact.company?.toLowerCase().includes(searchLower));
+
+    // Apply letter filter
+    const matchesLetter = !letterFilter ||
+      getDisplayName(contact)[0]?.toUpperCase() === letterFilter;
+
+    return matchesPriority && matchesSearch && matchesLetter;
   });
 
   const counts = {
@@ -472,6 +522,25 @@ export default function EnrichmentQueuePage() {
         {/* Stats */}
         {stats && <StatsCard stats={stats} />}
 
+        {/* Search */}
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+          <Input
+            placeholder="Search by name, email, or company..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 bg-zinc-800/50 border-zinc-700/50 text-white placeholder:text-zinc-500"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
+
         {/* Filters */}
         <FilterTabs
           activeFilter={activeFilter}
@@ -481,28 +550,66 @@ export default function EnrichmentQueuePage() {
 
         {/* Queue List */}
         {filteredQueue.length === 0 ? (
-          <div className="bg-zinc-900/85 backdrop-blur-xl rounded-xl border border-white/[0.08] mt-5">
-            <EmptyState />
-          </div>
+          searchQuery ? (
+            <div className="text-center py-12">
+              <p className="text-zinc-400 mb-2">No contacts match &quot;{searchQuery}&quot;</p>
+              <button
+                onClick={() => setSearchQuery('')}
+                className="text-[#C9A227] hover:text-[#E5C766] text-sm"
+              >
+                Clear search
+              </button>
+            </div>
+          ) : (
+            <div className="bg-zinc-900/85 backdrop-blur-xl rounded-xl border border-white/[0.08] mt-5">
+              <EmptyState />
+            </div>
+          )
         ) : (
-          <div>
-            {filteredQueue.map((contact, index) => (
-              <QueueItemCard
-                key={contact.id}
-                contact={contact}
-                rank={index + 1}
-                onEnrich={() => handleEnrich(contact.id)}
-                onSkip={() => handleSkip(contact.id)}
-              />
-            ))}
+          <div className="relative">
+            {/* Queue list with padding for alphabet slider */}
+            <div className="pr-12">
+              {filteredQueue.map((contact, index) => (
+                <QueueItemCard
+                  key={contact.id}
+                  contact={contact}
+                  rank={index + 1}
+                  onEnrich={() => handleEnrich(contact.id)}
+                  onSkip={() => handleSkip(contact.id)}
+                />
+              ))}
 
-            {filteredQueue.length >= 20 && (
-              <div className="text-center mt-5">
-                <Button variant="ghost" className="text-zinc-400">
-                  Show more contacts <ChevronRight size={16} />
-                </Button>
-              </div>
-            )}
+              {queue.length < totalContacts && (
+                <div className="text-center mt-5">
+                  <Button
+                    variant="ghost"
+                    className="text-zinc-400"
+                    onClick={handleShowMore}
+                    disabled={isLoadingMore}
+                  >
+                    {isLoadingMore ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-zinc-400 mr-2" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        Show more contacts <ChevronRight size={16} />
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Alphabet slider - positioned at right edge */}
+            <div className="absolute right-0 top-0 hidden md:flex">
+              <AlphabetSlider
+                items={queue}
+                selectedLetter={letterFilter}
+                onLetterSelect={setLetterFilter}
+              />
+            </div>
           </div>
         )}
 

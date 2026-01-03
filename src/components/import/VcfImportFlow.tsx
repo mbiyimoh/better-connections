@@ -4,45 +4,18 @@ import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
-import { ImportMergeReview, DuplicateResolution } from './ImportMergeReview';
-import type { ParsedContact, SkippedEntry, FieldConflict } from '@/lib/vcf-parser';
+import { ImportMergeReview } from './ImportMergeReview';
+import { SameNameMergeReview } from './SameNameMergeReview';
+import type { ParsedContact, SkippedEntry } from '@/lib/vcf-parser';
+import type {
+  SameNameGroup,
+  DuplicateAnalysis,
+  DuplicateResolution,
+  SameNameDecision,
+  ImportSummary,
+} from '@/lib/vcf-import-types';
 
-type ImportStep = 'upload' | 'analyzing' | 'review' | 'importing' | 'complete';
-
-interface ExistingContact {
-  id: string;
-  firstName: string;
-  lastName: string | null;
-  primaryEmail: string | null;
-  secondaryEmail: string | null;
-  primaryPhone: string | null;
-  secondaryPhone: string | null;
-  title: string | null;
-  company: string | null;
-  linkedinUrl: string | null;
-  websiteUrl: string | null;
-  streetAddress: string | null;
-  city: string | null;
-  state: string | null;
-  zipCode: string | null;
-  country: string | null;
-  notes: string | null;
-  enrichmentScore: number;
-}
-
-interface DuplicateAnalysis {
-  incoming: ParsedContact;
-  existing: ExistingContact;
-  conflicts: FieldConflict[];
-  autoMergeFields: string[];
-}
-
-interface ImportSummary {
-  created: number;
-  updated: number;
-  skipped: number;
-  errors: Array<{ tempId: string; error: string }>;
-}
+type ImportStep = 'upload' | 'analyzing' | 'email-review' | 'name-review' | 'importing' | 'complete';
 
 interface VcfImportFlowProps {
   onComplete?: () => void;
@@ -56,6 +29,10 @@ export function VcfImportFlow({ onComplete }: VcfImportFlowProps) {
   const [newContacts, setNewContacts] = useState<ParsedContact[]>([]);
   const [duplicates, setDuplicates] = useState<DuplicateAnalysis[]>([]);
   const [skippedEntries, setSkippedEntries] = useState<SkippedEntry[]>([]);
+  const [sameNameGroups, setSameNameGroups] = useState<SameNameGroup[]>([]);
+
+  // User decisions
+  const [duplicateResolutions, setDuplicateResolutions] = useState<DuplicateResolution[]>([]);
 
   // Import results
   const [summary, setSummary] = useState<ImportSummary | null>(null);
@@ -87,12 +64,15 @@ export function VcfImportFlow({ onComplete }: VcfImportFlowProps) {
       setNewContacts(data.analysis.newContacts);
       setDuplicates(data.analysis.duplicates);
       setSkippedEntries(data.analysis.skipped);
+      setSameNameGroups(data.analysis.sameNameGroups || []);
 
-      // If there are duplicates, show review; otherwise go straight to import
+      // Route to appropriate review step or import directly
       if (data.analysis.duplicates.length > 0) {
-        setStep('review');
+        setStep('email-review');
+      } else if (data.analysis.sameNameGroups?.length > 0) {
+        setStep('name-review');
       } else {
-        await commitImport(data.analysis.newContacts, []);
+        await commitImport(data.analysis.newContacts, [], new Map());
       }
     } catch {
       setError('Failed to upload file. Please try again.');
@@ -102,9 +82,16 @@ export function VcfImportFlow({ onComplete }: VcfImportFlowProps) {
 
   const commitImport = async (
     contacts: ParsedContact[],
-    resolutions: DuplicateResolution[]
+    resolutions: DuplicateResolution[],
+    nameDecisions: Map<string, SameNameDecision>
   ) => {
     setStep('importing');
+
+    // Convert Map to plain object for JSON serialization
+    const sameNameDecisionsObj: Record<string, string> = {};
+    nameDecisions.forEach((decision, key) => {
+      sameNameDecisionsObj[key] = decision.action;
+    });
 
     try {
       const response = await fetch('/api/contacts/import/vcf/commit', {
@@ -113,6 +100,7 @@ export function VcfImportFlow({ onComplete }: VcfImportFlowProps) {
         body: JSON.stringify({
           newContacts: contacts,
           duplicateResolutions: resolutions,
+          sameNameDecisions: sameNameDecisionsObj,
         }),
       });
 
@@ -133,7 +121,27 @@ export function VcfImportFlow({ onComplete }: VcfImportFlowProps) {
   };
 
   const handleMergeConfirm = (resolutions: DuplicateResolution[]) => {
-    commitImport(newContacts, resolutions);
+    setDuplicateResolutions(resolutions);
+
+    // If there are same-name groups, go to name review; otherwise commit directly
+    if (sameNameGroups.length > 0) {
+      setStep('name-review');
+    } else {
+      commitImport(newContacts, resolutions, new Map());
+    }
+  };
+
+  const handleNameReviewComplete = (decisions: Map<string, SameNameDecision>) => {
+    commitImport(newContacts, duplicateResolutions, decisions);
+  };
+
+  const handleNameReviewBack = () => {
+    // Go back to email review if there were duplicates, otherwise to upload
+    if (duplicates.length > 0) {
+      setStep('email-review');
+    } else {
+      setStep('upload');
+    }
   };
 
   const handleMergeCancel = () => {
@@ -141,6 +149,8 @@ export function VcfImportFlow({ onComplete }: VcfImportFlowProps) {
     setNewContacts([]);
     setDuplicates([]);
     setSkippedEntries([]);
+    setSameNameGroups([]);
+    setDuplicateResolutions([]);
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -220,12 +230,21 @@ export function VcfImportFlow({ onComplete }: VcfImportFlowProps) {
           </motion.div>
         )}
 
-        {/* Review Step */}
-        {step === 'review' && (
+        {/* Email Duplicate Review Step */}
+        {step === 'email-review' && (
           <ImportMergeReview
             duplicates={duplicates}
             onConfirm={handleMergeConfirm}
             onCancel={handleMergeCancel}
+          />
+        )}
+
+        {/* Same-Name Review Step */}
+        {step === 'name-review' && (
+          <SameNameMergeReview
+            groups={sameNameGroups}
+            onComplete={handleNameReviewComplete}
+            onBack={handleNameReviewBack}
           />
         )}
 

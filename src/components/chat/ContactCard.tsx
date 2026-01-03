@@ -14,6 +14,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getDisplayName } from "@/types/contact";
+import {
+  getInitialsFromName,
+  getAvatarGradientFromName,
+  getRelativeTime,
+} from "@/lib/contact-utils";
+import { TAG_CATEGORY_COLORS, DEFAULT_TAG_COLORS } from "@/lib/design-system";
 
 interface ContactTag {
   id: string;
@@ -42,44 +48,10 @@ interface ContactCardProps {
   contact: Contact;
   dynamicWhyNow?: string;
   isPinned?: boolean;
+  isHighlighted?: boolean;
   onPin?: (contactId: string) => void;
   onDraftIntro?: (contact: Contact) => void;
   onViewContact?: (contactId: string) => void;
-}
-
-const categoryColors: Record<string, { bg: string; text: string; border: string }> = {
-  RELATIONSHIP: { bg: "bg-blue-500/20", text: "text-blue-400", border: "border-blue-500/30" },
-  OPPORTUNITY: { bg: "bg-green-500/20", text: "text-green-400", border: "border-green-500/30" },
-  EXPERTISE: { bg: "bg-purple-500/20", text: "text-purple-400", border: "border-purple-500/30" },
-  INTEREST: { bg: "bg-amber-500/20", text: "text-amber-400", border: "border-amber-500/30" },
-};
-
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-}
-
-function getAvatarGradient(name: string) {
-  const hue = name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
-  return `linear-gradient(135deg, hsl(${hue}, 60%, 40%), hsl(${(hue + 60) % 360}, 60%, 30%))`;
-}
-
-function getRelativeTime(dateString: string | null) {
-  if (!dateString) return "Never";
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-  return `${Math.floor(diffDays / 30)} months ago`;
 }
 
 function RelationshipStrength({ strength }: { strength: number }) {
@@ -111,6 +83,7 @@ export function ContactCard({
   contact,
   dynamicWhyNow,
   isPinned = false,
+  isHighlighted = false,
   onPin,
   onDraftIntro,
   onViewContact,
@@ -121,7 +94,17 @@ export function ContactCard({
   const whyNowText = dynamicWhyNow || contact.whyNow;
 
   return (
-    <motion.div layout>
+    <motion.div
+      layout
+      id={`contact-card-${contact.id}`}
+      animate={{
+        boxShadow: isHighlighted
+          ? "0 0 0 2px rgba(201, 162, 39, 0.5)"
+          : "0 0 0 0px transparent",
+        scale: isHighlighted ? 1.02 : 1,
+      }}
+      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+    >
       <div
         onClick={() => setIsExpanded(!isExpanded)}
         onMouseEnter={() => setIsHovered(true)}
@@ -139,9 +122,9 @@ export function ContactCard({
           <div className="flex gap-3">
             <div
               className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 text-sm font-semibold text-white/90"
-              style={{ background: getAvatarGradient(getDisplayName(contact)) }}
+              style={{ background: getAvatarGradientFromName(getDisplayName(contact)) }}
             >
-              {getInitials(getDisplayName(contact))}
+              {getInitialsFromName(getDisplayName(contact))}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
@@ -251,8 +234,7 @@ export function ContactCard({
                 {contact.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {contact.tags.map((tag) => {
-                      const defaultColors = { bg: "bg-blue-500/20", text: "text-blue-400", border: "border-blue-500/30" };
-                      const colors = categoryColors[tag.category] ?? defaultColors;
+                      const colors = (TAG_CATEGORY_COLORS as Record<string, typeof DEFAULT_TAG_COLORS>)[tag.category] ?? DEFAULT_TAG_COLORS;
                       return (
                         <span
                           key={tag.id}

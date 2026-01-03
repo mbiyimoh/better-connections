@@ -2,13 +2,21 @@
 
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { MessageContent } from "./MessageContent";
 
 interface ChatMessageProps {
   content: string;
   isUser: boolean;
+  onContactHover?: (id: string | null) => void;
+  onContactClick?: (id: string) => void;
 }
 
-export function ChatMessage({ content, isUser }: ChatMessageProps) {
+export function ChatMessage({
+  content,
+  isUser,
+  onContactHover,
+  onContactClick,
+}: ChatMessageProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -23,7 +31,15 @@ export function ChatMessage({ content, isUser }: ChatMessageProps) {
             : "bg-white/10 text-white rounded-[16px_16px_16px_4px]"
         )}
       >
-        {content}
+        {isUser ? (
+          content
+        ) : (
+          <MessageContent
+            content={content}
+            onContactHover={onContactHover ?? (() => {})}
+            onContactClick={onContactClick ?? (() => {})}
+          />
+        )}
       </div>
     </motion.div>
   );

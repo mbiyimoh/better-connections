@@ -445,3 +445,28 @@ function getVcardPreview(vcard: VCard4): string {
   const email = vcard.EMAIL?.[0]?.value || '';
   return `${fn} ${email}`.trim().substring(0, 100);
 }
+
+// ============================================
+// Name Normalization (for same-name detection)
+// ============================================
+
+const HONORIFICS = ['dr.', 'dr', 'mr.', 'mr', 'mrs.', 'mrs', 'ms.', 'ms', 'prof.', 'prof'];
+
+/**
+ * Normalize name for duplicate detection.
+ * - Trims whitespace
+ * - Lowercases
+ * - Removes honorifics (Dr., Mr., Mrs., etc.)
+ * - Handles single-word names
+ */
+export function normalizeName(firstName: string, lastName: string | null): string {
+  const parts = [firstName, lastName]
+    .filter(Boolean)
+    .map(s => s!.trim().toLowerCase())
+    .filter(s => s.length > 0);
+
+  // Remove common honorifics
+  const filtered = parts.filter(p => !HONORIFICS.includes(p));
+
+  return filtered.join(' ');
+}

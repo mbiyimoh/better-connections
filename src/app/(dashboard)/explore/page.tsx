@@ -48,6 +48,8 @@ interface ChatMessageData {
 export default function ExplorePage() {
   const router = useRouter();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const contactsRef = useRef<Contact[]>([]);
+  const highlightTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [suggestedContacts, setSuggestedContacts] = useState<SuggestedContact[]>([]);
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(new Set());
@@ -56,6 +58,7 @@ export default function ExplorePage() {
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState<ChatMessageData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [hoveredContactId, setHoveredContactId] = useState<string | null>(null);
 
   const handleChatSubmit = async (userMessage: string) => {
     if (!userMessage.trim() || isLoading) return;
@@ -112,18 +115,27 @@ export default function ExplorePage() {
       }
 
       // Parse contact suggestions from completed response
+      // Use contactsRef to avoid stale closure issue
       const suggestions = parseContactSuggestions(assistantContent);
+      console.log("[Explore] Parsed suggestions:", suggestions.length, suggestions.map(s => ({ id: s.contactId, name: s.name })));
+      console.log("[Explore] Available contacts:", contactsRef.current.length, "IDs:", contactsRef.current.slice(0, 10).map(c => c.id));
+
       if (suggestions.length > 0) {
         const newSuggested: SuggestedContact[] = [];
         for (const suggestion of suggestions) {
-          const contact = contacts.find((c) => c.id === suggestion.contactId);
+          const contact = contactsRef.current.find(
+            (c) => c.id === suggestion.contactId
+          );
           if (contact) {
             newSuggested.push({
               contact,
               dynamicWhyNow: suggestion.reason,
             });
+          } else {
+            console.warn("[Explore] Contact not found for suggestion:", suggestion.contactId, suggestion.name);
           }
         }
+        console.log("[Explore] Matched contacts:", newSuggested.length, "of", suggestions.length);
         if (newSuggested.length > 0) {
           setSuggestedContacts(newSuggested);
         }
@@ -152,9 +164,44 @@ export default function ExplorePage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Keep contactsRef in sync with contacts state to avoid stale closure
+  useEffect(() => {
+    contactsRef.current = contacts;
+  }, [contacts]);
+
+  // Cleanup highlight timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleContactHover = useCallback((contactId: string | null) => {
+    setHoveredContactId(contactId);
+  }, []);
+
+  const handleContactClick = useCallback((contactId: string) => {
+    if (highlightTimeoutRef.current) {
+      clearTimeout(highlightTimeoutRef.current);
+    }
+    const element = document.getElementById(`contact-card-${contactId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHoveredContactId(contactId);
+      highlightTimeoutRef.current = setTimeout(() => {
+        setHoveredContactId(null);
+      }, 2000);
+    }
+  }, []);
+
   const fetchContacts = async () => {
     try {
-      const res = await fetch("/api/contacts?limit=100");
+      // IMPORTANT: Must match the ordering used in /api/chat/explore (enrichmentScore DESC)
+      // The AI only sees contacts from that query, so we need the same set here
+      // to properly match suggested contact IDs
+      const res = await fetch("/api/contacts?limit=100&sort=enrichmentScore&order=desc");
       if (res.ok) {
         const data = await res.json();
         setContacts(data.contacts);
@@ -286,6 +333,8 @@ export default function ExplorePage() {
                 key={message.id}
                 content={message.content}
                 isUser={message.role === "user"}
+                onContactHover={handleContactHover}
+                onContactClick={handleContactClick}
               />
             ))}
 
@@ -358,6 +407,7 @@ export default function ExplorePage() {
                   contact={contact}
                   dynamicWhyNow={getDynamicWhyNow(contact.id)}
                   isPinned={pinnedIds.has(contact.id)}
+                  isHighlighted={hoveredContactId === contact.id}
                   onPin={handlePin}
                   onDraftIntro={handleDraftIntro}
                   onViewContact={handleViewContact}

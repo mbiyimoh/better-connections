@@ -13,8 +13,10 @@ import {
   UserPlus,
   ArrowRight,
   AlertCircle,
+  Search,
 } from "lucide-react";
 import type { MentionMatch } from "@/lib/schemas/mentionExtraction";
+import { ContactSearchModal } from "./ContactSearchModal";
 
 interface MentionedPersonCardProps {
   mention: MentionMatch;
@@ -31,8 +33,15 @@ export function MentionedPersonCard({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showAlternatives, setShowAlternatives] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [processedAction, setProcessedAction] = useState<string | null>(null);
+
+  // Handler for search modal selection
+  const handleSearchSelect = (contactId: string) => {
+    handleAction("link", contactId);
+    setShowSearchModal(false);
+  };
 
   const isConfidentMatch =
     mention.matchType === "EXACT" || mention.confidence >= 0.7;
@@ -160,6 +169,20 @@ export function MentionedPersonCard({
                   mention.inferredDetails.company}
               </div>
             )}
+
+            {/* Match reasons - shows why this contact was matched */}
+            {mention.matchReasons && mention.matchReasons.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                {mention.matchReasons.map((reason, i) => (
+                  <span
+                    key={i}
+                    className="text-xs text-zinc-400 bg-zinc-800 px-1.5 py-0.5 rounded"
+                  >
+                    {reason}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -265,6 +288,16 @@ export function MentionedPersonCard({
                 Create Contact
               </button>
             )}
+
+            {/* Search & Link - fallback for all match types */}
+            <button
+              onClick={() => setShowSearchModal(true)}
+              disabled={isProcessing}
+              className="px-3 py-1.5 text-sm font-medium rounded-md border border-zinc-600 hover:bg-zinc-700/50 text-zinc-300 disabled:opacity-50 flex items-center gap-1"
+            >
+              <Search className="w-3 h-3" />
+              Search & Link
+            </button>
           </>
         )}
       </div>
@@ -277,46 +310,94 @@ export function MentionedPersonCard({
         </div>
       )}
 
-      {/* Alternative matches dropdown */}
-      <AnimatePresence>
-        {showAlternatives && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mt-3 border-t border-zinc-700 pt-3"
+      {/* Alternative matches - show for ALL matches with alternatives */}
+      {mention.alternativeMatches && mention.alternativeMatches.length > 0 && (
+        <div className="mt-3 border-t border-zinc-700 pt-3">
+          <button
+            onClick={() => setShowAlternatives(!showAlternatives)}
+            className="text-xs text-zinc-400 hover:text-zinc-300 flex items-center gap-1"
           >
-            <p className="text-xs text-zinc-500 mb-2">
-              Select the correct person:
-            </p>
-            <div className="space-y-1">
-              {mention.alternativeMatches?.map((alt) => (
-                <button
-                  key={alt.id}
-                  onClick={() => handleAction("link", alt.id)}
-                  disabled={isProcessing}
-                  className="w-full text-left px-3 py-2 rounded-md hover:bg-zinc-700/50 text-sm text-zinc-300 disabled:opacity-50 flex justify-between"
-                >
-                  <span>
-                    {alt.firstName} {alt.lastName}
-                  </span>
-                  <span className="text-zinc-500">
-                    {Math.round(alt.similarity * 100)}%
-                  </span>
-                </button>
-              ))}
-              <button
-                onClick={() => handleAction("create")}
-                disabled={isProcessing}
-                className="w-full text-left px-3 py-2 rounded-md hover:bg-zinc-700/50 text-sm text-blue-400 disabled:opacity-50 flex items-center gap-1"
+            {showAlternatives ? (
+              <ChevronUp className="w-3 h-3" />
+            ) : (
+              <ChevronDown className="w-3 h-3" />
+            )}
+            Other matches ({mention.alternativeMatches.length})
+          </button>
+
+          <AnimatePresence>
+            {showAlternatives && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mt-2 space-y-2"
               >
-                <UserPlus className="w-3 h-3" />
-                Create as new contact
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+                {mention.alternativeMatches.map((alt) => (
+                  <div
+                    key={alt.id}
+                    className="flex items-center justify-between p-2 rounded bg-zinc-800/50"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm text-zinc-300">
+                          {alt.firstName} {alt.lastName}
+                        </span>
+                        {alt.company && (
+                          <span className="text-xs text-zinc-500">
+                            ({alt.company})
+                          </span>
+                        )}
+                      </div>
+                      {/* Match reasons for this alternative */}
+                      {alt.matchReasons && alt.matchReasons.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {alt.matchReasons.map((reason, i) => (
+                            <span
+                              key={i}
+                              className="text-xs bg-zinc-700 px-1.5 py-0.5 rounded text-zinc-400"
+                            >
+                              {reason}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 ml-2">
+                      <span className="text-xs text-zinc-500">
+                        {Math.round(alt.confidence * 100)}%
+                      </span>
+                      <button
+                        onClick={() => handleAction("link", alt.id)}
+                        disabled={isProcessing}
+                        className="text-xs px-2 py-1 rounded bg-zinc-700 hover:bg-zinc-600 text-zinc-300 disabled:opacity-50"
+                      >
+                        Select
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  onClick={() => handleAction("create")}
+                  disabled={isProcessing}
+                  className="w-full text-left px-3 py-2 rounded-md hover:bg-zinc-700/50 text-sm text-blue-400 disabled:opacity-50 flex items-center gap-1"
+                >
+                  <UserPlus className="w-3 h-3" />
+                  Create as new contact
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+
+      {/* Contact Search Modal */}
+      <ContactSearchModal
+        open={showSearchModal}
+        onClose={() => setShowSearchModal(false)}
+        onSelect={handleSearchSelect}
+        contextHint={mention.context}
+      />
     </motion.div>
   );
 }

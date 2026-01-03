@@ -120,10 +120,12 @@ export function ContactsTable() {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [scoreRange, setScoreRange] = useState<[number, number]>([0, 100]);
+  const [pageInput, setPageInput] = useState('');
 
-  // URL-based state
+  // URL-based state - don't read localStorage during render to avoid hydration mismatch
   const currentPage = Number(searchParams.get('page') || '1');
-  const limit = Number(searchParams.get('limit') || '25');
+  const urlLimit = searchParams.get('limit');
+  const limit = Number(urlLimit || '100');
   const searchQuery = searchParams.get('search') || '';
   const sortField = (searchParams.get('sort') || 'lastName') as SortField;
   const sortOrder = (searchParams.get('order') || 'asc') as SortOrder;
@@ -197,6 +199,15 @@ export function ContactsTable() {
   useEffect(() => {
     fetchContacts();
   }, [fetchContacts]);
+
+  // Load page size preference from localStorage (only if no URL param)
+  useEffect(() => {
+    const saved = localStorage.getItem('contactsPageSize');
+    // Only apply saved preference if there's no limit in URL
+    if (saved && !urlLimit) {
+      updateParams({ limit: saved });
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keyboard navigation for pagination
   useEffect(() => {
@@ -295,6 +306,15 @@ export function ContactsTable() {
   const goToPage = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       updateParams({ page: String(page) });
+    }
+  };
+
+  const handlePageInputSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const page = parseInt(pageInput, 10);
+    if (!isNaN(page) && page >= 1 && page <= totalPages) {
+      goToPage(page);
+      setPageInput('');
     }
   };
 
@@ -696,16 +716,19 @@ export function ContactsTable() {
                   <span className="text-sm text-text-secondary">Per page:</span>
                   <Select
                     value={String(limit)}
-                    onValueChange={(value) => updateParams({ limit: value, page: '1' })}
+                    onValueChange={(value) => {
+                      localStorage.setItem('contactsPageSize', value);
+                      updateParams({ limit: value, page: '1' });
+                    }}
                   >
                     <SelectTrigger className="w-[70px] h-8 bg-bg-tertiary border-border">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-bg-secondary border-border">
-                      <SelectItem value="10">10</SelectItem>
                       <SelectItem value="25">25</SelectItem>
                       <SelectItem value="50">50</SelectItem>
                       <SelectItem value="100">100</SelectItem>
+                      <SelectItem value="200">200</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -733,6 +756,26 @@ export function ContactsTable() {
                 <span className="px-3 text-sm text-text-secondary">
                   Page {currentPage} of {totalPages || 1}
                 </span>
+                <form onSubmit={handlePageInputSubmit} className="flex items-center gap-2 mx-2">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={pageInput}
+                    onChange={(e) => setPageInput(e.target.value)}
+                    className="w-16 h-8 text-center bg-bg-tertiary border-border text-text-primary"
+                    placeholder={String(currentPage)}
+                  />
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 border-border"
+                    disabled={!pageInput}
+                  >
+                    Go
+                  </Button>
+                </form>
                 <Button
                   variant="outline"
                   size="icon"

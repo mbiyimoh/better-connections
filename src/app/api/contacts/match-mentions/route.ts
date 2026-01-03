@@ -21,6 +21,14 @@ const requestSchema = z.object({
 
 const FUZZY_THRESHOLD = 0.3;
 
+// Scoring weights for context-aware matching
+// Total should equal 1.0 for normalized 0-1 confidence scores
+const SCORING_WEIGHTS = {
+  NAME: 0.5,      // Name similarity contributes up to 50%
+  COMPANY: 0.3,   // Company match adds 30%
+  DOMAIN: 0.2,    // Email domain match adds 20%
+} as const;
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createServerSupabaseClient();
@@ -57,6 +65,7 @@ export async function POST(request: NextRequest) {
         lastName: true,
         title: true,
         company: true,
+        primaryEmail: true,
         enrichmentScore: true,
       },
     });
@@ -120,7 +129,55 @@ interface ContactForMatching {
   lastName: string | null;
   title: string | null;
   company: string | null;
+  primaryEmail: string | null;
   enrichmentScore: number;
+}
+
+// Context-aware scoring result
+interface ScoredMatch {
+  contact: ContactForMatching;
+  score: number;
+  reasons: string[];
+}
+
+/**
+ * Score a contact match using context signals (company, email domain).
+ * This is the core fix for the "wrong Scott" bug.
+ *
+ * @param nameSimilarity - pg_trgm similarity score (0-1)
+ * @returns ScoredMatch with normalized score (0-1) and human-readable reasons
+ */
+function scoreMatchWithContext(
+  contact: ContactForMatching,
+  mentionContext: string,
+  nameSimilarity: number
+): ScoredMatch {
+  const reasons: string[] = [];
+  let score = 0;
+  const contextLower = mentionContext.toLowerCase();
+
+  // Name similarity (0-0.5 range)
+  score += nameSimilarity * SCORING_WEIGHTS.NAME;
+  reasons.push(`Name: ${Math.round(nameSimilarity * 100)}% match`);
+
+  // Company match (adds 0.3) - THE KEY FIX
+  const normalizedCompany = contact.company?.trim().toLowerCase();
+  if (normalizedCompany && contextLower.includes(normalizedCompany)) {
+    score += SCORING_WEIGHTS.COMPANY;
+    reasons.push(`Company: ${contact.company}`);
+  }
+
+  // Email domain match (adds 0.2)
+  if (contact.primaryEmail && contact.primaryEmail.includes("@")) {
+    const domain = contact.primaryEmail.split("@")[1]?.trim();
+    if (domain && domain.length > 0 && contextLower.includes(domain.toLowerCase())) {
+      score += SCORING_WEIGHTS.DOMAIN;
+      reasons.push(`Domain: @${domain}`);
+    }
+  }
+
+  // Cap at 1.0 to ensure valid confidence range
+  return { contact, score: Math.min(score, 1.0), reasons };
 }
 
 async function matchMention(
@@ -143,6 +200,8 @@ async function matchMention(
   });
 
   if (exactMatch) {
+    // Score exact match to get reasons
+    const scored = scoreMatchWithContext(exactMatch, mention.context, 1.0);
     return {
       name: mention.name,
       normalizedName: mention.normalizedName,
@@ -151,6 +210,7 @@ async function matchMention(
       matchType: "EXACT",
       confidence: 1.0,
       matchedContact: exactMatch,
+      matchReasons: scored.reasons,
       alternativeMatches: [],
     };
   }
@@ -173,28 +233,43 @@ async function matchMention(
     WHERE "userId" = ${userId}
     AND similarity("firstName" || ' ' || COALESCE("lastName", ''), ${searchName}) > ${FUZZY_THRESHOLD}
     ORDER BY similarity DESC
-    LIMIT 5
+    LIMIT 10
   `;
 
-  const bestMatch = fuzzyMatches[0];
-  if (bestMatch) {
-    const matchedContact = contacts.find((c) => c.id === bestMatch.id);
+  if (fuzzyMatches.length > 0) {
+    // Score ALL matches with context, then sort by composite score
+    const scoredMatches = fuzzyMatches
+      .map((match) => {
+        const contact = contacts.find((c) => c.id === match.id);
+        if (!contact) return null;
+        return scoreMatchWithContext(contact, mention.context, match.similarity);
+      })
+      .filter((m): m is ScoredMatch => m !== null)
+      .sort((a, b) => b.score - a.score);
 
-    return {
-      name: mention.name,
-      normalizedName: mention.normalizedName,
-      context: mention.context,
-      inferredDetails: mention.inferredDetails,
-      matchType: "FUZZY",
-      confidence: bestMatch.similarity,
-      matchedContact: matchedContact || null,
-      alternativeMatches: fuzzyMatches.slice(1).map((m) => ({
-        id: m.id,
-        firstName: m.firstName,
-        lastName: m.lastName,
-        similarity: m.similarity,
-      })),
-    };
+    const bestMatch = scoredMatches[0];
+    if (bestMatch) {
+      const alternatives = scoredMatches.slice(1);
+
+      return {
+        name: mention.name,
+        normalizedName: mention.normalizedName,
+        context: mention.context,
+        inferredDetails: mention.inferredDetails,
+        matchType: "FUZZY",
+        confidence: bestMatch.score,
+        matchedContact: bestMatch.contact,
+        matchReasons: bestMatch.reasons,
+        alternativeMatches: alternatives.map((alt) => ({
+          id: alt.contact.id,
+          firstName: alt.contact.firstName,
+          lastName: alt.contact.lastName,
+          company: alt.contact.company,
+          confidence: alt.score,
+          matchReasons: alt.reasons,
+        })),
+      };
+    }
   }
 
   // 3. No match found
@@ -206,6 +281,7 @@ async function matchMention(
     matchType: "NONE",
     confidence: 0,
     matchedContact: null,
+    matchReasons: [],
     alternativeMatches: [],
   };
 }

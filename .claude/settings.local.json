@@ -33,7 +33,8 @@
       "SlashCommand(/docs:sync)",
       "SlashCommand(/git:push)",
       "SlashCommand(/deploy:push-and-check-railway)",
-      "WebFetch(domain:platform.openai.com)"
+      "WebFetch(domain:platform.openai.com)",
+      "WebFetch(domain:www.npmjs.com)"
     ],
     "deny": [],
     "ask": []

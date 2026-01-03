@@ -25,6 +25,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import type { Contact, TagCategory } from '@/types/contact';
@@ -47,6 +53,13 @@ const categoryColors: Record<TagCategory, { bg: string; text: string; dot: strin
 };
 
 const strengthLabels = ['', 'Weak', 'Casual', 'Good', 'Strong'];
+
+const strengthDescriptions: Record<number, string> = {
+  1: "Distant connection - know through others or met briefly",
+  2: "Friendly acquaintance - met a few times, positive rapport",
+  3: "Solid relationship - regular contact, would help if asked",
+  4: "Close connection - trusted relationship, can reach out anytime",
+};
 
 interface ContactDetailProps {
   contact: Contact;
@@ -139,6 +152,15 @@ export function ContactDetail({ contact }: ContactDetailProps) {
                 Edit
               </Link>
             </Button>
+            <Button
+              className="bg-gold-primary hover:bg-gold-light text-bg-primary font-semibold"
+              asChild
+            >
+              <Link href={`/enrichment/session?contact=${contact.id}`}>
+                <Sparkles className="mr-2 h-4 w-4" />
+                Enrich
+              </Link>
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -146,10 +168,6 @@ export function ContactDetail({ contact }: ContactDetailProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => router.push(`/enrich?id=${contact.id}`)}>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Quick Enrich
-                </DropdownMenuItem>
                 <DropdownMenuItem>
                   <Mail className="mr-2 h-4 w-4" />
                   Draft Intro
@@ -254,24 +272,33 @@ export function ContactDetail({ contact }: ContactDetailProps) {
             <div className="space-y-4">
               <div>
                 <p className="mb-1 text-sm text-text-tertiary">Strength</p>
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-1">
-                    {[1, 2, 3, 4].map((level) => (
-                      <div
-                        key={level}
-                        className={cn(
-                          'h-2 w-6 rounded-full',
-                          level <= contact.relationshipStrength
-                            ? 'bg-gold-primary'
-                            : 'bg-white/10'
-                        )}
-                      />
-                    ))}
-                  </div>
-                  <span className="text-sm text-text-secondary">
-                    {strengthLabels[contact.relationshipStrength]}
-                  </span>
-                </div>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-2 cursor-help">
+                        <div className="flex gap-1">
+                          {[1, 2, 3, 4].map((level) => (
+                            <div
+                              key={level}
+                              className={cn(
+                                'h-2 w-6 rounded-full',
+                                level <= contact.relationshipStrength
+                                  ? 'bg-gold-primary'
+                                  : 'bg-white/10'
+                              )}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-sm text-text-secondary">
+                          {strengthLabels[contact.relationshipStrength]}
+                        </span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs">
+                      <p>{strengthDescriptions[contact.relationshipStrength]}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
               {contact.howWeMet && (
                 <div>

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import {
   parseVcfFile,
   detectConflicts,
+  normalizeName,
   ParsedContact,
   SkippedEntry,
   FieldConflict,
@@ -38,12 +39,108 @@ interface DuplicateAnalysis {
   autoMergeFields: string[];
 }
 
+// Same-name detection types
+interface ContactPreview {
+  id?: string;
+  firstName: string;
+  lastName: string | null;
+  primaryEmail: string | null;
+  phone: string | null;
+  company: string | null;
+  title: string | null;
+  vcfIndex?: number;
+}
+
+interface SameNameGroup {
+  normalizedName: string;
+  existingContacts: ContactPreview[];
+  newContacts: ContactPreview[];
+}
+
+type ExistingContactRecord = {
+  id: string;
+  firstName: string;
+  lastName: string | null;
+  primaryEmail: string | null;
+  primaryPhone: string | null;
+  title: string | null;
+  company: string | null;
+};
+
+/**
+ * Detect contacts with matching normalized names.
+ * Returns groups where:
+ * - Multiple new contacts share the same name, OR
+ * - A new contact matches an existing contact's name (but not email)
+ */
+function detectSameNameGroups(
+  newContacts: ParsedContact[],
+  existingContacts: ExistingContactRecord[],
+  emailDuplicateIndices: Set<number>
+): SameNameGroup[] {
+  const nameMap = new Map<string, SameNameGroup>();
+
+  // Add existing contacts to groups
+  for (const contact of existingContacts) {
+    const key = normalizeName(contact.firstName, contact.lastName);
+    if (!key) continue;
+
+    const group = nameMap.get(key) || {
+      normalizedName: key,
+      existingContacts: [],
+      newContacts: [],
+    };
+    group.existingContacts.push({
+      id: contact.id,
+      firstName: contact.firstName,
+      lastName: contact.lastName,
+      primaryEmail: contact.primaryEmail,
+      phone: contact.primaryPhone,
+      company: contact.company,
+      title: contact.title,
+    });
+    nameMap.set(key, group);
+  }
+
+  // Add new contacts (skip those already flagged as email duplicates)
+  for (const contact of newContacts) {
+    if (emailDuplicateIndices.has(contact.rawVcardIndex)) continue;
+
+    const key = normalizeName(contact.firstName, contact.lastName || '');
+    if (!key) continue;
+
+    const group = nameMap.get(key) || {
+      normalizedName: key,
+      existingContacts: [],
+      newContacts: [],
+    };
+    group.newContacts.push({
+      firstName: contact.firstName,
+      lastName: contact.lastName,
+      primaryEmail: contact.primaryEmail,
+      phone: contact.primaryPhone,
+      company: contact.company,
+      title: contact.title,
+      vcfIndex: contact.rawVcardIndex,
+    });
+    nameMap.set(key, group);
+  }
+
+  // Return only groups with potential duplicates
+  return Array.from(nameMap.values()).filter(
+    (group) =>
+      group.newContacts.length > 1 ||
+      (group.newContacts.length >= 1 && group.existingContacts.length >= 1)
+  );
+}
+
 interface VcfUploadResponse {
   success: true;
   analysis: {
     totalParsed: number;
     newContacts: ParsedContact[];
     duplicates: DuplicateAnalysis[];
+    sameNameGroups: SameNameGroup[];
     skipped: SkippedEntry[];
   };
 }
@@ -168,11 +265,15 @@ export async function POST(
     const newContacts: ParsedContact[] = [];
     const duplicates: DuplicateAnalysis[] = [];
 
+    // Track which VCF indices are email duplicates (to exclude from same-name detection)
+    const emailDuplicateIndices = new Set<number>();
+
     for (const contact of parseResult.contacts) {
       const emailKey = contact.primaryEmail?.toLowerCase();
       const existing = emailKey ? existingByEmail.get(emailKey) : undefined;
 
       if (existing) {
+        emailDuplicateIndices.add(contact.rawVcardIndex);
         const conflicts = detectConflicts(contact, existing);
         const autoMergeFields: string[] = [];
 
@@ -195,12 +296,26 @@ export async function POST(
       }
     }
 
+    // Detect same-name groups (contacts with matching names but different emails)
+    let sameNameGroups: SameNameGroup[] = [];
+    try {
+      sameNameGroups = detectSameNameGroups(
+        parseResult.contacts,
+        existingContacts,
+        emailDuplicateIndices
+      );
+    } catch (error) {
+      console.error('Same-name detection error:', error);
+      // Proceed with empty groups - feature is enhancement, not blocking
+    }
+
     return NextResponse.json({
       success: true,
       analysis: {
         totalParsed: parseResult.contacts.length,
         newContacts,
         duplicates,
+        sameNameGroups,
         skipped: parseResult.skipped,
       },
     });

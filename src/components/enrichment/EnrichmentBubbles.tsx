@@ -2,8 +2,14 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import {
+  BUBBLE_CATEGORY_COLORS,
+  type BubbleCategory,
+} from "@/lib/design-system";
+import { EditableBubble } from "./EditableBubble";
 
-export type BubbleCategory = "relationship" | "opportunity" | "expertise" | "interest";
+// Re-export BubbleCategory for backward compatibility
+export type { BubbleCategory } from "@/lib/design-system";
 
 export interface EnrichmentBubble {
   id: string;
@@ -13,41 +19,14 @@ export interface EnrichmentBubble {
 
 interface EnrichmentBubblesProps {
   bubbles: EnrichmentBubble[];
+  editable?: boolean;
+  onUpdate?: (id: string, updates: Partial<EnrichmentBubble>) => void;
+  onDelete?: (id: string) => void;
 }
 
-const categoryStyles: Record<BubbleCategory, { bg: string; text: string; border: string }> = {
-  relationship: {
-    bg: "bg-blue-500/20",
-    text: "text-blue-400",
-    border: "border-blue-500/30",
-  },
-  opportunity: {
-    bg: "bg-green-500/20",
-    text: "text-green-400",
-    border: "border-green-500/30",
-  },
-  expertise: {
-    bg: "bg-purple-500/20",
-    text: "text-purple-400",
-    border: "border-purple-500/30",
-  },
-  interest: {
-    bg: "bg-amber-500/20",
-    text: "text-amber-400",
-    border: "border-amber-500/30",
-  },
-};
-
-const categoryDots: Record<BubbleCategory, string> = {
-  relationship: "bg-blue-400",
-  opportunity: "bg-green-400",
-  expertise: "bg-purple-400",
-  interest: "bg-amber-400",
-};
-
 function Bubble({ bubble, index }: { bubble: EnrichmentBubble; index: number }) {
-  const styles = categoryStyles[bubble.category];
-  const dotColor = categoryDots[bubble.category];
+  const styles = BUBBLE_CATEGORY_COLORS[bubble.category];
+  const dotColor = styles.dot;
 
   return (
     <motion.div
@@ -76,13 +55,23 @@ function Bubble({ bubble, index }: { bubble: EnrichmentBubble; index: number }) 
   );
 }
 
-export function EnrichmentBubbles({ bubbles }: EnrichmentBubblesProps) {
+export function EnrichmentBubbles({ bubbles, editable, onUpdate, onDelete }: EnrichmentBubblesProps) {
   return (
     <div className="flex flex-wrap gap-2 justify-center">
       <AnimatePresence mode="popLayout">
-        {bubbles.map((bubble, index) => (
-          <Bubble key={bubble.id} bubble={bubble} index={index} />
-        ))}
+        {bubbles.map((bubble, index) =>
+          editable && onUpdate && onDelete ? (
+            <EditableBubble
+              key={bubble.id}
+              bubble={bubble}
+              index={index}
+              onUpdate={onUpdate}
+              onDelete={onDelete}
+            />
+          ) : (
+            <Bubble key={bubble.id} bubble={bubble} index={index} />
+          )
+        )}
       </AnimatePresence>
     </div>
   );

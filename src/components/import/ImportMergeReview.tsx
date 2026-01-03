@@ -2,43 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { X, ChevronLeft, ChevronRight, Info } from 'lucide-react';
-import type { ParsedContact, FieldConflict } from '@/lib/vcf-parser';
+import { X, ChevronLeft, ChevronRight, Info, Zap } from 'lucide-react';
+import type { DuplicateAnalysis, DuplicateResolution } from '@/lib/vcf-import-types';
 
-interface ExistingContact {
-  id: string;
-  firstName: string;
-  lastName: string | null;
-  primaryEmail: string | null;
-  secondaryEmail: string | null;
-  primaryPhone: string | null;
-  secondaryPhone: string | null;
-  title: string | null;
-  company: string | null;
-  linkedinUrl: string | null;
-  websiteUrl: string | null;
-  streetAddress: string | null;
-  city: string | null;
-  state: string | null;
-  zipCode: string | null;
-  country: string | null;
-  notes: string | null;
-  enrichmentScore: number;
-}
-
-interface DuplicateAnalysis {
-  incoming: ParsedContact;
-  existing: ExistingContact;
-  conflicts: FieldConflict[];
-  autoMergeFields: string[];
-}
-
-export interface DuplicateResolution {
-  existingContactId: string;
-  incoming: ParsedContact;
-  action: 'skip' | 'merge';
-  fieldDecisions?: Array<{ field: string; choice: 'keep' | 'use_new' }>;
-}
+// Re-export for consumers
+export type { DuplicateResolution } from '@/lib/vcf-import-types';
 
 interface ImportMergeReviewProps {
   duplicates: DuplicateAnalysis[];
@@ -193,6 +161,20 @@ export function ImportMergeReview({
 
   const handleConfirm = () => {
     onConfirm(Array.from(resolutions.values()));
+  };
+
+  // Count duplicates that haven't been skipped yet (for Skip All button)
+  const unskippedCount = Array.from(resolutions.values()).filter(
+    r => r.action !== 'skip'
+  ).length;
+
+  const handleSkipAllRemaining = () => {
+    // Create all-skipped resolutions and confirm immediately
+    const allSkipped = Array.from(resolutions.values()).map(r => ({
+      ...r,
+      action: 'skip' as const,
+    }));
+    onConfirm(allSkipped);
   };
 
   const isSkipped = currentResolution.action === 'skip';
@@ -356,19 +338,34 @@ export function ImportMergeReview({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-4 border-t border-zinc-700 flex-shrink-0">
-          <button
-            onClick={acceptAllDefaults}
-            className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors"
-          >
-            Accept All Defaults
-          </button>
-          <button
-            onClick={handleConfirm}
-            className="px-6 py-2 rounded-lg bg-[#C9A227] text-black font-medium hover:bg-[#E5C766] transition-colors"
-          >
-            Apply & Import
-          </button>
+        <div className="p-4 border-t border-zinc-700 flex-shrink-0 space-y-3">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={acceptAllDefaults}
+              className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors"
+            >
+              Accept All Defaults
+            </button>
+            <button
+              onClick={handleConfirm}
+              className="px-6 py-2 rounded-lg bg-[#C9A227] text-black font-medium hover:bg-[#E5C766] transition-colors"
+            >
+              Apply & Import
+            </button>
+          </div>
+
+          {/* Skip All Remaining button */}
+          {unskippedCount > 0 && (
+            <button
+              onClick={handleSkipAllRemaining}
+              className="w-full px-4 py-3 bg-zinc-800 hover:bg-zinc-700
+                         border border-zinc-600 rounded-lg text-zinc-300
+                         flex items-center justify-center gap-2 transition-colors"
+            >
+              <Zap className="w-4 h-4" />
+              Skip All Remaining ({unskippedCount} duplicate{unskippedCount !== 1 ? 's' : ''})
+            </button>
+          )}
         </div>
       </motion.div>
     </motion.div>

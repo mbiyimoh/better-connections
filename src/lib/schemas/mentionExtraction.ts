@@ -80,6 +80,9 @@ export const mentionMatchSchema = z.object({
     })
     .nullable(),
 
+  // Match reasons explaining why this contact was matched
+  matchReasons: z.array(z.string()).optional(),
+
   // Alternative matches for fuzzy/phonetic
   alternativeMatches: z
     .array(
@@ -87,7 +90,9 @@ export const mentionMatchSchema = z.object({
         id: z.string(),
         firstName: z.string(),
         lastName: z.string().nullable(),
-        similarity: z.number(),
+        company: z.string().nullable().optional(),
+        confidence: z.number(), // Composite score (0-1)
+        matchReasons: z.array(z.string()).optional(),
       })
     )
     .optional(),
