@@ -59,6 +59,8 @@ export default function ExplorePage() {
   const [messages, setMessages] = useState<ChatMessageData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hoveredContactId, setHoveredContactId] = useState<string | null>(null);
+  // Maps identifiers (IDs, emails, names) to actual contact IDs for chip hover/click
+  const identifierToIdMap = useRef<Map<string, string>>(new Map());
 
   const handleChatSubmit = async (userMessage: string) => {
     if (!userMessage.trim() || isLoading) return;
@@ -122,15 +124,51 @@ export default function ExplorePage() {
 
       if (suggestions.length > 0) {
         const newSuggested: SuggestedContact[] = [];
+        // Clear and rebuild identifier map for this response
+        identifierToIdMap.current.clear();
+
         for (const suggestion of suggestions) {
-          const contact = contactsRef.current.find(
+          // Try exact ID match first
+          let contact = contactsRef.current.find(
             (c) => c.id === suggestion.contactId
           );
-          if (contact) {
-            newSuggested.push({
-              contact,
-              dynamicWhyNow: suggestion.reason,
+
+          // Fallback: If identifier looks like email, try email match
+          if (!contact && suggestion.contactId.includes('@')) {
+            const emailLower = suggestion.contactId.toLowerCase();
+            contact = contactsRef.current.find(
+              (c) => c.primaryEmail?.toLowerCase() === emailLower
+            );
+            if (contact) {
+              console.log("[Explore] Matched contact by email fallback:", suggestion.contactId, "->", contact.id);
+            }
+          }
+
+          // Fallback: Try case-insensitive name match as last resort
+          if (!contact) {
+            const nameLower = suggestion.name.trim().toLowerCase();
+            contact = contactsRef.current.find((c) => {
+              const displayName = `${c.firstName}${c.lastName ? ' ' + c.lastName : ''}`.toLowerCase();
+              return displayName === nameLower;
             });
+            if (contact) {
+              console.log("[Explore] Matched contact by name fallback:", suggestion.name, "->", contact.id);
+            }
+          }
+
+          if (contact) {
+            // Store mapping from parsed identifier to actual contact ID
+            // This allows chip hover/click to work even when AI uses email/name
+            identifierToIdMap.current.set(suggestion.contactId, contact.id);
+            identifierToIdMap.current.set(suggestion.name.trim().toLowerCase(), contact.id);
+
+            // Avoid duplicates
+            if (!newSuggested.some(s => s.contact.id === contact!.id)) {
+              newSuggested.push({
+                contact,
+                dynamicWhyNow: suggestion.reason,
+              });
+            }
           } else {
             console.warn("[Explore] Contact not found for suggestion:", suggestion.contactId, suggestion.name);
           }
@@ -178,23 +216,54 @@ export default function ExplorePage() {
     };
   }, []);
 
-  const handleContactHover = useCallback((contactId: string | null) => {
-    setHoveredContactId(contactId);
+  // Resolve identifier (could be ID, email, or name) to actual contact ID
+  const resolveContactId = useCallback((identifier: string): string | null => {
+    // Check if it's already a valid contact ID
+    if (contactsRef.current.some(c => c.id === identifier)) {
+      return identifier;
+    }
+    // Check the identifier map (populated during suggestion parsing)
+    const mapped = identifierToIdMap.current.get(identifier);
+    if (mapped) return mapped;
+    // Try lowercase version for name matching
+    const lowerMapped = identifierToIdMap.current.get(identifier.toLowerCase());
+    if (lowerMapped) return lowerMapped;
+    // Fallback: try email match directly
+    if (identifier.includes('@')) {
+      const emailLower = identifier.toLowerCase();
+      const contact = contactsRef.current.find(c => c.primaryEmail?.toLowerCase() === emailLower);
+      if (contact) return contact.id;
+    }
+    return null;
   }, []);
 
-  const handleContactClick = useCallback((contactId: string) => {
+  const handleContactHover = useCallback((identifier: string | null) => {
+    if (!identifier) {
+      setHoveredContactId(null);
+      return;
+    }
+    const actualId = resolveContactId(identifier);
+    setHoveredContactId(actualId);
+  }, [resolveContactId]);
+
+  const handleContactClick = useCallback((identifier: string) => {
     if (highlightTimeoutRef.current) {
       clearTimeout(highlightTimeoutRef.current);
     }
-    const element = document.getElementById(`contact-card-${contactId}`);
+    const actualId = resolveContactId(identifier);
+    if (!actualId) {
+      console.warn("[Explore] Could not resolve contact identifier:", identifier);
+      return;
+    }
+    const element = document.getElementById(`contact-card-${actualId}`);
     if (element) {
       element.scrollIntoView({ behavior: "smooth", block: "center" });
-      setHoveredContactId(contactId);
+      setHoveredContactId(actualId);
       highlightTimeoutRef.current = setTimeout(() => {
         setHoveredContactId(null);
       }, 2000);
     }
-  }, []);
+  }, [resolveContactId]);
 
   const fetchContacts = async () => {
     try {

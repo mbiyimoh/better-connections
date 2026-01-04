@@ -72,7 +72,9 @@ export async function POST(request: Request) {
 User's contacts (${contacts.length} total):
 ${JSON.stringify(contactContext, null, 2)}
 
-When suggesting contacts, use their exact ID from above in the [CONTACT: {id}] format.`;
+CRITICAL: When suggesting contacts, you MUST use their exact "id" field value from the JSON above.
+Example: If a contact has "id": "cm4z5abc123", write [CONTACT: cm4z5abc123] NOT [CONTACT: their-email@example.com]
+The id field looks like "cm..." followed by random characters. Always use this exact id value.`;
 
     const result = streamText({
       model: gpt4oMini,

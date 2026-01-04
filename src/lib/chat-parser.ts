@@ -11,17 +11,22 @@ export interface ParsedContactSuggestion {
 
 /**
  * Pattern string for matching contact references in AI responses.
- * Format: [CONTACT: id] Name - Reason
- * Groups: (1) contactId, (2) name, (3) reason
+ * Format: [CONTACT: identifier] Name - Reason
+ * Groups: (1) contactIdentifier (ID or email), (2) name, (3) reason
+ *
+ * The identifier can be:
+ * - A contact ID: abc123, cm1234xyz, user-id-123
+ * - An email address: john@example.com
  *
  * @example
  * "[CONTACT: abc123] John Smith - Expert in AI"
- * Groups: ["abc123", "John Smith", "Expert in AI"]
+ * "[CONTACT: john@example.com] John Smith - Expert in AI"
+ * Groups: ["abc123" or "john@example.com", "John Smith", "Expert in AI"]
  *
  * IMPORTANT: Always create a new RegExp with 'g' flag when using this pattern
  * to avoid shared state issues between modules.
  */
-export const CONTACT_PATTERN_STRING = "\\[CONTACT:\\s*([a-zA-Z0-9_-]+)\\]\\s*([^-\\n]+)\\s*-\\s*([^\\n\\[]+)";
+export const CONTACT_PATTERN_STRING = "\\[CONTACT:\\s*([a-zA-Z0-9_.@+-]+)\\]\\s*([^-\\n]+)\\s*-\\s*([^\\n\\[]+)";
 
 /**
  * Creates a fresh regex instance for matching contact patterns.
