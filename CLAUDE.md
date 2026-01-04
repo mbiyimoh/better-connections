@@ -20,6 +20,15 @@
 - Run ALL commands proactively (npm, git, docker, prisma, etc.)
 - Handle errors autonomously; only escalate when user input truly needed
 
+**ABSOLUTE PROHIBITIONS (require EXPLICIT user approval BEFORE action):**
+- NEVER reset, change, or modify user passwords or credentials
+- NEVER delete user accounts or user data
+- NEVER modify authentication tokens or sessions
+- NEVER send emails on behalf of users
+- NEVER access or modify billing/payment information
+- NEVER make changes to third-party service configurations (Supabase, Stripe, etc.) without explicit approval
+- When investigating auth issues: DIAGNOSE and RECOMMEND, never unilaterally FIX credentials
+
 ---
 
 ## Design System (33 Strategies Brand)

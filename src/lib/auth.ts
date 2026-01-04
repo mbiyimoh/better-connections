@@ -38,8 +38,13 @@ export async function signOut() {
 export async function resetPassword(email: string) {
   const supabase = createClient();
 
+  // Use configured app URL for production, fallback to current origin for dev
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (typeof window !== 'undefined' ? window.location.origin : '');
+
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/reset-password`,
+    redirectTo: `${baseUrl}/reset-password`,
   });
 
   if (error) throw error;
