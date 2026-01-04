@@ -37,6 +37,26 @@ export function createContactPattern(): RegExp {
 }
 
 /**
+ * Validate extracted contact identifier.
+ *
+ * Rules:
+ * - Email: Must have exactly one @ with text before and after
+ * - ID: Must contain at least one alphanumeric character
+ */
+export function isValidContactIdentifier(identifier: string): boolean {
+  if (!identifier || identifier.trim() === '') return false;
+
+  // Email format - ensure single @ with content on both sides
+  if (identifier.includes('@')) {
+    const parts = identifier.split('@');
+    return parts.length === 2 && (parts[0]?.length ?? 0) > 0 && (parts[1]?.length ?? 0) > 0;
+  }
+
+  // ID format - must have at least one alphanumeric character
+  return /[a-zA-Z0-9]/.test(identifier);
+}
+
+/**
  * Extract contact suggestions from AI response text
  */
 export function parseContactSuggestions(text: string): ParsedContactSuggestion[] {
@@ -49,7 +69,8 @@ export function parseContactSuggestions(text: string): ParsedContactSuggestion[]
     const name = match[2];
     const reason = match[3];
 
-    if (contactId && name && reason) {
+    // Validate all required fields and identifier format
+    if (contactId && name && reason && isValidContactIdentifier(contactId)) {
       suggestions.push({
         contactId: contactId.trim(),
         name: name.trim(),

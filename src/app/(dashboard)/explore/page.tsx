@@ -119,13 +119,11 @@ export default function ExplorePage() {
       // Parse contact suggestions from completed response
       // Use contactsRef to avoid stale closure issue
       const suggestions = parseContactSuggestions(assistantContent);
-      console.log("[Explore] Parsed suggestions:", suggestions.length, suggestions.map(s => ({ id: s.contactId, name: s.name })));
-      console.log("[Explore] Available contacts:", contactsRef.current.length, "IDs:", contactsRef.current.slice(0, 10).map(c => c.id));
 
       if (suggestions.length > 0) {
         const newSuggested: SuggestedContact[] = [];
-        // Clear and rebuild identifier map for this response
-        identifierToIdMap.current.clear();
+        // Additive mapping: accumulate identifiers across all messages
+        // This allows chips from previous messages to still work
 
         for (const suggestion of suggestions) {
           // Try exact ID match first
@@ -140,7 +138,7 @@ export default function ExplorePage() {
               (c) => c.primaryEmail?.toLowerCase() === emailLower
             );
             if (contact) {
-              console.log("[Explore] Matched contact by email fallback:", suggestion.contactId, "->", contact.id);
+              // Email fallback match successful
             }
           }
 
@@ -152,7 +150,7 @@ export default function ExplorePage() {
               return displayName === nameLower;
             });
             if (contact) {
-              console.log("[Explore] Matched contact by name fallback:", suggestion.name, "->", contact.id);
+              // Name fallback match successful
             }
           }
 
@@ -169,11 +167,10 @@ export default function ExplorePage() {
                 dynamicWhyNow: suggestion.reason,
               });
             }
-          } else {
-            console.warn("[Explore] Contact not found for suggestion:", suggestion.contactId, suggestion.name);
           }
+          // Note: Unmatched contacts are silently skipped - this is expected when
+          // AI references contacts outside the loaded set
         }
-        console.log("[Explore] Matched contacts:", newSuggested.length, "of", suggestions.length);
         if (newSuggested.length > 0) {
           setSuggestedContacts(newSuggested);
         }
@@ -252,7 +249,7 @@ export default function ExplorePage() {
     }
     const actualId = resolveContactId(identifier);
     if (!actualId) {
-      console.warn("[Explore] Could not resolve contact identifier:", identifier);
+      // Silently ignore unresolved identifiers - expected when AI references contacts outside loaded set
       return;
     }
     const element = document.getElementById(`contact-card-${actualId}`);
