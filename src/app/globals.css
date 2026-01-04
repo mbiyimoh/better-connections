@@ -14,9 +14,10 @@
     --text-secondary: #A0A0A8;
     --text-tertiary: #606068;
 
-    --gold-primary: #C9A227;
-    --gold-light: #E5C766;
-    --gold-subtle: rgba(201, 162, 39, 0.15);
+    --gold-primary: #d4a54a;
+    --gold-light: #e5c766;
+    --gold-subtle: rgba(212, 165, 74, 0.15);
+    --gold-glow: rgba(212, 165, 74, 0.3);
 
     /* shadcn/ui CSS Variables - Dark Theme */
     --background: 240 10% 3.9%;

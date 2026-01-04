@@ -334,9 +334,14 @@ export function ContactsTable() {
 
   return (
     <div className="flex h-full flex-col p-6">
-      {/* Page Header */}
+      {/* Page Header - 33 Strategies Style */}
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-[28px] font-bold text-white">Contacts</h1>
+        <div>
+          <p className="mb-2 font-mono text-xs font-medium uppercase tracking-[0.2em] text-gold-primary">
+            01 — Your Network
+          </p>
+          <h1 className="font-display text-[28px] text-white">Contacts</h1>
+        </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>
             <Link href="/contacts/import">

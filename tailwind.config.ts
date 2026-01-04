@@ -52,21 +52,23 @@ const config: Config = {
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
         },
-        // Better Connections Design System
+        // Better Connections Design System - OLED optimized
         bg: {
-          primary: '#0D0D0F',
-          secondary: '#1A1A1F',
-          tertiary: '#252529',
+          primary: '#121212',    // OLED optimized (was #0D0D0F)
+          secondary: '#1E1E1E',  // (was #1A1A1F)
+          tertiary: '#2A2A2A',   // (was #252529)
+          glass: 'rgba(30, 30, 30, 0.85)',
         },
         text: {
-          primary: '#FFFFFF',
+          primary: '#E0E0E0',    // Reduced eye strain (was #FFFFFF)
           secondary: '#A0A0A8',
-          tertiary: '#606068',
+          tertiary: '#707078',   // Better contrast (was #606068)
         },
         gold: {
-          primary: '#C9A227',
-          light: '#E5C766',
-          subtle: 'rgba(201, 162, 39, 0.15)',
+          primary: '#d4a54a',
+          light: '#e5c766',
+          subtle: 'rgba(212, 165, 74, 0.15)',
+          glow: 'rgba(212, 165, 74, 0.3)',
         },
         category: {
           relationship: '#3B82F6',
@@ -79,7 +81,13 @@ const config: Config = {
         error: '#EF4444',
       },
       fontFamily: {
+        // 33 Strategies Font Stack
+        display: ['var(--font-display)', 'Georgia', 'serif'],
+        body: ['var(--font-body)', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        mono: ['var(--font-mono)', 'monospace'],
+        // Keep sans as fallback
         sans: [
+          'var(--font-body)',
           '-apple-system',
           'BlinkMacSystemFont',
           'Segoe UI',
@@ -102,6 +110,12 @@ const config: Config = {
         lg: '24px',
         xl: '32px',
         '2xl': '48px',
+      },
+      padding: {
+        safe: 'env(safe-area-inset-bottom)',
+      },
+      zIndex: {
+        '45': '45',
       },
       borderRadius: {
         lg: 'var(--radius)',

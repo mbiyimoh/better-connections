@@ -142,21 +142,27 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[#C9A227]" />
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-gold-primary" />
       </div>
     );
   }
 
   return (
     <div className="container max-w-3xl py-8">
-      <h1 className="text-2xl font-bold text-white mb-6">Settings</h1>
+      {/* Header - 33 Strategies Style */}
+      <div className="mb-8">
+        <p className="mb-2 font-mono text-xs font-medium uppercase tracking-[0.2em] text-gold-primary">
+          04 — Configure
+        </p>
+        <h1 className="font-display text-2xl text-white">Settings</h1>
+      </div>
 
       <div className="space-y-6">
         {/* Account Section */}
         <Card className="bg-zinc-900 border-white/10">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
-              <User size={20} className="text-[#C9A227]" />
+              <User size={20} className="text-gold-primary" />
               Account
             </CardTitle>
             <CardDescription className="text-zinc-400">
@@ -165,8 +171,8 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-3 p-4 rounded-lg bg-white/5">
-              <div className="w-12 h-12 rounded-full bg-[#C9A227]/20 flex items-center justify-center">
-                <Mail size={20} className="text-[#C9A227]" />
+              <div className="w-12 h-12 rounded-full bg-gold-subtle flex items-center justify-center">
+                <Mail size={20} className="text-gold-primary" />
               </div>
               <div>
                 <p className="text-white font-medium">
@@ -197,7 +203,7 @@ export default function SettingsPage() {
         <Card className="bg-zinc-900 border-white/10">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
-              <Shield size={20} className="text-[#C9A227]" />
+              <Shield size={20} className="text-gold-primary" />
               Data Management
             </CardTitle>
             <CardDescription className="text-zinc-400">
@@ -274,7 +280,7 @@ export default function SettingsPage() {
         <Card className="bg-zinc-900 border-white/10">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
-              <LogOut size={20} className="text-[#C9A227]" />
+              <LogOut size={20} className="text-gold-primary" />
               Session
             </CardTitle>
             <CardDescription className="text-zinc-400">

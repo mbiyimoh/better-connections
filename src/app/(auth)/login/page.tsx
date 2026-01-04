@@ -49,10 +49,14 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="rounded-xl border border-border bg-bg-secondary p-8">
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-8 backdrop-blur-sm">
+      {/* Section marker */}
+      <p className="mb-4 text-center font-mono text-xs font-medium uppercase tracking-[0.2em] text-gold-primary">
+        Sign In
+      </p>
       <div className="mb-6 text-center">
-        <h2 className="text-xl font-semibold text-white">Welcome back</h2>
-        <p className="mt-1 text-sm text-text-secondary">
+        <h2 className="font-display text-xl text-white">Welcome back</h2>
+        <p className="mt-1 font-body text-sm text-text-secondary">
           Sign in to your account to continue
         </p>
       </div>

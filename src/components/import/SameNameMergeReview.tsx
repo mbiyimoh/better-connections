@@ -269,7 +269,7 @@ export function SameNameMergeReview({
           {/* Complete Button */}
           <button
             onClick={handleComplete}
-            className="w-full px-4 py-3 bg-[#C9A227] hover:bg-[#E5C766] rounded-lg text-black font-medium transition-colors"
+            className="w-full px-4 py-3 bg-gold-primary hover:bg-gold-light rounded-lg text-black font-medium transition-colors"
           >
             {unreviewedCount > 0
               ? `Continue (${unreviewedCount} will be kept separate)`

@@ -282,7 +282,7 @@ export default function ExplorePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0D0D0F] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[#C9A227]" />
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-gold-primary" />
       </div>
     );
   }
@@ -292,13 +292,16 @@ export default function ExplorePage() {
       <div className="flex h-screen">
         {/* Chat Panel */}
         <div className="w-[45%] flex flex-col border-r border-white/[0.08]">
-          {/* Header */}
+          {/* Header - 33 Strategies Style */}
           <div className="p-4 border-b border-white/[0.08]">
-            <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-              <MessageSquare size={20} className="text-[#C9A227]" />
+            <p className="mb-2 font-mono text-xs font-medium uppercase tracking-[0.2em] text-gold-primary">
+              03 — Discover
+            </p>
+            <h2 className="font-display text-lg text-white flex items-center gap-2">
+              <MessageSquare size={20} className="text-gold-primary" />
               Explore Your Network
             </h2>
-            <p className="text-sm text-zinc-500 mt-1">
+            <p className="font-body text-sm text-zinc-500 mt-1">
               Ask questions to find the right contacts
             </p>
           </div>
@@ -382,7 +385,7 @@ export default function ExplorePage() {
             {suggestedContacts.length > 0 && (
               <p className="text-sm text-zinc-500 mt-2">
                 Showing{" "}
-                <span className="text-[#C9A227]">
+                <span className="text-gold-primary">
                   {suggestedContacts.length} suggested contacts
                 </span>{" "}
                 based on your query

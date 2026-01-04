@@ -10,10 +10,11 @@ import type { TagCategory } from "@/types/contact";
  * Primary accent color for the 33 Strategies brand.
  */
 export const BRAND_GOLD = {
-  primary: "#C9A227",
-  light: "#E5C766",
-  subtle: "rgba(201, 162, 39, 0.15)",
-  border: "rgba(201, 162, 39, 0.30)",
+  primary: "#d4a54a",
+  light: "#e5c766",
+  subtle: "rgba(212, 165, 74, 0.15)",
+  border: "rgba(212, 165, 74, 0.30)",
+  glow: "rgba(212, 165, 74, 0.3)",
 } as const;
 
 /**

@@ -27,7 +27,7 @@ export function ChatMessage({
         className={cn(
           "max-w-[80%] px-4 py-3 whitespace-pre-wrap text-sm leading-relaxed",
           isUser
-            ? "bg-[#C9A227] text-black rounded-[16px_16px_4px_16px]"
+            ? "bg-gold-primary text-black rounded-[16px_16px_4px_16px]"
             : "bg-white/10 text-white rounded-[16px_16px_16px_4px]"
         )}
       >

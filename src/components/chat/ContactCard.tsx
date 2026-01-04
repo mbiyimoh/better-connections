@@ -99,7 +99,7 @@ export function ContactCard({
       id={`contact-card-${contact.id}`}
       animate={{
         boxShadow: isHighlighted
-          ? "0 0 0 2px rgba(201, 162, 39, 0.5)"
+          ? "0 0 0 2px rgba(212, 165, 74, 0.5)"
           : "0 0 0 0px transparent",
         scale: isHighlighted ? 1.02 : 1,
       }}
@@ -114,7 +114,7 @@ export function ContactCard({
           isHovered || isExpanded
             ? "border-white/[0.12] bg-zinc-800/85"
             : "border-white/[0.08]",
-          isPinned && "ring-1 ring-[#C9A227]/50"
+          isPinned && "ring-1 ring-gold-primary/50"
         )}
       >
         <div className="p-4">
@@ -129,7 +129,7 @@ export function ContactCard({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <h3 className="font-semibold text-white truncate">{getDisplayName(contact)}</h3>
-                {isPinned && <Pin size={12} className="text-[#C9A227] shrink-0" />}
+                {isPinned && <Pin size={12} className="text-gold-primary shrink-0" />}
               </div>
               <p className="text-sm text-zinc-500 truncate">
                 {contact.title || "No title"}
@@ -146,8 +146,8 @@ export function ContactCard({
 
           {/* Why Now Section */}
           {whyNowText && (
-            <div className="mt-4 p-3 rounded-lg bg-[#C9A227]/15 border border-[#C9A227]/25">
-              <p className="text-[11px] font-semibold text-[#C9A227] uppercase tracking-wider mb-1">
+            <div className="mt-4 p-3 rounded-lg bg-gold-subtle border border-gold-primary/25">
+              <p className="text-[11px] font-semibold text-gold-primary uppercase tracking-wider mb-1">
                 Why Now
               </p>
               <p className="text-sm text-zinc-300 leading-relaxed">{whyNowText}</p>
@@ -262,7 +262,7 @@ export function ContactCard({
                 <div className="flex gap-2 pt-2">
                   <Button
                     size="sm"
-                    className="bg-[#C9A227] hover:bg-[#E5C766] text-black"
+                    className="bg-gold-primary hover:bg-gold-light text-black"
                     onClick={(e) => {
                       e.stopPropagation();
                       onDraftIntro?.(contact);

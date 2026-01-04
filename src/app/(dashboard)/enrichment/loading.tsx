@@ -9,7 +9,7 @@ export default function EnrichmentLoading() {
           <Skeleton className="h-8 w-48 bg-white/10" />
           <Skeleton className="h-4 w-64 bg-white/5" />
         </div>
-        <Skeleton className="h-10 w-40 bg-[#C9A227]/20" />
+        <Skeleton className="h-10 w-40 bg-gold-subtle" />
       </div>
 
       {/* Stats cards */}

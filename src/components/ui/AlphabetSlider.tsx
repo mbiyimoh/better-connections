@@ -72,7 +72,7 @@ export function AlphabetSlider({
           'w-6 h-6 text-xs font-medium rounded transition-colors',
           'flex items-center justify-center',
           selectedLetter === null
-            ? 'bg-[#C9A227] text-black'
+            ? 'bg-gold-primary text-black'
             : 'text-zinc-400 hover:text-white hover:bg-zinc-700'
         )}
         title="Show all"
@@ -97,7 +97,7 @@ export function AlphabetSlider({
             className={cn(
               'w-6 h-5 text-xs font-semibold rounded transition-colors',
               'flex items-center justify-center',
-              isSelected && 'bg-[#C9A227] text-black',
+              isSelected && 'bg-gold-primary text-black',
               !isSelected && isAvailable && 'text-zinc-300 hover:text-white hover:bg-zinc-700',
               !isAvailable && 'text-zinc-600 cursor-not-allowed'
             )}

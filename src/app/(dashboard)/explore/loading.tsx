@@ -48,7 +48,7 @@ export default function ExploreLoading() {
                 </div>
                 <Skeleton className="h-5 w-5 bg-white/10" />
               </div>
-              <Skeleton className="h-16 w-full bg-[#C9A227]/10" />
+              <Skeleton className="h-16 w-full bg-gold-subtle" />
             </div>
           ))}
         </div>

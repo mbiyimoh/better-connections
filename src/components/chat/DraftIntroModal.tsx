@@ -124,7 +124,7 @@ export function DraftIntroModal({ contact, isOpen, onClose }: DraftIntroModalPro
             <Button
               onClick={handleGenerate}
               disabled={loading}
-              className="w-full bg-[#C9A227] hover:bg-[#E5C766] text-black font-semibold"
+              className="w-full bg-gold-primary hover:bg-gold-light text-black font-semibold"
             >
               {loading ? (
                 <>

@@ -28,7 +28,7 @@ export function ImportSourceCard({
         w-full p-6 rounded-xl border text-left transition-all
         ${disabled
           ? 'border-zinc-800 bg-zinc-900/50 cursor-not-allowed opacity-50'
-          : 'border-zinc-700 bg-zinc-800/50 hover:border-[#C9A227]/50 hover:bg-zinc-800'
+          : 'border-zinc-700 bg-zinc-800/50 hover:border-gold-primary/50 hover:bg-zinc-800'
         }
       `}
       whileHover={disabled ? {} : { scale: 1.01 }}
@@ -36,7 +36,7 @@ export function ImportSourceCard({
     >
       <div className="flex items-start gap-4">
         <div className="p-3 rounded-lg bg-zinc-700/50">
-          <Icon className="w-6 h-6 text-[#C9A227]" />
+          <Icon className="w-6 h-6 text-gold-primary" />
         </div>
         <div className="flex-1">
           <h3 className="text-lg font-semibold text-white mb-1">{title}</h3>

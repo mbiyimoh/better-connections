@@ -51,10 +51,10 @@ export function HometownSuggestion({
         initial={{ opacity: 0, height: 0 }}
         animate={{ opacity: 1, height: 'auto' }}
         exit={{ opacity: 0, height: 0 }}
-        className="mt-2 p-3 rounded-lg bg-[#C9A227]/10 border border-[#C9A227]/30"
+        className="mt-2 p-3 rounded-lg bg-gold-subtle border border-gold-primary/30"
       >
         <div className="flex items-start gap-2">
-          <Lightbulb className="w-4 h-4 text-[#C9A227] mt-0.5 flex-shrink-0" />
+          <Lightbulb className="w-4 h-4 text-gold-primary mt-0.5 flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-sm text-zinc-300">
               Based on area code ({areaCode}), this might be:
@@ -70,7 +70,7 @@ export function HometownSuggestion({
             type="button"
             onClick={() => onAccept(suggestion)}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium
-                       bg-[#C9A227] text-black rounded-md hover:bg-[#E5C766]
+                       bg-gold-primary text-black rounded-md hover:bg-gold-light
                        transition-colors"
           >
             <Check className="w-3.5 h-3.5" />

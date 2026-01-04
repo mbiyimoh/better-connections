@@ -178,7 +178,7 @@ export function VcfImportFlow({ onComplete }: VcfImportFlowProps) {
                 border-2 border-dashed rounded-xl p-12 text-center cursor-pointer
                 transition-colors
                 ${isDragActive
-                  ? 'border-[#C9A227] bg-[#C9A227]/10'
+                  ? 'border-gold-primary bg-gold-subtle'
                   : 'border-zinc-700 hover:border-zinc-600 bg-zinc-800/30'
                 }
               `}
@@ -224,7 +224,7 @@ export function VcfImportFlow({ onComplete }: VcfImportFlowProps) {
             exit={{ opacity: 0, y: -20 }}
             className="text-center py-12"
           >
-            <Loader2 className="w-12 h-12 mx-auto mb-4 text-[#C9A227] animate-spin" />
+            <Loader2 className="w-12 h-12 mx-auto mb-4 text-gold-primary animate-spin" />
             <p className="text-lg font-medium text-white">Analyzing contacts...</p>
             <p className="text-sm text-zinc-400 mt-2">This may take a moment for large files</p>
           </motion.div>
@@ -257,7 +257,7 @@ export function VcfImportFlow({ onComplete }: VcfImportFlowProps) {
             exit={{ opacity: 0, y: -20 }}
             className="text-center py-12"
           >
-            <Loader2 className="w-12 h-12 mx-auto mb-4 text-[#C9A227] animate-spin" />
+            <Loader2 className="w-12 h-12 mx-auto mb-4 text-gold-primary animate-spin" />
             <p className="text-lg font-medium text-white">Importing contacts...</p>
             <p className="text-sm text-zinc-400 mt-2">
               Importing {newContacts.length + duplicates.length} contacts
@@ -313,7 +313,7 @@ export function VcfImportFlow({ onComplete }: VcfImportFlowProps) {
 
             <button
               onClick={onComplete}
-              className="px-6 py-3 rounded-lg bg-[#C9A227] text-black font-medium hover:bg-[#E5C766] transition-colors"
+              className="px-6 py-3 rounded-lg bg-gold-primary text-black font-medium hover:bg-gold-light transition-colors"
             >
               View Contacts
             </button>

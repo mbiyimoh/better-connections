@@ -739,7 +739,7 @@ function EnrichmentSessionContent() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0D0D0F] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[#C9A227]" />
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-gold-primary" />
       </div>
     );
   }
@@ -790,7 +790,7 @@ function EnrichmentSessionContent() {
             className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center"
             style={{
               background:
-                "linear-gradient(135deg, rgba(201,162,39,0.3), rgba(168,85,247,0.3))",
+                "linear-gradient(135deg, rgba(212,165,74,0.3), rgba(168,85,247,0.3))",
             }}
           >
             <User size={40} className="text-white/60" />
@@ -938,7 +938,7 @@ function EnrichmentSessionContent() {
               className="flex-1 bg-zinc-900 border-white/10 text-white placeholder:text-zinc-500 min-h-[80px]"
             />
             <Button
-              className="bg-[#C9A227] hover:bg-[#E5C766] text-black"
+              className="bg-gold-primary hover:bg-gold-light text-black"
               onClick={handleAddInsight}
               disabled={!inputText.trim()}
             >
@@ -952,7 +952,7 @@ function EnrichmentSessionContent() {
           <div className="flex gap-3">
             <Button
               size="lg"
-              className="flex-1 bg-[#C9A227] hover:bg-[#E5C766] text-black font-semibold"
+              className="flex-1 bg-gold-primary hover:bg-gold-light text-black font-semibold"
               onClick={handleStart}
             >
               <Sparkles size={20} />
@@ -1030,7 +1030,7 @@ export default function EnrichmentSessionPage() {
     <Suspense
       fallback={
         <div className="min-h-screen bg-[#0D0D0F] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[#C9A227]" />
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-gold-primary" />
         </div>
       }
     >

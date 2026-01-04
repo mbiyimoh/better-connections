@@ -65,15 +65,15 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="rounded-xl border border-border bg-bg-secondary p-8 text-center">
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-8 text-center backdrop-blur-sm">
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-500/20">
           <Check className="h-6 w-6 text-green-400" />
         </div>
-        <h2 className="mb-2 text-xl font-semibold text-white">Check your email</h2>
-        <p className="mb-6 text-text-secondary">
+        <h2 className="mb-2 font-display text-xl text-white">Check your email</h2>
+        <p className="mb-6 font-body text-[#888888]">
           We&apos;ve sent you a confirmation link. Please check your email to verify your account.
         </p>
-        <Button asChild variant="outline" className="w-full">
+        <Button asChild variant="outline" className="w-full border-white/10 hover:bg-white/5">
           <Link href="/login">Back to Sign In</Link>
         </Button>
       </div>
@@ -81,11 +81,15 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="rounded-xl border border-border bg-bg-secondary p-8">
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-8 backdrop-blur-sm">
+      {/* Section marker */}
+      <p className="mb-4 text-center font-mono text-xs font-medium uppercase tracking-[0.2em] text-gold-primary">
+        Create Account
+      </p>
       <div className="mb-6 text-center">
-        <h2 className="text-xl font-semibold text-white">Create an account</h2>
-        <p className="mt-1 text-sm text-text-secondary">
-          Get started with Better Connections
+        <h2 className="font-display text-xl text-white">Get started</h2>
+        <p className="mt-1 font-body text-sm text-text-secondary">
+          Begin building deeper connections
         </p>
       </div>
 

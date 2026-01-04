@@ -103,13 +103,13 @@ export function Sidebar({ user, contactCount, enrichQueueCount }: SidebarProps) 
 
   return (
     <>
-      {/* Mobile menu button */}
+      {/* Mobile menu button - 44px touch target */}
       <button
         onClick={() => setIsMobileOpen(true)}
-        className="fixed top-4 left-4 z-40 p-2 rounded-lg bg-bg-primary border border-border md:hidden"
+        className="fixed top-4 left-4 z-40 h-11 w-11 flex items-center justify-center rounded-lg bg-bg-primary border border-border md:hidden"
         aria-label="Open menu"
       >
-        <Menu className="h-5 w-5 text-white" />
+        <Menu className="h-5 w-5 text-text-primary" />
       </button>
 
       {/* Mobile overlay */}
@@ -130,18 +130,20 @@ export function Sidebar({ user, contactCount, enrichQueueCount }: SidebarProps) 
           isMobileOpen && 'fixed inset-y-0 left-0 z-50 flex w-64'
         )}
       >
-      {/* Logo */}
+      {/* Logo - 33 Strategies Style */}
       <div
         className={cn(
-          'flex items-center gap-3 border-b border-border',
+          'flex items-center gap-3 border-b border-white/10',
           isCollapsed ? 'px-3 py-5' : 'px-4 py-5'
         )}
       >
-        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-gold-primary to-gold-light text-base font-bold text-black">
-          BC
+        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-gold-primary to-gold-light font-display text-base text-black">
+          33
         </div>
         {!isCollapsed && (
-          <span className="text-[15px] font-semibold text-white">Better Connections</span>
+          <span className="font-display text-[15px] text-white">
+            Better <span className="text-gold-primary">Connections</span>
+          </span>
         )}
       </div>
 

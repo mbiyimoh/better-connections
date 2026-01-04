@@ -44,7 +44,7 @@ export function ChatInput({
       <Button
         onClick={handleSend}
         disabled={!value.trim() || disabled}
-        className="bg-[#C9A227] hover:bg-[#E5C766] text-black"
+        className="bg-gold-primary hover:bg-gold-light text-black"
       >
         <Send size={16} />
       </Button>

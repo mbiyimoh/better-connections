@@ -40,7 +40,7 @@ export function CircularTimer({
   }, [isPlaying, remainingTime, onComplete, setRemainingTime]);
 
   const isWarning = remainingTime <= 10;
-  const strokeColor = isWarning ? "#EF4444" : "#C9A227";
+  const strokeColor = isWarning ? "#EF4444" : "#d4a54a";
 
   return (
     <div className="relative w-32 h-32 flex items-center justify-center">
@@ -73,7 +73,7 @@ export function CircularTimer({
           style={{
             filter: isWarning
               ? "drop-shadow(0 0 8px rgba(239, 68, 68, 0.5))"
-              : "drop-shadow(0 0 8px rgba(201, 162, 39, 0.3))",
+              : "drop-shadow(0 0 8px rgba(212, 165, 74, 0.3))",
           }}
         />
       </svg>

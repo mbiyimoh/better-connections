@@ -157,8 +157,8 @@ function StatsCard({ stats }: { stats: EnrichmentStats }) {
             <span className="text-sm font-normal text-zinc-500">complete</span>
           </p>
         </div>
-        <div className="w-16 h-16 rounded-full bg-[#C9A227]/15 flex items-center justify-center">
-          <Sparkles size={28} className="text-[#C9A227]" />
+        <div className="w-16 h-16 rounded-full bg-gold-subtle flex items-center justify-center">
+          <Sparkles size={28} className="text-gold-primary" />
         </div>
       </div>
 
@@ -169,7 +169,7 @@ function StatsCard({ stats }: { stats: EnrichmentStats }) {
           transition={{ duration: 1, ease: "easeOut" }}
           className="h-full rounded"
           style={{
-            background: "linear-gradient(90deg, #C9A227, #E5C766)",
+            background: "linear-gradient(90deg, #d4a54a, #e5c766)",
           }}
         />
       </div>
@@ -222,7 +222,7 @@ function QueueItemCard({
             className={cn(
               "w-8 h-8 rounded-lg flex items-center justify-center text-sm font-semibold shrink-0",
               rank <= 3
-                ? "bg-[#C9A227]/15 text-[#C9A227]"
+                ? "bg-gold-subtle text-gold-primary"
                 : "bg-white/5 text-zinc-500"
             )}
           >
@@ -277,7 +277,7 @@ function QueueItemCard({
           <div className="flex flex-col gap-2 opacity-70 group-hover:opacity-100 transition-opacity">
             <Button
               size="sm"
-              className="bg-[#C9A227] hover:bg-[#E5C766] text-black font-semibold"
+              className="bg-gold-primary hover:bg-gold-light text-black font-semibold"
               onClick={onEnrich}
             >
               <Sparkles size={14} /> Enrich
@@ -352,7 +352,7 @@ function FilterTabs({
           className={cn(
             "px-4 py-2 rounded-lg text-[13px] font-medium cursor-pointer transition-all whitespace-nowrap flex items-center gap-1.5",
             activeFilter === filter.id
-              ? "bg-[#C9A227] text-black"
+              ? "bg-gold-primary text-black"
               : "bg-white/5 text-zinc-400 hover:bg-white/10"
           )}
         >
@@ -491,7 +491,7 @@ export default function EnrichmentQueuePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0D0D0F] flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[#C9A227]" />
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-gold-primary" />
       </div>
     );
   }
@@ -499,19 +499,22 @@ export default function EnrichmentQueuePage() {
   return (
     <div className="min-h-screen bg-[#0D0D0F]">
       <div className="max-w-3xl mx-auto p-6">
-        {/* Header */}
+        {/* Header - 33 Strategies Style */}
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-[28px] font-bold text-white mb-1">
+            <p className="mb-2 font-mono text-xs font-medium uppercase tracking-[0.2em] text-gold-primary">
+              02 — Build Depth
+            </p>
+            <h1 className="font-display text-[28px] text-white mb-1">
               Enrichment Queue
             </h1>
-            <p className="text-[15px] text-zinc-400">
+            <p className="font-body text-[15px] text-zinc-400">
               {stats?.needsEnrichment || 0} contacts need your attention
             </p>
           </div>
           <Button
             size="lg"
-            className="bg-[#C9A227] hover:bg-[#E5C766] text-black font-semibold"
+            className="bg-gold-primary hover:bg-gold-light text-black font-semibold"
             onClick={handleStartSession}
             disabled={queue.length === 0}
           >
@@ -555,7 +558,7 @@ export default function EnrichmentQueuePage() {
               <p className="text-zinc-400 mb-2">No contacts match &quot;{searchQuery}&quot;</p>
               <button
                 onClick={() => setSearchQuery('')}
-                className="text-[#C9A227] hover:text-[#E5C766] text-sm"
+                className="text-gold-primary hover:text-gold-light text-sm"
               >
                 Clear search
               </button>

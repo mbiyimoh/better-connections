@@ -240,7 +240,7 @@ export function ImportMergeReview({
                 <p className="text-zinc-500">This contact will be skipped</p>
                 <button
                   onClick={undoSkip}
-                  className="mt-2 text-sm text-[#C9A227] hover:underline"
+                  className="mt-2 text-sm text-gold-primary hover:underline"
                 >
                   Undo skip
                 </button>
@@ -266,7 +266,7 @@ export function ImportMergeReview({
                                 name={`${current.existing.id}-${conflict.field}`}
                                 checked={decision?.choice === 'keep'}
                                 onChange={() => updateFieldDecision(conflict.field, 'keep')}
-                                className="w-4 h-4 accent-[#C9A227]"
+                                className="w-4 h-4 accent-gold-primary"
                               />
                               <span className="text-sm text-white truncate max-w-xs">
                                 Keep: &quot;{conflict.existingValue}&quot;
@@ -279,7 +279,7 @@ export function ImportMergeReview({
                                 name={`${current.existing.id}-${conflict.field}`}
                                 checked={decision?.choice === 'use_new'}
                                 onChange={() => updateFieldDecision(conflict.field, 'use_new')}
-                                className="w-4 h-4 accent-[#C9A227]"
+                                className="w-4 h-4 accent-gold-primary"
                               />
                               <span className="text-sm text-green-400 truncate max-w-xs">
                                 Use: &quot;{conflict.incomingValue}&quot;
@@ -348,7 +348,7 @@ export function ImportMergeReview({
             </button>
             <button
               onClick={handleConfirm}
-              className="px-6 py-2 rounded-lg bg-[#C9A227] text-black font-medium hover:bg-[#E5C766] transition-colors"
+              className="px-6 py-2 rounded-lg bg-gold-primary text-black font-medium hover:bg-gold-light transition-colors"
             >
               Apply & Import
             </button>

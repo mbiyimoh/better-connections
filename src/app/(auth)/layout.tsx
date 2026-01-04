@@ -18,16 +18,25 @@ export default async function AuthLayout({
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg-primary p-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0a0a0f] p-4">
+      {/* Atmospheric background glow */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div
+          className="absolute left-1/2 top-1/4 h-[400px] w-[400px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[100px]"
+          style={{ background: 'rgba(212, 165, 74, 0.08)' }}
+        />
+      </div>
+
+      <div className="relative z-10 w-full max-w-md">
+        {/* Logo - 33 Strategies style */}
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-gold-primary to-gold-light text-xl font-bold text-black">
-            BC
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-gold-primary to-gold-light font-display text-xl text-black">
+            33
           </div>
-          <h1 className="text-2xl font-bold text-white">Better Connections</h1>
-          <p className="mt-1 text-sm text-text-secondary">
-            Your contacts are flat. Give them some depth.
+          <h1 className="font-display text-2xl text-white">Better Connections</h1>
+          <p className="mt-2 font-body text-sm text-text-secondary">
+            Your contacts are flat.{' '}
+            <span className="text-gold-primary">Give them some depth.</span>
           </p>
         </div>
         {children}
