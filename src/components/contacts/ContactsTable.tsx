@@ -522,21 +522,16 @@ export function ContactsTable() {
             </p>
             {!searchQuery && activeFilters === 0 && (
               <div className="flex flex-col items-center gap-4 w-full max-w-md">
-                {/* Primary Import Options */}
-                <div className="flex flex-col sm:flex-row gap-3 w-full">
-                  <Button asChild size="lg" className="flex-1 bg-gold-primary hover:bg-gold-light text-black">
-                    <Link href="/contacts/import">
-                      <Upload className="mr-2 h-5 w-5" />
-                      Import from iCloud
-                    </Link>
-                  </Button>
-                  <Button asChild size="lg" className="flex-1 bg-gold-primary hover:bg-gold-light text-black">
-                    <Link href="/contacts/import">
-                      <Upload className="mr-2 h-5 w-5" />
-                      Import CSV
-                    </Link>
-                  </Button>
-                </div>
+                {/* Primary Import Button */}
+                <Button asChild size="lg" className="bg-gold-primary hover:bg-gold-light text-black px-8">
+                  <Link href="/contacts/import">
+                    <Upload className="mr-2 h-5 w-5" />
+                    Import Contacts
+                  </Link>
+                </Button>
+                <p className="text-sm text-text-tertiary">
+                  Supports iCloud (.vcf) and Google Contacts (.csv)
+                </p>
                 {/* Secondary Manual Add */}
                 <Button asChild variant="ghost" size="sm" className="text-text-secondary hover:text-text-primary">
                   <Link href="/contacts/new">
