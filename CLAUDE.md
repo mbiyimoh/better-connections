@@ -50,9 +50,9 @@ const colors = {
     tertiary: '#606068',
   },
   gold: {
-    primary: '#C9A227',    // Primary accent
-    light: '#E5C766',      // Hover states
-    subtle: 'rgba(201, 162, 39, 0.15)', // Backgrounds
+    primary: '#d4a54a',    // Primary accent
+    light: '#e5c766',      // Hover states
+    subtle: 'rgba(212, 165, 74, 0.15)', // Backgrounds
   },
   category: {
     relationship: '#3B82F6', // Blue
@@ -93,7 +93,7 @@ Cards:    16px
 
 ### Key Patterns
 - **Dark theme is mandatory** - matches 33 Strategies brand
-- **Gold accent (#C9A227)** - Primary brand color throughout
+- **Gold accent (#d4a54a)** - Primary brand color throughout
 - **Glassmorphism** - Use backdrop-blur with rgba backgrounds for elevated surfaces
 - **No emojis in UI** - Use Lucide React icons instead
 - **Framer Motion** - All animations use Framer Motion
@@ -103,7 +103,7 @@ Cards:    16px
 ## Key Design Decisions (Non-Negotiable for V1)
 
 1. **Dark theme** — Not negotiable for V1, matches 33 Strategies brand
-2. **Gold accent** (#C9A227) — Primary brand color throughout
+2. **Gold accent** (#d4a54a) — Primary brand color throughout
 3. **"Why Now" as core differentiator** — Most weighted field in enrichment score (20 points)
 4. **Four tag categories** — relationship, opportunity, expertise, interest (color-coded)
 5. **4-level relationship strength** — Weak, Casual, Good, Strong (visual dots)
@@ -138,6 +138,8 @@ Cards:    16px
 - **Split Panels:** react-resizable-panels
 - **Countdown Timer:** react-countdown-circle-timer (for enrichment flow)
 - **VCF Parsing:** vcard4-ts (TypeScript-first vCard 3.0/4.0 parser)
+- **Mobile Virtualization:** react-window v2.2.3 (NOTE: v2 API differs from v1)
+- **Debounced Hooks:** use-debounce (for scroll handlers)
 
 ---
 
@@ -409,7 +411,7 @@ const ranks = [
   { min: 0, max: 25, name: 'Getting Started', color: '#A0A0A8' },
   { min: 26, max: 50, name: 'Building Depth', color: '#3B82F6' },
   { min: 51, max: 75, name: 'Well Connected', color: '#A855F7' },
-  { min: 76, max: 100, name: 'Fully Enriched', color: '#C9A227' }
+  { min: 76, max: 100, name: 'Fully Enriched', color: '#d4a54a' }
 ];
 ```
 
@@ -417,6 +419,68 @@ const ranks = [
 - Rank up: Triumph sound
 - Score increase: Success chime
 - Streaks: Achievement unlock
+
+---
+
+### Onboarding Story Slides Pattern
+
+**What it does:** Instagram-style story slides for first-time user onboarding. Communicates the core value proposition ("describe what you need → right people appear instantly") with animated demos.
+
+**Key files:**
+- `src/app/(dashboard)/onboarding/page.tsx` - Full-screen onboarding route
+- `src/components/onboarding/StoryOnboarding.tsx` - Main container with auto-advance timer and tap navigation
+- `src/components/onboarding/StoryProgressBar.tsx` - 6-segment progress bar with gold fill
+- `src/components/onboarding/slides/SlideLayout.tsx` - Reusable visual/headline/subline layout
+- `src/components/onboarding/slides/Slide3MagicMoment.tsx` - Animated typewriter + contact cards (THE MONEY SHOT)
+- `src/components/onboarding/slides/Slide5EnrichmentPreview.tsx` - Animated timer + bubbles demo
+- `src/app/api/user/complete-onboarding/route.ts` - POST endpoint to mark completion
+
+**Database:**
+```prisma
+model User {
+  hasCompletedOnboarding  Boolean   @default(false)
+}
+```
+
+**Flow:**
+1. New user logs in → `layout.tsx` checks `hasCompletedOnboarding`
+2. If false → redirect to `/onboarding`
+3. 6 slides auto-advance (~6.6s each), pause on final CTA
+4. Tap right → advance, tap left → go back
+5. CTA button calls API → sets flag true → redirects to `/contacts/new`
+
+**Integration points:**
+- `src/app/(dashboard)/layout.tsx` - Checks onboarding status, redirects if needed
+- `src/lib/supabase/middleware.ts` - Adds `x-pathname` header for server components
+- Onboarding page renders WITHOUT AppShell (full-screen experience)
+
+**Animation patterns used:**
+```typescript
+// Typewriter effect (Slide 3)
+const typeInterval = setInterval(() => {
+  setTypedText(QUERY.slice(0, charIndex + 1));
+  charIndex++;
+}, 25); // ~2s for full query
+
+// Spring animations for contact cards
+transition={{ type: "spring", stiffness: 400, damping: 25 }}
+
+// Staggered bubble appearance (Slide 5)
+setTimeout(() => setVisibleBubbles(1), 1500);
+setTimeout(() => setVisibleBubbles(2), 2500);
+setTimeout(() => setVisibleBubbles(3), 3500);
+```
+
+**Gotchas:**
+- Use `x-pathname` header (set in middleware) to detect current route in server components
+- Onboarding route must be in protected paths array in middleware
+- CTA button needs `e.stopPropagation()` to prevent tap navigation interference
+- Default `hasCompletedOnboarding` to `true` in error cases to avoid redirect loops
+
+**Extending this:**
+- To add new slides: Create component in `slides/`, add to `StoryOnboarding.tsx` switch
+- To adjust timing: Modify `prev + 1.5` in setInterval (1.5 = ~6.6s per slide)
+- To change slide count: Update `TOTAL_SLIDES` constant
 
 ---
 
@@ -519,6 +583,253 @@ npx playwright test --ui                        # Interactive mode
 - To create test data: Use factories or inline test objects
 - To debug: Use `--headed` flag to see browser
 - To skip cleanup: Manually save test file outside `.quick-checks/`
+
+---
+
+### Mobile Viewport UX Pattern
+
+**What it does:** Mobile-first responsive design for viewports under 768px, replacing desktop table view with touch-optimized contact cards, bottom navigation, swipe gestures, and progressive disclosure.
+
+**Key files:**
+- `src/hooks/useMediaQuery.ts` - SSR-safe media query hook with undefined initial state
+- `src/components/layout/BottomNav.tsx` - Fixed bottom navigation with safe area support
+- `src/components/contacts/ContactCard.tsx` - Expandable contact card with progressive disclosure
+- `src/components/contacts/ContactCardList.tsx` - Virtualized list with expansion state management
+- `src/components/contacts/ContactsView.tsx` - Viewport-aware switcher (mobile cards vs desktop table)
+- `src/components/ui/SwipeableCard.tsx` - Native Touch API swipe gesture wrapper
+- `src/components/ui/PullToRefresh.tsx` - Pull-to-refresh gesture with resistance feel
+- `src/components/ui/FAB.tsx` - Floating action button with scroll-aware visibility
+- `src/components/ui/FilterDrawer.tsx` - Bottom sheet drawer component
+
+**Dependencies:**
+- `react-window` v2.2.3 - Virtualized list rendering (NOTE: v2 has different API than v1)
+- `use-debounce` - Debounced scroll handling for FAB
+- `framer-motion` - Animations (expand/collapse, scroll transitions)
+
+**Critical Gotchas:**
+
+1. **react-window v2 API Differences**
+   ```typescript
+   // WRONG - v1 API (FixedSizeList class doesn't exist in v2)
+   import { FixedSizeList } from 'react-window';
+   <FixedSizeList />
+
+   // CORRECT - v2 API (List function with generic typing)
+   import { List, type ListImperativeAPI } from 'react-window';
+
+   <List<ContactRowProps>
+     listRef={listRef}
+     rowComponent={ContactRow}
+     rowProps={{ contacts, expandedId, onExpand }}
+     rowHeight={CARD_HEIGHT + CARD_GAP}
+   />
+   ```
+
+2. **Touch Event Null Safety**
+   ```typescript
+   // WRONG - TypeScript error: Object is possibly undefined
+   const x = e.touches[0].clientX;
+
+   // CORRECT - Check for undefined touch
+   const touch = e.touches[0];
+   if (!touch) return;
+   const x = touch.clientX;
+   ```
+
+3. **SSR-Safe Media Queries**
+   ```typescript
+   // useMediaQuery returns undefined during SSR/initial hydration
+   const isMobile = useMediaQuery();
+
+   // MUST handle undefined state to avoid hydration mismatch
+   if (isMobile === undefined) {
+     return <Skeleton />; // Show skeleton during hydration
+   }
+
+   return isMobile ? <MobileView /> : <DesktopView />;
+   ```
+
+4. **Tag Category Enum Values**
+   ```typescript
+   // WRONG - Lowercase values don't match TagCategory type
+   tag.category === 'relationship'  // Type error!
+
+   // CORRECT - Use uppercase enum values
+   tag.category === 'RELATIONSHIP'  // RELATIONSHIP | OPPORTUNITY | EXPERTISE | INTEREST
+   ```
+
+5. **Fixed Row Heights in Virtualized Lists**
+   - react-window v2 uses fixed row heights for performance
+   - Expanded cards can exceed allocated height (clipping issue)
+   - Solution: Constrain expanded content maxHeight to fit within row height
+   ```typescript
+   // Collapsed card: 100px + 12px gap = 112px per row
+   // Expanded card: Limited to 200px maxHeight to avoid clipping
+   <motion.div
+     animate={{ maxHeight: isExpanded ? 200 : 0 }}
+     className="overflow-hidden"
+   >
+   ```
+
+**Integration Pattern:**
+```typescript
+// 1. Create viewport-aware view switcher
+export function ContactsView() {
+  const isMobile = useMediaQuery(); // Returns undefined during SSR
+
+  if (isMobile === undefined) {
+    return <Skeleton />; // Prevent hydration mismatch
+  }
+
+  if (isMobile) {
+    return (
+      <>
+        <ContactCardList contacts={contacts} />
+        <FAB onClick={() => router.push('/contacts/new')} />
+      </>
+    );
+  }
+
+  return <ContactsTable />;
+}
+
+// 2. Wrap card in SwipeableCard for gestures
+<SwipeableCard
+  onSwipeRight={handleEnrich}
+  disabled={isExpanded}  // Disable swipe when expanded
+>
+  <ContactCard
+    contact={contact}
+    isExpanded={isExpanded}
+    onExpand={handleToggle}
+  />
+</SwipeableCard>
+```
+
+**Mobile-Specific Tailwind Utilities:**
+```javascript
+// tailwind.config.ts additions
+padding: {
+  safe: 'env(safe-area-inset-bottom)',  // iPhone notch support
+},
+zIndex: {
+  '45': '45',  // Between FAB (40) and modals (50)
+},
+colors: {
+  'bg-oled': '#121212',  // OLED-optimized blacks
+}
+```
+
+**Touch Target Requirements:**
+- Minimum 44px × 44px for all interactive elements
+- Icon buttons: `className="h-11 w-11 md:h-10 md:w-10"` (44px on mobile)
+- Hamburger menu: Fixed to 44px minimum
+- Card tap area: Entire card surface
+
+**Accessibility:**
+```typescript
+// Cards support both tap and keyboard navigation
+<div
+  role="button"
+  tabIndex={0}
+  onClick={handleTap}
+  onKeyDown={(e) => {
+    if (e.key === 'Enter' || e.key === ' ') {  // Space key too
+      e.preventDefault();
+      handleTap();
+    }
+  }}
+  aria-expanded={isExpanded}
+  aria-label={`${name}. ${isExpanded ? 'Collapse' : 'Expand'} for details`}
+>
+```
+
+**Performance Optimizations:**
+- `React.memo` on ContactCard to prevent unnecessary re-renders
+- `useCallback` for event handlers to maintain referential equality
+- Virtualization limits DOM nodes (only renders visible cards + overscan)
+- Debounced scroll handler for FAB visibility (100ms delay)
+
+**Extending this:**
+- To add swipe gestures to other components: Wrap with `<SwipeableCard />`
+- To change expanded content height: Update `maxHeight` in ContactCard animation
+- To customize FAB position: Modify `bottom-20` class (accounts for BottomNav height)
+- To add haptic feedback: Use `navigator.vibrate()` in swipe handlers
+
+**Related Documentation:**
+- Spec: `specs/mobile-viewport-ux-audit/02-spec.md`
+- Tasks: `specs/mobile-viewport-ux-audit/03-tasks.md`
+- Implementation: `specs/mobile-viewport-ux-audit/04-implementation.md`
+
+---
+
+### Design System Color Standardization
+
+**What it does:** Ensures consistent use of the 33 Strategies brand gold color (#d4a54a) across all UI components through Tailwind utility classes and design system constants.
+
+**Key files:**
+- `tailwind.config.ts` - Gold color definitions (gold-primary, gold-light, gold-subtle, gold-glow)
+- `src/lib/design-system.ts` - BRAND_GOLD constants for JS usage
+- `src/app/globals.css` - CSS custom properties (--gold-primary, --gold-light, etc.)
+
+**Color System:**
+```typescript
+// Tailwind classes (preferred)
+text-gold-primary      // #d4a54a
+bg-gold-primary        // #d4a54a
+border-gold-primary    // #d4a54a
+hover:bg-gold-light    // #e5c766
+bg-gold-subtle         // rgba(212, 165, 74, 0.15)
+
+// JS constants (for inline styles)
+import { BRAND_GOLD } from '@/lib/design-system';
+BRAND_GOLD.primary     // "#d4a54a"
+BRAND_GOLD.light       // "#e5c766"
+BRAND_GOLD.subtle      // "rgba(212, 165, 74, 0.15)"
+BRAND_GOLD.glow        // "rgba(212, 165, 74, 0.3)"
+```
+
+**Integration pattern:**
+```typescript
+// CORRECT - Use Tailwind classes
+<Button className="bg-gold-primary hover:bg-gold-light text-black">
+
+// CORRECT - Use design system constants for inline styles
+<div style={{ background: BRAND_GOLD.glow }}>
+
+// WRONG - Hardcoded hex values
+<Button className="bg-[#d4a54a]">  // Avoid, use gold-primary instead
+```
+
+**Critical Gotchas:**
+
+1. **Inline gradients need hex values** - Tailwind classes don't work in `style` props:
+   ```typescript
+   // For gradients, use hex directly or extract to design system
+   style={{
+     background: "linear-gradient(90deg, #d4a54a, #e5c766)"
+   }}
+   ```
+
+2. **SVG stroke/fill colors** - Use hex values directly for SVG attributes:
+   ```typescript
+   <svg>
+     <circle stroke="#d4a54a" fill="rgba(212, 165, 74, 0.15)" />
+   </svg>
+   ```
+
+3. **Search for old color references** - When updating colors:
+   ```bash
+   # Find all hardcoded old gold color references
+   grep -r "#C9A227\|rgba(201.*162.*39" src/
+   ```
+
+**Extending this:**
+- New gold variants: Add to `tailwind.config.ts` theme.extend.colors.gold
+- Gradient utilities: Add to `tailwind.config.ts` theme.extend.backgroundImage
+- Other color families: Follow same pattern (category colors, success/error states)
+
+**Location:** Design system defined in `tailwind.config.ts:43-48`, `src/lib/design-system.ts:1-8`, `src/app/globals.css:17-21`
 
 ---
 
@@ -833,6 +1144,6 @@ They use Framer Motion for animations and Lucide React for icons.
 **Project:** Better Connections (Personal CRM)
 **Stack:** Next.js 14 + Supabase PostgreSQL + Prisma + OpenAI GPT-4o-mini + shadcn/ui
 **Auth:** Supabase Auth (email/password)
-**Design:** Dark theme, gold accents (#C9A227), glassmorphism
+**Design:** Dark theme, gold accents (#d4a54a), glassmorphism
 **Core Feature:** "Why Now" contextual relevance for contacts
-**Last Updated:** 2026-01-03
+**Last Updated:** 2026-01-04
