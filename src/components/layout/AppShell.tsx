@@ -1,6 +1,7 @@
 'use client';
 
 import { Sidebar } from './Sidebar';
+import { BottomNav } from './BottomNav';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -20,7 +21,11 @@ export function AppShell({ children, user, contactCount, enrichQueueCount }: App
         contactCount={contactCount}
         enrichQueueCount={enrichQueueCount}
       />
-      <main className="flex-1 overflow-auto">{children}</main>
+      {/* Add bottom padding on mobile for bottom nav (64px + safe area) */}
+      <main className="flex-1 overflow-auto pb-20 md:pb-0">{children}</main>
+
+      {/* Bottom nav - mobile only (hidden on md: and above) */}
+      <BottomNav />
     </div>
   );
 }
