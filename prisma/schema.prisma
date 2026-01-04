@@ -9,14 +9,17 @@ datasource db {
 }
 
 model User {
-  id                    String    @id @default(uuid())
-  email                 String    @unique
-  name                  String
+  id                      String    @id @default(uuid())
+  email                   String    @unique
+  name                    String
+
+  // Onboarding
+  hasCompletedOnboarding  Boolean   @default(false)
 
   // Preferences
-  emailNotifications    Boolean   @default(true)
-  weeklyDigest          Boolean   @default(true)
-  enrichmentReminders   Boolean   @default(false)
+  emailNotifications      Boolean   @default(true)
+  weeklyDigest            Boolean   @default(true)
+  enrichmentReminders     Boolean   @default(false)
 
   // Metadata
   createdAt             DateTime  @default(now())

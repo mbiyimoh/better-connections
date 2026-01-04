@@ -2,9 +2,13 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function updateSession(request: NextRequest) {
+  // Clone headers and add pathname for server components
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-pathname', request.nextUrl.pathname);
+
   let response = NextResponse.next({
     request: {
-      headers: request.headers,
+      headers: requestHeaders,
     },
   });
 
@@ -19,14 +23,14 @@ export async function updateSession(request: NextRequest) {
         set(name: string, value: string, options: CookieOptions) {
           request.cookies.set({ name, value, ...options });
           response = NextResponse.next({
-            request: { headers: request.headers },
+            request: { headers: requestHeaders },
           });
           response.cookies.set({ name, value, ...options });
         },
         remove(name: string, options: CookieOptions) {
           request.cookies.set({ name, value: '', ...options });
           response = NextResponse.next({
-            request: { headers: request.headers },
+            request: { headers: requestHeaders },
           });
           response.cookies.set({ name, value: '', ...options });
         },
@@ -39,7 +43,7 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // Protected routes - redirect to login if not authenticated
-  const protectedPaths = ['/contacts', '/enrich', '/explore', '/settings'];
+  const protectedPaths = ['/contacts', '/enrich', '/explore', '/settings', '/onboarding'];
   const isProtectedPath = protectedPaths.some((path) =>
     request.nextUrl.pathname.startsWith(path)
   );
