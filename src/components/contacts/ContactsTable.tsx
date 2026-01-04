@@ -510,21 +510,41 @@ export function ContactsTable() {
             ))}
           </div>
         ) : contacts.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center py-16">
-            <Users className="mb-4 h-12 w-12 text-text-tertiary opacity-30" />
-            <p className="mb-1 text-base font-medium text-text-secondary">
-              {searchQuery || activeFilters > 0 ? 'No results found' : 'No contacts yet'}
+          <div className="flex flex-1 flex-col items-center justify-center py-16 px-4">
+            <Users className="mb-4 h-16 w-16 text-text-tertiary opacity-30" />
+            <p className="mb-2 text-xl font-semibold text-text-primary">
+              {searchQuery || activeFilters > 0 ? 'No results found' : 'Welcome to Better Connections'}
             </p>
-            <p className="mb-6 text-sm text-text-tertiary">
-              {searchQuery || activeFilters > 0 ? 'Try adjusting your search or filters' : 'Add your first contact to get started'}
+            <p className="mb-8 text-base text-text-secondary text-center max-w-md">
+              {searchQuery || activeFilters > 0
+                ? 'Try adjusting your search or filters'
+                : 'Import your existing contacts to get started, or add them one by one.'}
             </p>
             {!searchQuery && activeFilters === 0 && (
-              <Button asChild>
-                <Link href="/contacts/new">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Contact
-                </Link>
-              </Button>
+              <div className="flex flex-col items-center gap-4 w-full max-w-md">
+                {/* Primary Import Options */}
+                <div className="flex flex-col sm:flex-row gap-3 w-full">
+                  <Button asChild size="lg" className="flex-1 bg-gold-primary hover:bg-gold-light text-black">
+                    <Link href="/contacts/import">
+                      <Upload className="mr-2 h-5 w-5" />
+                      Import from iCloud
+                    </Link>
+                  </Button>
+                  <Button asChild size="lg" className="flex-1 bg-gold-primary hover:bg-gold-light text-black">
+                    <Link href="/contacts/import">
+                      <Upload className="mr-2 h-5 w-5" />
+                      Import CSV
+                    </Link>
+                  </Button>
+                </div>
+                {/* Secondary Manual Add */}
+                <Button asChild variant="ghost" size="sm" className="text-text-secondary hover:text-text-primary">
+                  <Link href="/contacts/new">
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    Or add a contact manually
+                  </Link>
+                </Button>
+              </div>
             )}
           </div>
         ) : (

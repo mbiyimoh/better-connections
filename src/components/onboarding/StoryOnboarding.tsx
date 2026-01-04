@@ -19,7 +19,7 @@ export function StoryOnboarding() {
 
   const handleComplete = useCallback(async () => {
     await fetch("/api/user/complete-onboarding", { method: "POST" });
-    router.push("/contacts/new");
+    router.push("/contacts");
   }, [router]);
 
   // Auto-advance timer

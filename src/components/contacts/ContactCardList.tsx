@@ -6,7 +6,9 @@ import { List, type ListImperativeAPI } from 'react-window';
 import { ContactCard } from './ContactCard';
 import { PullToRefresh } from '@/components/ui/PullToRefresh';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Users } from 'lucide-react';
+import { Users, Upload, Plus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import type { Contact } from '@/types/contact';
 
 const CARD_HEIGHT = 100;
@@ -86,13 +88,27 @@ export function ContactCardList({
   if (contacts.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4">
-        <Users className="h-12 w-12 text-text-tertiary opacity-30 mb-4" />
-        <p className="text-base font-medium text-text-secondary mb-1">
-          No contacts yet
+        <Users className="h-16 w-16 text-text-tertiary opacity-30 mb-4" />
+        <p className="text-xl font-semibold text-text-primary mb-2">
+          Welcome to Better Connections
         </p>
-        <p className="text-sm text-text-tertiary text-center">
-          Add your first contact to get started
+        <p className="text-base text-text-secondary text-center mb-8 max-w-xs">
+          Import your existing contacts to get started.
         </p>
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+          <Button asChild size="lg" className="w-full bg-gold-primary hover:bg-gold-light text-black">
+            <Link href="/contacts/import">
+              <Upload className="mr-2 h-5 w-5" />
+              Import Contacts
+            </Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm" className="text-text-secondary hover:text-text-primary">
+            <Link href="/contacts/new">
+              <Plus className="mr-1.5 h-4 w-4" />
+              Or add manually
+            </Link>
+          </Button>
+        </div>
       </div>
     );
   }

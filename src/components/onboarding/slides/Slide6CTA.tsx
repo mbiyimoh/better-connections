@@ -28,10 +28,10 @@ export function Slide6CTA({ onComplete }: Slide6CTAProps) {
         onClick={handleClick}
         className="bg-gold-primary hover:bg-gold-light text-black font-semibold px-8 py-6 text-lg"
       >
-        Add Your First Contact
+        Get Started
       </Button>
       <p className="text-sm text-text-tertiary mt-4">
-        Import existing contacts, or start fresh.
+        Import your contacts or add them manually.
       </p>
     </SlideLayout>
   );
