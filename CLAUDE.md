@@ -422,6 +422,143 @@ const ranks = [
 
 ---
 
+### Chat Contact Reference Pattern (Explore Feature)
+
+**What it does:** Parses AI responses for contact references in `[CONTACT: identifier] Name - Reason` format, renders them as interactive chips in the chat, and syncs matched contacts to the right panel.
+
+**Key files:**
+- `src/lib/chat-parser.ts` - Regex pattern, parsing, and validation utilities
+- `src/components/chat/MessageContent.tsx` - Renders AI response with embedded ContactChip components
+- `src/components/chat/ContactChip.tsx` - Interactive button-style chip for contact mentions
+- `src/app/(dashboard)/explore/page.tsx` - Main orchestration: parsing, matching, identifier resolution
+- `src/app/api/chat/explore/route.ts` - GPT-4o-mini streaming with contact context
+
+**Data Flow:**
+```
+User query → GPT-4o-mini (with contacts JSON) → AI response with [CONTACT: id/email] tags
+     ↓
+parseContactSuggestions() → Extract identifier, name, reason
+     ↓
+3-tier fallback matching: ID → email → name
+     ↓
+identifierToIdMap populated → Enables chip hover/click → Panel shows matched contacts
+```
+
+**Identifier Matching Strategy:**
+
+GPT doesn't always use the exact contact ID - sometimes it outputs emails or other identifiers. The system uses a 3-tier fallback:
+
+```typescript
+// 1. Exact ID match (most reliable)
+let contact = contacts.find(c => c.id === suggestion.contactId);
+
+// 2. Email fallback (if identifier contains @)
+if (!contact && suggestion.contactId.includes('@')) {
+  contact = contacts.find(c =>
+    c.primaryEmail?.toLowerCase() === suggestion.contactId.toLowerCase()
+  );
+}
+
+// 3. Name fallback (case-insensitive)
+if (!contact) {
+  const nameLower = suggestion.name.trim().toLowerCase();
+  contact = contacts.find(c => {
+    const displayName = `${c.firstName}${c.lastName ? ' ' + c.lastName : ''}`.toLowerCase();
+    return displayName === nameLower;
+  });
+}
+
+// Store mapping for chip interactions
+if (contact) {
+  identifierToIdMap.current.set(suggestion.contactId, contact.id);
+  identifierToIdMap.current.set(suggestion.name.toLowerCase(), contact.id);
+}
+```
+
+**Regex Pattern:**
+```typescript
+// Matches: [CONTACT: identifier] Name - Reason
+// Groups: (1) identifier (ID or email), (2) name, (3) reason
+const CONTACT_PATTERN = /\[CONTACT:\s*([a-zA-Z0-9_.@+-]+)\]\s*([^-\n]+)\s*-\s*([^\n\[]+)/g;
+
+// Character class includes: a-zA-Z0-9_.@+- (to support emails)
+```
+
+**Critical Gotchas:**
+
+1. **Regex Global Flag State**
+   ```typescript
+   // WRONG - Shared regex with 'g' flag has stateful lastIndex
+   const pattern = /\[CONTACT:/g;
+   parse(text1);  // Sets lastIndex
+   parse(text2);  // Starts from lastIndex, misses matches!
+
+   // CORRECT - Create fresh instance per parse
+   function createContactPattern(): RegExp {
+     return new RegExp(CONTACT_PATTERN_STRING, "g");
+   }
+   ```
+
+2. **Identifier Map Race Condition**
+   ```typescript
+   // WRONG - Clearing map breaks chips from previous messages
+   identifierToIdMap.current.clear();  // User hovers old chip → fails!
+
+   // CORRECT - Additive mapping (accumulate across messages)
+   // Don't clear, just add new mappings
+   identifierToIdMap.current.set(suggestion.contactId, contact.id);
+   ```
+
+3. **System Prompt Enforcement**
+   ```typescript
+   // GPT often ignores soft instructions - be EXPLICIT
+   const systemPrompt = `...
+   CRITICAL: When suggesting contacts, you MUST use their exact "id" field value.
+   Example: If a contact has "id": "cm4z5abc123", write [CONTACT: cm4z5abc123]
+   NOT [CONTACT: their-email@example.com]
+   The id field looks like "cm..." followed by random characters.`;
+   ```
+
+4. **Identifier Validation**
+   ```typescript
+   // Prevent malformed identifiers from breaking UI
+   function isValidContactIdentifier(identifier: string): boolean {
+     if (!identifier || identifier.trim() === '') return false;
+
+     // Email: single @ with content on both sides
+     if (identifier.includes('@')) {
+       const parts = identifier.split('@');
+       return parts.length === 2 && parts[0]?.length > 0 && parts[1]?.length > 0;
+     }
+
+     // ID: must have at least one alphanumeric
+     return /[a-zA-Z0-9]/.test(identifier);
+   }
+   ```
+
+**Panel Update Behavior:**
+- Panel shows suggested contacts when `suggestedContacts.length > 0`
+- Falls back to search results if `searchQuery` is set
+- Otherwise shows top 10 contacts by enrichment score
+- Each AI response replaces `suggestedContacts` (not additive)
+
+**Chip Interactions:**
+- **Hover:** Highlights corresponding card in right panel with golden glow
+- **Click:** Scrolls panel to card, highlights for 2 seconds
+- **Identifier Resolution:** Uses `identifierToIdMap` to convert parsed identifier to actual contact ID
+
+**Extending this:**
+- To add new identifier types: Update regex character class `[a-zA-Z0-9_.@+-]`
+- To change matching priority: Reorder the fallback chain in explore page
+- To persist mappings across sessions: Move `identifierToIdMap` to localStorage
+- To add fuzzy matching: Integrate Levenshtein distance for name matching
+
+**Related Files:**
+- Spec: `specs/chat-contact-reference-ux/02-spec-lean.md`
+- Tasks: `specs/chat-contact-reference-ux/03-tasks.md`
+
+---
+
 ### Onboarding Story Slides Pattern
 
 **What it does:** Instagram-style story slides for first-time user onboarding. Communicates the core value proposition ("describe what you need → right people appear instantly") with animated demos.
@@ -1146,4 +1283,4 @@ They use Framer Motion for animations and Lucide React for icons.
 **Auth:** Supabase Auth (email/password)
 **Design:** Dark theme, gold accents (#d4a54a), glassmorphism
 **Core Feature:** "Why Now" contextual relevance for contacts
-**Last Updated:** 2026-01-04
+**Last Updated:** 2026-01-04 (Added Chat Contact Reference Pattern)
