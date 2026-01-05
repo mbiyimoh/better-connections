@@ -30,12 +30,19 @@ import { CompletionCelebration } from "@/components/enrichment/completion";
 import { getDisplayName } from "@/types/contact";
 import type { EnrichmentInsight } from "@/lib/schemas/enrichmentInsight";
 import type { MentionMatch } from "@/lib/schemas/mentionExtraction";
+import type { TagCategory } from "@/types/contact";
 
 // Persist listening state across HMR to prevent mic toggling on every code change
 let persistedListeningState = false;
 if (typeof window !== "undefined") {
   // @ts-expect-error - HMR state persistence
   persistedListeningState = window.__SPEECH_LISTENING__ || false;
+}
+
+interface ContactTag {
+  id: string;
+  text: string;
+  category: TagCategory;
 }
 
 interface Contact {
@@ -46,6 +53,7 @@ interface Contact {
   title: string | null;
   company: string | null;
   enrichmentScore: number;
+  tags?: ContactTag[];
 }
 
 interface EnrichmentData {

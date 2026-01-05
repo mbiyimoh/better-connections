@@ -9,16 +9,25 @@ import { RankCelebration } from "./RankCelebration";
 import { StreakBadge } from "./StreakBadge";
 import { CompletionSummary } from "./CompletionSummary";
 import { MentionedPeopleSection } from "./MentionedPeopleSection";
+import { BubbleTagSuggestions } from "./BubbleTagSuggestions";
 import { useCelebrationSounds } from "./sounds/useCelebrationSounds";
 import type { EnrichmentBubble } from "@/components/enrichment/EnrichmentBubbles";
 import type { MentionMatch } from "@/lib/schemas/mentionExtraction";
+import type { TagCategory } from "@/types/contact";
 import { getDisplayName } from "@/types/contact";
+
+interface ExistingTag {
+  id: string;
+  text: string;
+  category: TagCategory;
+}
 
 interface Contact {
   id: string;
   firstName: string;
   lastName: string | null;
   enrichmentScore: number;
+  tags?: ExistingTag[];
 }
 
 interface CompletionData {
@@ -200,6 +209,24 @@ export function CompletionCelebration({
                 className="mb-6"
               >
                 <CompletionSummary bubbles={bubbles} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Bubble-to-Tag Suggestions */}
+          <AnimatePresence>
+            {showSummary && bubbles.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="mb-6"
+              >
+                <BubbleTagSuggestions
+                  contactId={contact.id}
+                  bubbles={bubbles}
+                  existingTags={contact.tags || []}
+                />
               </motion.div>
             )}
           </AnimatePresence>

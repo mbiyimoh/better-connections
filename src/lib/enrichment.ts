@@ -160,3 +160,59 @@ export function getEnrichmentReason(
 
   return 'Could use more context';
 }
+
+/**
+ * Field suggestion for improving enrichment score
+ */
+export interface FieldSuggestion {
+  field: keyof EnrichmentScoreInput;
+  label: string;
+  points: number;
+}
+
+/**
+ * Get suggestions for missing fields that would improve the contact's enrichment score.
+ * Returns top 3 missing fields sorted by point value (highest first).
+ */
+export function getMissingFieldSuggestions(contact: EnrichmentScoreInput): FieldSuggestion[] {
+  const suggestions: FieldSuggestion[] = [];
+
+  // Check each field and add suggestion if missing
+  // Sorted by point value descending to prioritize high-value fields
+  if (!contact.whyNow) {
+    suggestions.push({ field: 'whyNow', label: 'Why Now', points: 20 });
+  }
+  if (!contact.howWeMet) {
+    suggestions.push({ field: 'howWeMet', label: 'How We Met', points: 15 });
+  }
+  if (!contact.title) {
+    suggestions.push({ field: 'title', label: 'Job Title', points: 10 });
+  }
+  if (!contact.company) {
+    suggestions.push({ field: 'company', label: 'Company', points: 10 });
+  }
+  if (!contact.primaryEmail) {
+    suggestions.push({ field: 'primaryEmail', label: 'Email', points: 8 });
+  }
+  if (!contact.firstName) {
+    suggestions.push({ field: 'firstName', label: 'First Name', points: 7 });
+  }
+  if (!contact.location) {
+    suggestions.push({ field: 'location', label: 'Location', points: 5 });
+  }
+  if (!contact.linkedinUrl) {
+    suggestions.push({ field: 'linkedinUrl', label: 'LinkedIn', points: 5 });
+  }
+  if (!contact.notes) {
+    suggestions.push({ field: 'notes', label: 'Notes', points: 5 });
+  }
+  if (!contact.primaryPhone) {
+    suggestions.push({ field: 'primaryPhone', label: 'Phone', points: 4 });
+  }
+  if (!contact.lastName) {
+    suggestions.push({ field: 'lastName', label: 'Last Name', points: 3 });
+  }
+
+  // Sort by points descending and return top 3
+  return suggestions.sort((a, b) => b.points - a.points).slice(0, 3);
+}

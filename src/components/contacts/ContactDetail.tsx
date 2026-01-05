@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -33,8 +33,10 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import type { Contact, TagCategory } from '@/types/contact';
+import type { Contact } from '@/types/contact';
 import { getDisplayName, getInitials as getContactInitials, getAvatarColor } from '@/types/contact';
+import { EnrichmentScoreCard } from './EnrichmentScoreCard';
+import { TagsSection } from './TagsSection';
 
 function formatDate(dateString: string | null): string {
   if (!dateString) return 'Not set';
@@ -44,13 +46,6 @@ function formatDate(dateString: string | null): string {
     year: 'numeric',
   });
 }
-
-const categoryColors: Record<TagCategory, { bg: string; text: string; dot: string }> = {
-  RELATIONSHIP: { bg: 'bg-blue-500/20', text: 'text-blue-400', dot: 'bg-blue-400' },
-  OPPORTUNITY: { bg: 'bg-green-500/20', text: 'text-green-400', dot: 'bg-green-400' },
-  EXPERTISE: { bg: 'bg-purple-500/20', text: 'text-purple-400', dot: 'bg-purple-400' },
-  INTEREST: { bg: 'bg-amber-500/20', text: 'text-amber-400', dot: 'bg-amber-400' },
-};
 
 const strengthLabels = ['', 'Weak', 'Casual', 'Good', 'Strong'];
 
@@ -69,6 +64,11 @@ export function ContactDetail({ contact }: ContactDetailProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Refresh contact data after tag changes
+  const handleTagAdded = useCallback(() => {
+    router.refresh();
+  }, [router]);
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this contact?')) return;
@@ -125,24 +125,6 @@ export function ContactDetail({ contact }: ContactDetailProps) {
                   {contact.company}
                 </p>
               )}
-              <div className="mt-3 flex flex-wrap gap-2">
-                {contact.tags.map((tag) => {
-                  const colors = categoryColors[tag.category];
-                  return (
-                    <span
-                      key={tag.id}
-                      className={cn(
-                        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
-                        colors.bg,
-                        colors.text
-                      )}
-                    >
-                      <span className={cn('h-1.5 w-1.5 rounded-full', colors.dot)} />
-                      {tag.text}
-                    </span>
-                  );
-                })}
-              </div>
             </div>
           </div>
           <div className="flex gap-2">
@@ -184,6 +166,16 @@ export function ContactDetail({ contact }: ContactDetailProps) {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
+        </div>
+
+        {/* Enrichment Score Card */}
+        <div className="mb-6">
+          <EnrichmentScoreCard contact={contact} />
+        </div>
+
+        {/* Tags Section */}
+        <div className="mb-6">
+          <TagsSection contact={contact} onTagAdded={handleTagAdded} />
         </div>
 
         {/* Why Now - Key Section */}
@@ -311,18 +303,6 @@ export function ContactDetail({ contact }: ContactDetailProps) {
                 <div className="flex items-center gap-2 text-text-secondary">
                   <Calendar className="h-4 w-4" />
                   {formatDate(contact.lastContactDate)}
-                </div>
-              </div>
-              <div>
-                <p className="mb-1 text-sm text-text-tertiary">Enrichment Score</p>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
-                    <div
-                      className="h-full rounded-full bg-gold-primary"
-                      style={{ width: `${contact.enrichmentScore}%` }}
-                    />
-                  </div>
-                  <span className="text-sm text-text-secondary">{contact.enrichmentScore}%</span>
                 </div>
               </div>
             </div>

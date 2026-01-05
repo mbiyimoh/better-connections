@@ -397,6 +397,7 @@ getAreaCodeInfo('+1-415-555-1234')   → {
 - `src/components/enrichment/completion/CompletionCelebration.tsx` - Main celebration
 - `src/components/enrichment/completion/RankCelebration.tsx` - Rank-up animations
 - `src/components/enrichment/completion/useCelebrationSounds.ts` - Sound effects
+- `src/components/enrichment/completion/BubbleTagSuggestions.tsx` - Convert bubbles to tags
 - `src/app/api/enrichment/completion-data/route.ts` - Score calculation
 
 **Integration points:**
@@ -404,6 +405,7 @@ getAreaCodeInfo('+1-415-555-1234')   → {
 - Compares before/after enrichment scores
 - Shows rank promotions (0-25, 26-50, 51-75, 76-100)
 - Plays sound effects (optional, user-controlled)
+- Offers bubble-to-tag conversion via `BubbleTagSuggestions`
 
 **Rank Thresholds:**
 ```typescript
@@ -419,6 +421,152 @@ const ranks = [
 - Rank up: Triumph sound
 - Score increase: Success chime
 - Streaks: Achievement unlock
+
+**Bubble to Tag Conversion (Enrichment Completion Flow):**
+
+After enrichment session completes, AI-generated insight bubbles can be converted to permanent tags. This appears in the `CompletionCelebration` modal, NOT on the contact details page:
+
+```typescript
+// BubbleTagSuggestions receives enrichment bubbles
+<BubbleTagSuggestions
+  contactId={contact.id}
+  bubbles={bubbles}              // From enrichment extraction
+  existingTags={contact.tags}   // Filter out duplicates
+  onTagsAdded={() => router.refresh()}
+/>
+```
+
+**Category Conversion (case matters!):**
+```typescript
+// Bubbles use lowercase: 'relationship' | 'opportunity' | 'expertise' | 'interest'
+// Tags use UPPERCASE: 'RELATIONSHIP' | 'OPPORTUNITY' | 'EXPERTISE' | 'INTEREST'
+function bubbleCategoryToTagCategory(category: string): TagCategory {
+  return category.toUpperCase() as TagCategory;
+}
+```
+
+---
+
+### Contact Details Gamification & AI Tag Suggestions
+
+**What it does:** Displays enrichment score with ranking, missing field suggestions, and AI-powered tag recommendations directly on the contact details page.
+
+**Key files:**
+- `src/components/contacts/EnrichmentScoreCard.tsx` - Score display with ranking badge
+- `src/components/contacts/TagsSection.tsx` - Tags display with AI suggestion button
+- `src/components/contacts/ContactDetail.tsx` - Integrates score card and tags section
+- `src/app/api/contacts/[id]/ranking/route.ts` - Contact ranking endpoint
+- `src/app/api/contacts/[id]/suggest-tags/route.ts` - AI tag suggestion endpoint
+- `src/lib/enrichment.ts` - `getMissingFieldSuggestions()` function
+
+**Enrichment Score Card Features:**
+- Color-coded score circle (red <25, orange <50, amber <75, green 76+)
+- Ranking badge ("#3 of 47 contacts")
+- Top 3 missing field suggestions with point values
+- "Enrich Now" button linking to enrichment session
+
+**Integration pattern:**
+```typescript
+// In ContactDetail.tsx
+<EnrichmentScoreCard contact={contact} />
+<TagsSection contact={contact} onTagAdded={handleTagAdded} />
+```
+
+**Ranking API:**
+```typescript
+// GET /api/contacts/[id]/ranking
+// Returns: { currentRank: number, totalContacts: number }
+
+const contacts = await prisma.contact.findMany({
+  where: { userId: user.id },
+  select: { id: true, enrichmentScore: true },
+  orderBy: { enrichmentScore: 'desc' },
+});
+const contactIndex = contacts.findIndex((c) => c.id === id);
+const currentRank = contactIndex + 1;
+```
+
+**AI Tag Suggestions:**
+
+Uses GPT-4o-mini with existing `TAG_SUGGESTION_SYSTEM_PROMPT` from `lib/openai.ts`:
+
+```typescript
+// POST /api/contacts/[id]/suggest-tags
+const result = await generateObject({
+  model: gpt4oMini,
+  system: TAG_SUGGESTION_SYSTEM_PROMPT,
+  prompt: `Contact Information:\n${contactContext}`,
+  schema: tagSuggestionSchema,
+});
+```
+
+**Context Threshold (Quality Gate):**
+```typescript
+// Require substantial context for quality suggestions
+const hasSubstantialContext =
+  contextParts.length >= 3 ||  // At least 3 fields filled
+  contact.whyNow ||            // OR high-value "Why Now" field
+  contact.notes ||             // OR has notes
+  (contact.expertise && contact.interests);  // OR both expertise AND interests
+
+if (!hasSubstantialContext) {
+  return NextResponse.json({
+    suggestions: [],
+    message: 'Add more context (Why Now, Notes, or Expertise) to get better tag suggestions',
+  });
+}
+```
+
+**Missing Field Suggestions:**
+```typescript
+// lib/enrichment.ts - getMissingFieldSuggestions()
+// Returns top 3 missing fields sorted by point value
+
+interface FieldSuggestion {
+  field: keyof EnrichmentScoreInput;
+  label: string;
+  points: number;  // How much adding this field improves score
+}
+
+// Example output for sparse contact:
+[
+  { field: 'whyNow', label: 'Why Now', points: 20 },
+  { field: 'howWeMet', label: 'How We Met', points: 15 },
+  { field: 'title', label: 'Job Title', points: 10 }
+]
+```
+
+**CRITICAL: Use Design System for Tag Colors:**
+```typescript
+// CORRECT - Import from centralized design system
+import { TAG_CATEGORY_COLORS } from '@/lib/design-system';
+const colors = TAG_CATEGORY_COLORS[tag.category];
+
+// WRONG - Duplicated local object (causes drift)
+const categoryColors = { RELATIONSHIP: {...}, ... };  // DON'T DO THIS
+```
+
+**UI Behavior:**
+- Score card updates automatically when contact is edited
+- Ranking refreshes on component mount via client-side fetch
+- Missing field suggestions link to enrichment session
+- AI suggestions load on-demand (button click) to save API costs
+- Loading states show skeleton/spinner for async operations
+- Perfect score message shows when score >= 75 AND no missing fields
+
+**Gotchas:**
+- Ranking calculation fetches ALL user contacts (O(n) query) - consider caching for 500+ contacts
+- AI suggestions require substantial context - sparse contacts won't get suggestions
+- TagCategory uses UPPERCASE enums (`'RELATIONSHIP'`) while BubbleCategory uses lowercase (`'relationship'`)
+- The `onTagAdded` callback should call `router.refresh()` to update the contact data
+
+**Extending this:**
+- To customize field priorities: Update point values in `getMissingFieldSuggestions()`
+- To add new suggestion criteria: Modify context threshold in `suggest-tags/route.ts`
+- To change score thresholds: Update `getScoreColor()` in `EnrichmentScoreCard.tsx`
+- To cache rankings: Implement Redis/in-memory cache keyed by userId
+
+**Location:** `src/lib/design-system.ts:24-52`, `src/lib/enrichment.ts:177-218`
 
 ---
 
