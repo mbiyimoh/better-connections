@@ -155,10 +155,35 @@ export function VcfImportFlow({ onComplete }: VcfImportFlowProps) {
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: { 'text/vcard': ['.vcf'] },
+    // Accept multiple MIME types that browsers may report for .vcf files
+    // Different OS/browsers report different MIME types:
+    // - text/vcard (standard)
+    // - text/x-vcard (common on macOS)
+    // - text/directory (older vCard format)
+    // - application/octet-stream (Windows fallback)
+    accept: {
+      'text/vcard': ['.vcf'],
+      'text/x-vcard': ['.vcf'],
+      'text/directory': ['.vcf'],
+      'application/octet-stream': ['.vcf'],
+    },
     maxFiles: 1,
     maxSize: 10 * 1024 * 1024, // 10MB
     disabled: step !== 'upload',
+    onDropRejected: (fileRejections) => {
+      const rejection = fileRejections[0];
+      const errorCode = rejection?.errors[0]?.code;
+
+      if (errorCode === 'file-invalid-type') {
+        setError('Please upload a .vcf file. The file you selected may not be a valid vCard file.');
+      } else if (errorCode === 'file-too-large') {
+        setError('File is too large. Maximum size is 10MB.');
+      } else if (errorCode === 'too-many-files') {
+        setError('Please upload only one file at a time.');
+      } else {
+        setError('Unable to upload file. Please try again.');
+      }
+    },
   });
 
   return (
