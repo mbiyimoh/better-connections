@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { AppShell } from '@/components/layout';
 import { prisma } from '@/lib/db';
+import { FeedbackButton } from '@/components/feedback/FeedbackButton';
 
 export default async function DashboardLayout({
   children,
@@ -75,6 +76,7 @@ export default async function DashboardLayout({
       enrichQueueCount={enrichQueueCount}
     >
       {children}
+      <FeedbackButton />
     </AppShell>
   );
 }

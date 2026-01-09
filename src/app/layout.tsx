@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Instrument_Serif, DM_Sans, JetBrains_Mono } from 'next/font/google';
 import { Toaster } from '@/components/ui/toaster';
+import { Toaster as SonnerToaster } from 'sonner';
 import './globals.css';
 
 // 33 Strategies Font Stack
@@ -49,6 +50,17 @@ export default function RootLayout({
       <body className="bg-bg-primary font-body text-text-primary antialiased">
         {children}
         <Toaster />
+        <SonnerToaster
+          theme="dark"
+          position="bottom-right"
+          toastOptions={{
+            style: {
+              background: '#1A1A1F',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: '#FFFFFF',
+            },
+          }}
+        />
       </body>
     </html>
   );

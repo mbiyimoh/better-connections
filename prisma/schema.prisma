@@ -9,95 +9,65 @@ datasource db {
 }
 
 model User {
-  id                      String    @id @default(uuid())
-  email                   String    @unique
-  name                    String
-
-  // Onboarding
-  hasCompletedOnboarding  Boolean   @default(false)
-
-  // Preferences
-  emailNotifications      Boolean   @default(true)
-  weeklyDigest            Boolean   @default(true)
-  enrichmentReminders     Boolean   @default(false)
-
-  // Metadata
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-  lastLoginAt           DateTime?
-
-  // Relations
-  contacts              Contact[]
-  enrichmentStreaks     EnrichmentStreak[]
-  contactRelationships  ContactRelationship[]
-  contactMentions       ContactMention[]
+  id                     String                @id @default(uuid())
+  email                  String                @unique
+  name                   String
+  emailNotifications     Boolean               @default(true)
+  weeklyDigest           Boolean               @default(true)
+  enrichmentReminders    Boolean               @default(false)
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  lastLoginAt            DateTime?
+  hasCompletedOnboarding Boolean               @default(false)
+  role                   UserRole              @default(USER)
+  contacts               Contact[]
+  contactMentions        ContactMention[]
+  contactRelationships   ContactRelationship[]
+  enrichmentStreaks      EnrichmentStreak[]
+  feedbackSubmissions    Feedback[]
+  feedbackVotes          FeedbackVote[]
 }
 
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model Contact {
-  id                    String    @id @default(uuid())
-  userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Name fields
-  firstName             String    @default("")
-  lastName              String?
-
-  // Email fields
-  primaryEmail          String?
-  secondaryEmail        String?
-
-  // Phone fields
-  primaryPhone          String?
-  secondaryPhone        String?
-
-  // Basic Info
-  title                 String?
-  company               String?
-  linkedinUrl           String?
-  websiteUrl            String?   // Portfolio, blog, or company profile page
-
-  // Address fields (Google-style breakdown)
-  streetAddress         String?
-  city                  String?
-  state                 String?
-  zipCode               String?
-  country               String?
-  location              String?   // Legacy: formatted location or city fallback
-
-  // Referral
-  referredBy            String?   // Who introduced/connected you to this person
-
-  // Relationship Context
-  howWeMet              String?   @db.Text
-  relationshipStrength  Int       @default(1) // 1=Weak, 2=Casual, 3=Good, 4=Strong
-  lastContactDate       DateTime?
-  relationshipHistory   String?   @db.Text
-
-  // Why Now (Key Differentiator)
-  whyNow                String?   @db.Text
-
-  // Profile
-  expertise             String?   @db.Text
-  interests             String?   @db.Text
-  notes                 String?   @db.Text
-
-  // Metadata
-  enrichmentScore       Int       @default(0) // 0-100
-  source                ContactSource @default(MANUAL)
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-  lastEnrichedAt        DateTime?
-
-  // Relations
-  tags                  Tag[]
-
-  // Relationships (bidirectional)
-  relationshipsA        ContactRelationship[] @relation("RelationshipA")
-  relationshipsB        ContactRelationship[] @relation("RelationshipB")
-
-  // Mentions
-  mentionsAsSource      ContactMention[] @relation("MentionSource")
-  mentionsAsTarget      ContactMention[] @relation("MentionTarget")
+  id                   String                @id @default(uuid())
+  userId               String
+  title                String?
+  company              String?
+  location             String?
+  linkedinUrl          String?
+  howWeMet             String?
+  relationshipStrength Int                   @default(1)
+  lastContactDate      DateTime?
+  relationshipHistory  String?
+  whyNow               String?
+  expertise            String?
+  interests            String?
+  notes                String?
+  enrichmentScore      Int                   @default(0)
+  source               ContactSource         @default(MANUAL)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  lastEnrichedAt       DateTime?
+  firstName            String                @default("")
+  lastName             String?
+  primaryEmail         String?
+  primaryPhone         String?
+  secondaryEmail       String?
+  secondaryPhone       String?
+  city                 String?
+  country              String?
+  referredBy           String?
+  state                String?
+  streetAddress        String?
+  websiteUrl           String?
+  zipCode              String?
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mentionsAsTarget     ContactMention[]      @relation("MentionTarget")
+  mentionsAsSource     ContactMention[]      @relation("MentionSource")
+  relationshipsA       ContactRelationship[] @relation("RelationshipA")
+  relationshipsB       ContactRelationship[] @relation("RelationshipB")
+  tags                 Tag[]
 
   @@index([userId])
   @@index([firstName])
@@ -109,11 +79,123 @@ model Contact {
 model Tag {
   id        String      @id @default(uuid())
   contactId String
-  contact   Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
   text      String
   category  TagCategory
+  contact   Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
   @@index([contactId])
+}
+
+model EnrichmentStreak {
+  id               String   @id @default(uuid())
+  userId           String
+  weekStart        DateTime
+  contactsEnriched Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, weekStart])
+  @@index([userId])
+}
+
+model ContactRelationship {
+  id            String             @id @default(uuid())
+  userId        String
+  contactAId    String
+  contactBId    String
+  sourceType    RelationshipSource @default(ENRICHMENT_MENTION)
+  sourceContext String?
+  createdAt     DateTime           @default(now())
+  contactA      Contact            @relation("RelationshipA", fields: [contactAId], references: [id], onDelete: Cascade)
+  contactB      Contact            @relation("RelationshipB", fields: [contactBId], references: [id], onDelete: Cascade)
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([contactAId, contactBId])
+  @@index([userId])
+  @@index([contactAId])
+  @@index([contactBId])
+}
+
+model ContactMention {
+  id                 String        @id @default(uuid())
+  userId             String
+  sourceContactId    String
+  mentionedContactId String?
+  mentionedName      String
+  normalizedName     String
+  extractedContext   String
+  inferredFields     Json?
+  matchConfidence    Float         @default(0)
+  matchType          MatchType?
+  status             MentionStatus @default(PENDING)
+  createdAt          DateTime      @default(now())
+  processedAt        DateTime?
+  mentionedContact   Contact?      @relation("MentionTarget", fields: [mentionedContactId], references: [id])
+  sourceContact      Contact       @relation("MentionSource", fields: [sourceContactId], references: [id], onDelete: Cascade)
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sourceContactId])
+  @@index([status])
+}
+
+model Feedback {
+  id          String               @id @default(cuid())
+  userId      String
+  title       String               @db.VarChar(200)
+  description String
+  area        FeedbackArea
+  type        FeedbackType
+  status      FeedbackStatus       @default(OPEN)
+  upvoteCount Int                  @default(0)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attachments FeedbackAttachment[]
+  votes       FeedbackVote[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([area])
+  @@index([type])
+  @@index([createdAt])
+  @@index([upvoteCount])
+}
+
+model FeedbackVote {
+  id         String   @id @default(cuid())
+  feedbackId String
+  userId     String?
+  visitorId  String?
+  createdAt  DateTime @default(now())
+  feedback   Feedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([feedbackId, userId])
+  @@unique([feedbackId, visitorId])
+  @@index([feedbackId])
+  @@index([userId])
+}
+
+model FeedbackAttachment {
+  id         String    @id @default(cuid())
+  feedbackId String?
+  fileName   String
+  fileSize   Int
+  mimeType   String
+  url        String
+  createdAt  DateTime  @default(now())
+  uploadedBy String
+  feedback   Feedback? @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  @@index([feedbackId])
+  @@index([uploadedBy])
+}
+
+enum UserRole {
+  USER
+  SYSTEM_ADMIN
 }
 
 enum ContactSource {
@@ -132,101 +214,47 @@ enum TagCategory {
   INTEREST
 }
 
-model EnrichmentStreak {
-  id                String    @id @default(uuid())
-  userId            String
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  weekStart         DateTime  // Monday 00:00:00 UTC of the streak week
-  contactsEnriched  Int       @default(0)
-
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-
-  @@unique([userId, weekStart])
-  @@index([userId])
-}
-
-// ============================================
-// Contact Relationships & Mentions
-// ============================================
-
-// Bidirectional relationship between contacts
-model ContactRelationship {
-  id             String   @id @default(uuid())
-  userId         String
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Both contacts in the relationship (order doesn't matter - bidirectional)
-  contactAId     String
-  contactA       Contact  @relation("RelationshipA", fields: [contactAId], references: [id], onDelete: Cascade)
-
-  contactBId     String
-  contactB       Contact  @relation("RelationshipB", fields: [contactBId], references: [id], onDelete: Cascade)
-
-  // How this relationship was discovered
-  sourceType     RelationshipSource @default(ENRICHMENT_MENTION)
-  sourceContext  String?  @db.Text  // What was said that established this link
-
-  createdAt      DateTime @default(now())
-
-  @@unique([contactAId, contactBId])
-  @@index([userId])
-  @@index([contactAId])
-  @@index([contactBId])
-}
-
 enum RelationshipSource {
   ENRICHMENT_MENTION
   MANUAL
   IMPORT
 }
 
-// Pending mentions awaiting user action
-model ContactMention {
-  id                 String        @id @default(uuid())
-  userId             String
-  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  // Contact being enriched when mention was detected
-  sourceContactId    String
-  sourceContact      Contact       @relation("MentionSource", fields: [sourceContactId], references: [id], onDelete: Cascade)
-
-  // Matched contact (null until linked or created)
-  mentionedContactId String?
-  mentionedContact   Contact?      @relation("MentionTarget", fields: [mentionedContactId], references: [id], onDelete: SetNull)
-
-  // Extraction data
-  mentionedName      String        // Original name as spoken
-  normalizedName     String        // Cleaned version for matching
-  extractedContext   String        @db.Text  // What was said about them
-  inferredFields     Json?         // { title?, company?, expertise? }
-
-  // Matching data
-  matchConfidence    Float         @default(0)  // 0-1
-  matchType          MatchType?    // EXACT, FUZZY, PHONETIC, NONE
-
-  // Workflow state
-  status             MentionStatus @default(PENDING)
-
-  createdAt          DateTime      @default(now())
-  processedAt        DateTime?
-
-  @@index([userId])
-  @@index([sourceContactId])
-  @@index([status])
-}
-
 enum MentionStatus {
-  PENDING    // Awaiting user action
-  LINKED     // User confirmed link to existing contact
-  CREATED    // User created new contact
-  DISMISSED  // User dismissed
+  PENDING
+  LINKED
+  CREATED
+  DISMISSED
 }
 
 enum MatchType {
-  EXACT      // firstName + lastName exact match
-  FUZZY      // pg_trgm similarity match
-  PHONETIC   // Reserved: Metaphone phonetic match (not yet implemented)
-  NONE       // No match found
+  EXACT
+  FUZZY
+  PHONETIC
+  NONE
+}
+
+enum FeedbackArea {
+  CONTACTS
+  ENRICHMENT
+  EXPLORE
+  IMPORT_EXPORT
+  MOBILE
+  OTHER
+}
+
+enum FeedbackType {
+  BUG
+  ENHANCEMENT
+  IDEA
+  QUESTION
+}
+
+enum FeedbackStatus {
+  OPEN
+  IN_REVIEW
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CLOSED
 }
