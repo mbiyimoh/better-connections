@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { StoryProgressBar } from "./StoryProgressBar";
+import { DotIndicator } from "./DotIndicator";
 import { Slide1PainPoint } from "./slides/Slide1PainPoint";
 import { Slide2Frustration } from "./slides/Slide2Frustration";
 import { Slide3MagicMoment } from "./slides/Slide3MagicMoment";
@@ -15,51 +15,25 @@ const TOTAL_SLIDES = 6;
 export function StoryOnboarding() {
   const router = useRouter();
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [progress, setProgress] = useState(0);
 
   const handleComplete = useCallback(async () => {
     await fetch("/api/user/complete-onboarding", { method: "POST" });
     router.push("/contacts");
   }, [router]);
 
-  // Auto-advance timer
-  useEffect(() => {
-    // Pause on final slide
-    if (currentSlide === TOTAL_SLIDES - 1) return;
-
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          if (currentSlide < TOTAL_SLIDES - 1) {
-            setCurrentSlide(c => c + 1);
-            return 0;
-          }
-          return 100;
-        }
-        return prev + 1.5; // ~6.6 seconds per slide
-      });
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [currentSlide]);
-
-  // Tap navigation
+  // Tap navigation (click-to-advance)
   const handleTap = (e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
 
     if (x > rect.width / 2) {
-      // Right tap → next
+      // Right tap → next slide
       if (currentSlide < TOTAL_SLIDES - 1) {
         setCurrentSlide(c => c + 1);
-        setProgress(0);
-      } else {
-        handleComplete();
       }
     } else if (currentSlide > 0) {
-      // Left tap → previous
+      // Left tap → previous slide
       setCurrentSlide(c => c - 1);
-      setProgress(0);
     }
   };
 
@@ -68,11 +42,17 @@ export function StoryOnboarding() {
       className="relative w-full h-full flex items-center justify-center cursor-pointer"
       onClick={handleTap}
     >
-      <StoryProgressBar
-        totalSlides={TOTAL_SLIDES}
-        currentSlide={currentSlide}
-        progress={progress}
-      />
+      {/* Dot indicator at top */}
+      <div className="absolute top-8 left-0 right-0 z-10">
+        <DotIndicator currentSlide={currentSlide} totalSlides={TOTAL_SLIDES} />
+      </div>
+
+      {/* Tap hint on first slide */}
+      {currentSlide === 0 && (
+        <p className="absolute bottom-8 left-0 right-0 text-center text-text-tertiary text-sm animate-pulse z-10">
+          Tap anywhere to continue →
+        </p>
+      )}
 
       {/* Render current slide */}
       {currentSlide === 0 && <Slide1PainPoint />}

@@ -2,8 +2,28 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { X, ChevronLeft, ChevronRight, Info, Zap } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Info, Zap, ChevronDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 import type { DuplicateAnalysis, DuplicateResolution } from '@/lib/vcf-import-types';
+
+type BulkAction = 'skip' | 'merge' | 'replace-empty' | 'replace-all';
 
 // Re-export for consumers
 export type { DuplicateResolution } from '@/lib/vcf-import-types';
@@ -35,7 +55,9 @@ export function ImportMergeReview({
   onConfirm,
   onCancel,
 }: ImportMergeReviewProps) {
+  const { toast } = useToast();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [showReplaceAllConfirm, setShowReplaceAllConfirm] = useState(false);
   const [resolutions, setResolutions] = useState<Map<string, DuplicateResolution>>(
     () => {
       // Initialize all resolutions with default "keep existing"
@@ -154,6 +176,59 @@ export function ImportMergeReview({
     });
   };
 
+  const applyBulkAction = (action: BulkAction) => {
+    const newResolutions = new Map(resolutions);
+
+    duplicates.forEach((dup) => {
+      const resolution: DuplicateResolution = {
+        existingContactId: dup.existing.id,
+        incoming: dup.incoming,
+        action: action === 'skip' ? 'skip' : 'merge',
+        fieldDecisions: [],
+      };
+
+      if (action === 'skip') {
+        // No field decisions needed
+      } else if (action === 'merge') {
+        // Smart merge: keep existing, fill empty with incoming
+        resolution.fieldDecisions = dup.conflicts.map((c) => ({
+          field: c.field,
+          choice: 'keep' as const, // Keep existing, but empty fields get auto-filled
+        }));
+      } else if (action === 'replace-empty') {
+        // Replace only empty fields
+        resolution.fieldDecisions = dup.conflicts.map((c) => ({
+          field: c.field,
+          choice: c.existingValue ? ('keep' as const) : ('use_new' as const),
+        }));
+      } else if (action === 'replace-all') {
+        // Replace all fields with incoming
+        resolution.fieldDecisions = dup.conflicts.map((c) => ({
+          field: c.field,
+          choice: 'use_new' as const,
+        }));
+      }
+
+      newResolutions.set(dup.existing.id, resolution);
+    });
+
+    setResolutions(newResolutions);
+    setShowReplaceAllConfirm(false);
+
+    // Show confirmation toast
+    const actionDescriptions: Record<BulkAction, string> = {
+      skip: 'All duplicates will be skipped',
+      merge: 'All duplicates will be smart merged',
+      'replace-empty': 'Only empty fields will be filled',
+      'replace-all': 'All fields will be replaced with incoming data',
+    };
+
+    toast({
+      title: `Applied to ${duplicates.length} contacts`,
+      description: actionDescriptions[action],
+    });
+  };
+
   const acceptAllDefaults = () => {
     // All resolutions already default to "keep existing"
     onConfirm(Array.from(resolutions.values()));
@@ -213,10 +288,66 @@ export function ImportMergeReview({
 
         {/* Body */}
         <div className="p-6 overflow-y-auto flex-1">
-          <p className="text-sm text-zinc-400 mb-6">
+          <p className="text-sm text-zinc-400 mb-4">
             {duplicates.length} contact{duplicates.length !== 1 ? 's' : ''} already exist in your network.
-            Review what should be updated.
           </p>
+
+          {/* Bulk Actions Bar */}
+          <div className="border border-zinc-700 rounded-lg p-4 bg-zinc-800/50 mb-4">
+            <p className="text-sm text-zinc-400 mb-3">Bulk Actions:</p>
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => applyBulkAction('skip')}
+                className="border-zinc-600 text-zinc-300 hover:bg-zinc-700"
+              >
+                Skip All ({duplicates.length})
+              </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="border-zinc-600 text-zinc-300 hover:bg-zinc-700">
+                    Merge All <ChevronDown className="ml-1 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-zinc-800 border-zinc-700">
+                  <DropdownMenuItem
+                    onClick={() => applyBulkAction('merge')}
+                    className="text-zinc-300 focus:bg-zinc-700 focus:text-white"
+                  >
+                    Smart merge (fill empty fields)
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="border-zinc-600 text-zinc-300 hover:bg-zinc-700">
+                    Replace All <ChevronDown className="ml-1 h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-zinc-800 border-zinc-700">
+                  <DropdownMenuItem
+                    onClick={() => applyBulkAction('replace-empty')}
+                    className="text-zinc-300 focus:bg-zinc-700 focus:text-white"
+                  >
+                    Replace only empty fields
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setShowReplaceAllConfirm(true)}
+                    className="text-zinc-300 focus:bg-zinc-700 focus:text-white"
+                  >
+                    Replace all fields (overwrite)
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+
+          <div className="text-center text-zinc-500 text-sm py-2 mb-4">
+            ─── OR review individually below ───
+          </div>
 
           {/* Contact Card */}
           <div className={`rounded-lg border p-4 ${
@@ -368,6 +499,30 @@ export function ImportMergeReview({
           )}
         </div>
       </motion.div>
+
+      {/* Replace All Confirmation Dialog */}
+      <AlertDialog open={showReplaceAllConfirm} onOpenChange={setShowReplaceAllConfirm}>
+        <AlertDialogContent className="bg-zinc-900 border-zinc-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Replace All Contacts?</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400">
+              This will overwrite existing data for {duplicates.length} contacts with
+              the imported data. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => applyBulkAction('replace-all')}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Replace All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 }

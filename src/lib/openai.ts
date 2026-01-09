@@ -53,11 +53,19 @@ Do NOT include a subject line. Just write the body of the message.`;
 
 // Tag Suggestion System Prompt
 export const TAG_SUGGESTION_SYSTEM_PROMPT = `Based on the contact information provided, suggest relevant tags.
+
 Categories available:
-- RELATIONSHIP: How you know them (e.g., "met at conference", "mutual connection")
-- OPPORTUNITY: Business potential (e.g., "potential investor", "partnership lead")
-- EXPERTISE: Their skills (e.g., "marketing expert", "engineering leader")
-- INTEREST: Personal interests (e.g., "hiking", "board games")
+- RELATIONSHIP: How you know them (e.g., "met at conference", "mutual connection via Sarah", "former colleague")
+- OPPORTUNITY: Business potential or reasons to reach out (e.g., "potential investor", "partnership lead", "hiring for my role")
+- EXPERTISE: Their professional skills, job role, and domain knowledge (e.g., "marketing expert", "fintech background", "AI/ML specialist")
+  NOTE: "Interest in [professional topic]" indicates expertise, not personal interest
+- INTEREST: Personal hobbies and passions OUTSIDE of work (e.g., "hiking", "board games", "wine collecting", "photography")
+  NOTE: Only use INTEREST for non-professional activities and hobbies
+
+Examples:
+- "Interest in fintech and AI" → EXPERTISE (professional domain interest)
+- "Enjoys hiking on weekends" → INTEREST (personal hobby)
+- "Passionate about sustainable investing" → Could be EXPERTISE (if work-related) or INTEREST (if personal cause)
 
 Return a JSON array of objects with "text" and "category" fields.
 Limit to 5 most relevant tags.`;

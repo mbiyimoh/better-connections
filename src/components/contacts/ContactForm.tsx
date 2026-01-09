@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { TAG_CATEGORY_COLORS } from '@/lib/design-system';
 import type { Contact, TagCategory } from '@/types/contact';
 import Link from 'next/link';
 import { HometownSuggestion } from './HometownSuggestion';
@@ -49,13 +50,6 @@ interface TagInput {
   category: TagCategory;
 }
 
-const categoryColors: Record<TagCategory, { bg: string; text: string }> = {
-  RELATIONSHIP: { bg: 'bg-blue-500/20', text: 'text-blue-400' },
-  OPPORTUNITY: { bg: 'bg-green-500/20', text: 'text-green-400' },
-  EXPERTISE: { bg: 'bg-purple-500/20', text: 'text-purple-400' },
-  INTEREST: { bg: 'bg-amber-500/20', text: 'text-amber-400' },
-};
-
 interface ContactFormProps {
   contact?: Contact;
   isEditing?: boolean;
@@ -63,8 +57,10 @@ interface ContactFormProps {
 
 export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [focusedField, setFocusedField] = useState<string | null>(null);
   const [tags, setTags] = useState<TagInput[]>(
     contact?.tags.map((t) => ({ text: t.text, category: t.category })) || []
   );
@@ -103,6 +99,42 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
   const primaryPhone = watch('primaryPhone');
   const location = watch('location');
 
+  // Handle focus field from query param (scroll to field and apply glow)
+  useEffect(() => {
+    const focus = searchParams.get('focus');
+    if (!focus) return;
+
+    // Small delay to ensure DOM is ready
+    const scrollTimeout = setTimeout(() => {
+      const element = document.getElementById(focus);
+      if (element) {
+        // Scroll to element with offset for sticky header
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Focus the input
+        element.focus();
+        // Apply glow effect
+        setFocusedField(focus);
+      }
+    }, 100);
+
+    // Remove glow after 3 seconds
+    const glowTimeout = setTimeout(() => setFocusedField(null), 3100);
+
+    return () => {
+      clearTimeout(scrollTimeout);
+      clearTimeout(glowTimeout);
+    };
+  }, [searchParams]);
+
+  // Helper to get glow classes for focused field
+  const getFieldClasses = (fieldId: string, baseError?: boolean) => {
+    const isGlowing = focusedField === fieldId;
+    return cn(
+      baseError && 'border-destructive',
+      isGlowing && 'ring-2 ring-gold-primary ring-offset-2 ring-offset-bg-primary border-gold-primary transition-all duration-300'
+    );
+  };
+
   const addTag = () => {
     if (newTagText.trim()) {
       setTags([...tags, { text: newTagText.trim(), category: newTagCategory }]);
@@ -139,7 +171,12 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
 
       if (!res.ok) throw new Error('Failed to save contact');
 
-      router.push('/contacts');
+      const savedContact = await res.json();
+      // Redirect to profile page after save (or contacts list for new contacts)
+      const redirectPath = isEditing && contact?.id
+        ? `/contacts/${contact.id}`
+        : savedContact?.id ? `/contacts/${savedContact.id}` : '/contacts';
+      router.push(redirectPath);
       router.refresh();
     } catch (error) {
       console.error('Error saving contact:', error);
@@ -169,7 +206,7 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
         </h1>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+      <form id="contact-form" onSubmit={handleSubmit(onSubmit)} className="space-y-8">
         {/* Basic Info */}
         <section className="space-y-4">
           <h2 className="text-lg font-semibold text-white">Basic Information</h2>
@@ -180,7 +217,7 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
                 id="firstName"
                 {...register('firstName')}
                 placeholder="John"
-                className={errors.firstName ? 'border-destructive' : ''}
+                className={getFieldClasses('firstName', !!errors.firstName)}
               />
               {errors.firstName && (
                 <p className="text-sm text-destructive">{errors.firstName.message}</p>
@@ -192,6 +229,7 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
                 id="lastName"
                 {...register('lastName')}
                 placeholder="Doe"
+                className={getFieldClasses('lastName')}
               />
             </div>
             <div className="space-y-2">
@@ -201,7 +239,7 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
                 type="email"
                 {...register('primaryEmail')}
                 placeholder="john@example.com"
-                className={errors.primaryEmail ? 'border-destructive' : ''}
+                className={getFieldClasses('primaryEmail', !!errors.primaryEmail)}
               />
               {errors.primaryEmail && (
                 <p className="text-sm text-destructive">{errors.primaryEmail.message}</p>
@@ -214,7 +252,7 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
                 type="email"
                 {...register('secondaryEmail')}
                 placeholder="john.doe@work.com"
-                className={errors.secondaryEmail ? 'border-destructive' : ''}
+                className={getFieldClasses('secondaryEmail', !!errors.secondaryEmail)}
               />
               {errors.secondaryEmail && (
                 <p className="text-sm text-destructive">{errors.secondaryEmail.message}</p>
@@ -222,23 +260,48 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="primaryPhone">Primary Phone</Label>
-              <Input id="primaryPhone" {...register('primaryPhone')} placeholder="+1 (555) 123-4567" />
+              <Input
+                id="primaryPhone"
+                {...register('primaryPhone')}
+                placeholder="+1 (555) 123-4567"
+                className={getFieldClasses('primaryPhone')}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="secondaryPhone">Secondary Phone</Label>
-              <Input id="secondaryPhone" {...register('secondaryPhone')} placeholder="+1 (555) 987-6543" />
+              <Input
+                id="secondaryPhone"
+                {...register('secondaryPhone')}
+                placeholder="+1 (555) 987-6543"
+                className={getFieldClasses('secondaryPhone')}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="title">Title</Label>
-              <Input id="title" {...register('title')} placeholder="CEO" />
+              <Input
+                id="title"
+                {...register('title')}
+                placeholder="CEO"
+                className={getFieldClasses('title')}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="company">Company</Label>
-              <Input id="company" {...register('company')} placeholder="Acme Inc" />
+              <Input
+                id="company"
+                {...register('company')}
+                placeholder="Acme Inc"
+                className={getFieldClasses('company')}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="location">Location</Label>
-              <Input id="location" {...register('location')} placeholder="San Francisco, CA" />
+              <Input
+                id="location"
+                {...register('location')}
+                placeholder="San Francisco, CA"
+                className={getFieldClasses('location')}
+              />
               <HometownSuggestion
                 phone={primaryPhone}
                 currentLocation={location}
@@ -251,7 +314,7 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
                 id="linkedinUrl"
                 {...register('linkedinUrl')}
                 placeholder="https://linkedin.com/in/johndoe"
-                className={errors.linkedinUrl ? 'border-destructive' : ''}
+                className={getFieldClasses('linkedinUrl', !!errors.linkedinUrl)}
               />
               {errors.linkedinUrl && (
                 <p className="text-sm text-destructive">{errors.linkedinUrl.message}</p>
@@ -271,6 +334,7 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
                 {...register('howWeMet')}
                 placeholder="Met at TechCrunch Disrupt 2024..."
                 rows={2}
+                className={getFieldClasses('howWeMet')}
               />
             </div>
             <div className="space-y-2">
@@ -308,9 +372,11 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
             </p>
           </div>
           <Textarea
+            id="whyNow"
             {...register('whyNow')}
             placeholder="Recently raised Series A, looking for GTM advice. Mentioned they need help with pricing strategy..."
             rows={3}
+            className={getFieldClasses('whyNow')}
           />
         </section>
 
@@ -319,7 +385,7 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
           <h2 className="text-lg font-semibold text-white">Tags</h2>
           <div className="flex flex-wrap gap-2">
             {tags.map((tag, index) => {
-              const colors = categoryColors[tag.category];
+              const colors = TAG_CATEGORY_COLORS[tag.category];
               return (
                 <span
                   key={index}
@@ -385,6 +451,7 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
                 {...register('expertise')}
                 placeholder="SaaS growth, product-led growth, enterprise sales..."
                 rows={2}
+                className={getFieldClasses('expertise')}
               />
             </div>
             <div className="space-y-2">
@@ -394,6 +461,7 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
                 {...register('interests')}
                 placeholder="AI/ML, investing, hiking..."
                 rows={2}
+                className={getFieldClasses('interests')}
               />
             </div>
             <div className="space-y-2">
@@ -403,22 +471,28 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
                 {...register('notes')}
                 placeholder="Any other notes about this contact..."
                 rows={3}
+                className={getFieldClasses('notes')}
               />
             </div>
           </div>
         </section>
 
-        {/* Submit */}
-        <div className="flex gap-4 pt-4">
-          <Button type="submit" disabled={isSubmitting} className="flex-1">
+        {/* Spacer for sticky button */}
+        <div className="h-20" />
+      </form>
+
+      {/* Sticky Submit Bar */}
+      <div className="sticky bottom-0 left-0 right-0 z-10 -mx-6 mt-4 border-t border-border bg-bg-primary/95 px-6 py-4 backdrop-blur-glass">
+        <div className="mx-auto flex max-w-2xl gap-4">
+          <Button type="submit" form="contact-form" disabled={isSubmitting} className="flex-1">
             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isEditing ? 'Save Changes' : 'Add Contact'}
           </Button>
           <Button type="button" variant="outline" asChild>
-            <Link href="/contacts">Cancel</Link>
+            <Link href={isEditing && contact ? `/contacts/${contact.id}` : '/contacts'}>Cancel</Link>
           </Button>
         </div>
-      </form>
+      </div>
     </div>
   );
 }

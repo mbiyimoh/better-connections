@@ -32,6 +32,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
+import { DeleteAllContactsDialog } from "@/components/contacts/DeleteAllContactsDialog";
 
 interface UserProfile {
   id: string;
@@ -46,10 +47,25 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [contactCount, setContactCount] = useState(0);
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
 
   useEffect(() => {
     fetchUserProfile();
+    fetchContactCount();
   }, []);
+
+  const fetchContactCount = async () => {
+    try {
+      const response = await fetch("/api/contacts?countOnly=true");
+      if (response.ok) {
+        const data = await response.json();
+        setContactCount(data.count || 0);
+      }
+    } catch (error) {
+      console.error("Failed to fetch contact count:", error);
+    }
+  };
 
   const fetchUserProfile = async () => {
     try {
@@ -229,6 +245,25 @@ export default function SettingsPage() {
               </Button>
             </div>
 
+            {contactCount > 0 && (
+              <div className="flex items-center justify-between p-4 rounded-lg bg-white/5">
+                <div>
+                  <p className="text-white font-medium">Delete All Contacts</p>
+                  <p className="text-sm text-zinc-400">
+                    Permanently remove all {contactCount} contacts from your account
+                  </p>
+                </div>
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowDeleteAllDialog(true)}
+                  className="shrink-0 bg-red-600 hover:bg-red-700"
+                >
+                  <Trash2 size={16} />
+                  Delete All
+                </Button>
+              </div>
+            )}
+
             <div className="flex items-center justify-between p-4 rounded-lg bg-red-500/10 border border-red-500/20">
               <div>
                 <p className="text-white font-medium">Delete Account</p>
@@ -303,6 +338,16 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Delete All Contacts Dialog */}
+      <DeleteAllContactsDialog
+        isOpen={showDeleteAllDialog}
+        onClose={() => {
+          setShowDeleteAllDialog(false);
+          fetchContactCount(); // Refresh count after deletion
+        }}
+        contactCount={contactCount}
+      />
     </div>
   );
 }

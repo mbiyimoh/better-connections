@@ -399,14 +399,14 @@ export function ContactsTable() {
               <div className="space-y-2">
                 <label className="text-sm text-text-secondary">Source</label>
                 <Select
-                  value={sourceFilter}
-                  onValueChange={(value) => updateParams({ source: value || null })}
+                  value={sourceFilter || 'all'}
+                  onValueChange={(value) => updateParams({ source: value === 'all' ? null : value })}
                 >
                   <SelectTrigger className="bg-bg-tertiary border-border">
                     <SelectValue placeholder="All sources" />
                   </SelectTrigger>
                   <SelectContent className="bg-bg-secondary border-border">
-                    <SelectItem value="">All sources</SelectItem>
+                    <SelectItem value="all">All sources</SelectItem>
                     {sources.map((source) => (
                       <SelectItem key={source} value={source}>
                         {source}
@@ -420,14 +420,14 @@ export function ContactsTable() {
               <div className="space-y-2">
                 <label className="text-sm text-text-secondary">Relationship</label>
                 <Select
-                  value={relationshipFilter}
-                  onValueChange={(value) => updateParams({ relationship: value || null })}
+                  value={relationshipFilter || 'all'}
+                  onValueChange={(value) => updateParams({ relationship: value === 'all' ? null : value })}
                 >
                   <SelectTrigger className="bg-bg-tertiary border-border">
                     <SelectValue placeholder="Any strength" />
                   </SelectTrigger>
                   <SelectContent className="bg-bg-secondary border-border">
-                    <SelectItem value="">Any strength</SelectItem>
+                    <SelectItem value="all">Any strength</SelectItem>
                     {relationships.map((rel) => (
                       <SelectItem key={rel.value} value={rel.value}>
                         {rel.label}
@@ -441,14 +441,14 @@ export function ContactsTable() {
               <div className="space-y-2">
                 <label className="text-sm text-text-secondary">Tag Category</label>
                 <Select
-                  value={categoryFilter}
-                  onValueChange={(value) => updateParams({ category: value || null })}
+                  value={categoryFilter || 'all'}
+                  onValueChange={(value) => updateParams({ category: value === 'all' ? null : value })}
                 >
                   <SelectTrigger className="bg-bg-tertiary border-border">
                     <SelectValue placeholder="Any category" />
                   </SelectTrigger>
                   <SelectContent className="bg-bg-secondary border-border">
-                    <SelectItem value="">Any category</SelectItem>
+                    <SelectItem value="all">Any category</SelectItem>
                     {(['RELATIONSHIP', 'OPPORTUNITY', 'EXPERTISE', 'INTEREST'] as const).map((cat) => (
                       <SelectItem key={cat} value={cat}>
                         <div className="flex items-center gap-2">

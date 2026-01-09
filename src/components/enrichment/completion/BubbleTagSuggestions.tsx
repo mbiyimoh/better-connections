@@ -2,14 +2,28 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Tag, Plus, Loader2, Check } from 'lucide-react';
+import { Tag, Plus, Loader2, Check, Pencil, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { TAG_CATEGORY_COLORS } from '@/lib/design-system';
+import { TagEditModal } from './TagEditModal';
 import type { EnrichmentBubble } from '@/components/enrichment/EnrichmentBubbles';
 import type { TagCategory } from '@/types/contact';
+
+const CATEGORY_DESCRIPTIONS: Record<TagCategory, string> = {
+  RELATIONSHIP: 'How you know them',
+  OPPORTUNITY: 'Business potential',
+  EXPERTISE: 'Professional skills',
+  INTEREST: 'Personal hobbies',
+};
 
 interface ExistingTag {
   id: string;
@@ -46,7 +60,7 @@ export function BubbleTagSuggestions({
   // Convert bubbles to tag suggestions, filtering out duplicates
   const existingTagTexts = new Set(existingTags.map((t) => t.text.toLowerCase()));
 
-  const suggestions: TagSuggestion[] = bubbles
+  const initialSuggestions: TagSuggestion[] = bubbles
     .map((bubble) => ({
       text: bubble.text,
       category: bubbleCategoryToTagCategory(bubble.category),
@@ -54,11 +68,17 @@ export function BubbleTagSuggestions({
     }))
     .filter((s) => !existingTagTexts.has(s.text.toLowerCase()));
 
+  const [suggestions, setSuggestions] = useState<TagSuggestion[]>(initialSuggestions);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
-    new Set(suggestions.map((s) => s.bubbleId))
+    new Set(initialSuggestions.map((s) => s.bubbleId))
   );
   const [isAdding, setIsAdding] = useState(false);
   const [addedTags, setAddedTags] = useState<Set<string>>(new Set());
+  const [editingTag, setEditingTag] = useState<{
+    bubbleId: string;
+    text: string;
+    category: TagCategory;
+  } | null>(null);
 
   // If no suggestions to show, render nothing
   if (suggestions.length === 0) {
@@ -87,7 +107,7 @@ export function BubbleTagSuggestions({
 
   const addSelectedTags = async () => {
     const tagsToAdd = suggestions.filter((s) => selectedIds.has(s.bubbleId));
-    if (tagsToAdd.length === 0) return;
+    if (tagsToAdd.length === 0 || isAdding) return; // Guard against rapid clicks
 
     setIsAdding(true);
     const newlyAdded = new Set<string>();
@@ -184,6 +204,38 @@ export function BubbleTagSuggestions({
         </div>
       </div>
 
+      {/* Category Legend */}
+      <div className="px-4 py-2 border-b border-zinc-700/50">
+        <p className="text-xs text-zinc-500 mb-2">Tag Categories:</p>
+        <TooltipProvider>
+          <div className="flex flex-wrap gap-2">
+            {(['RELATIONSHIP', 'OPPORTUNITY', 'EXPERTISE', 'INTEREST'] as const).map((cat) => {
+              const colors = TAG_CATEGORY_COLORS[cat];
+              return (
+                <Tooltip key={cat}>
+                  <TooltipTrigger asChild>
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs cursor-help',
+                        colors.bg,
+                        colors.text
+                      )}
+                    >
+                      <span className={cn('h-1.5 w-1.5 rounded-full', colors.dot)} />
+                      {cat.toLowerCase()}
+                      <Info className="h-3 w-3 opacity-60" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{CATEGORY_DESCRIPTIONS[cat]}</p>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </div>
+        </TooltipProvider>
+      </div>
+
       {/* Tag List */}
       <div className="p-4 space-y-2">
         {visibleSuggestions.map((suggestion) => {
@@ -191,29 +243,46 @@ export function BubbleTagSuggestions({
           const isSelected = selectedIds.has(suggestion.bubbleId);
 
           return (
-            <label
+            <div
               key={suggestion.bubbleId}
               className={cn(
-                'flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors',
+                'flex items-center justify-between p-2 rounded-lg transition-colors',
                 isSelected ? 'bg-white/5' : 'hover:bg-white/5'
               )}
             >
-              <Checkbox
-                checked={isSelected}
-                onCheckedChange={() => toggleSelection(suggestion.bubbleId)}
-                className="border-zinc-600 data-[state=checked]:bg-gold-primary data-[state=checked]:border-gold-primary"
-              />
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
-                  colors.bg,
-                  colors.text
-                )}
+              <label className="flex items-center gap-3 flex-1 cursor-pointer">
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={() => toggleSelection(suggestion.bubbleId)}
+                  className="border-zinc-600 data-[state=checked]:bg-gold-primary data-[state=checked]:border-gold-primary"
+                />
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
+                    colors.bg,
+                    colors.text
+                  )}
+                >
+                  <span className={cn('h-1.5 w-1.5 rounded-full', colors.dot)} />
+                  {suggestion.text}
+                </span>
+              </label>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setEditingTag({
+                    bubbleId: suggestion.bubbleId,
+                    text: suggestion.text,
+                    category: suggestion.category,
+                  });
+                }}
+                className="h-8 w-8 p-0 text-zinc-500 hover:text-zinc-300"
               >
-                <span className={cn('h-1.5 w-1.5 rounded-full', colors.dot)} />
-                {suggestion.text}
-              </span>
-            </label>
+                <Pencil className="h-4 w-4" />
+              </Button>
+            </div>
           );
         })}
       </div>
@@ -242,6 +311,26 @@ export function BubbleTagSuggestions({
           )}
         </Button>
       </div>
+
+      {/* Edit Modal */}
+      {editingTag && (
+        <TagEditModal
+          isOpen={!!editingTag}
+          onClose={() => setEditingTag(null)}
+          initialText={editingTag.text}
+          initialCategory={editingTag.category}
+          onSave={(newText, newCategory) => {
+            setSuggestions((prev) =>
+              prev.map((s) =>
+                s.bubbleId === editingTag.bubbleId
+                  ? { ...s, text: newText, category: newCategory }
+                  : s
+              )
+            );
+            setEditingTag(null);
+          }}
+        />
+      )}
     </motion.div>
   );
 }

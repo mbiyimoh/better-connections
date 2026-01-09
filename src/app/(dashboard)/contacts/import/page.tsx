@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Papa from 'papaparse';
@@ -17,6 +17,7 @@ import {
   Eye,
   EyeOff,
   Cloud,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -43,6 +44,7 @@ import {
 } from '@/lib/csv-analysis';
 import { ImportSourceCard } from '@/components/import/ImportSourceCard';
 import { VcfImportFlow } from '@/components/import/VcfImportFlow';
+import { DeleteAllContactsDialog } from '@/components/contacts/DeleteAllContactsDialog';
 
 type ImportSource = 'select' | 'icloud' | 'csv';
 
@@ -59,6 +61,26 @@ export default function ImportPage() {
 
   // Source selection
   const [source, setSource] = useState<ImportSource>('select');
+
+  // Contact count for "Start Fresh" option
+  const [contactCount, setContactCount] = useState(0);
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+
+  // Fetch contact count on mount
+  useEffect(() => {
+    const fetchContactCount = async () => {
+      try {
+        const response = await fetch("/api/contacts?countOnly=true");
+        if (response.ok) {
+          const data = await response.json();
+          setContactCount(data.count || 0);
+        }
+      } catch (error) {
+        console.error("Failed to fetch contact count:", error);
+      }
+    };
+    fetchContactCount();
+  }, []);
 
   // CSV import state
   const [csvStep, setCsvStep] = useState<CsvImportStep>('upload');
@@ -345,6 +367,30 @@ export default function ImportPage() {
               : 'Upload a CSV file to import contacts.'}
           </p>
         </div>
+
+        {/* Start Fresh Option */}
+        {source === 'select' && contactCount > 0 && (
+          <Card className="bg-zinc-900 border-zinc-700/50 mb-6">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-white font-medium">Start Fresh?</p>
+                  <p className="text-sm text-zinc-400">
+                    Delete all {contactCount} existing contacts before importing
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDeleteAllDialog(true)}
+                  className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete All & Start Fresh
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Source Selection */}
         {source === 'select' && (
@@ -694,6 +740,16 @@ export default function ImportPage() {
           </>
         )}
       </div>
+
+      {/* Delete All Contacts Dialog */}
+      <DeleteAllContactsDialog
+        isOpen={showDeleteAllDialog}
+        onClose={() => {
+          setShowDeleteAllDialog(false);
+          setContactCount(0); // Reset count after deletion
+        }}
+        contactCount={contactCount}
+      />
     </div>
   );
 }

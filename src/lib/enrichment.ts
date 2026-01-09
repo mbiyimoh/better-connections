@@ -178,12 +178,12 @@ export function getMissingFieldSuggestions(contact: EnrichmentScoreInput): Field
   const suggestions: FieldSuggestion[] = [];
 
   // Check each field and add suggestion if missing
-  // Sorted by point value descending to prioritize high-value fields
+  // Labels are action-oriented ("Add X") for clarity in UI pills
   if (!contact.whyNow) {
     suggestions.push({ field: 'whyNow', label: 'Why Now', points: 20 });
   }
   if (!contact.howWeMet) {
-    suggestions.push({ field: 'howWeMet', label: 'How We Met', points: 15 });
+    suggestions.push({ field: 'howWeMet', label: 'How You Met', points: 15 });
   }
   if (!contact.title) {
     suggestions.push({ field: 'title', label: 'Job Title', points: 10 });
@@ -201,13 +201,13 @@ export function getMissingFieldSuggestions(contact: EnrichmentScoreInput): Field
     suggestions.push({ field: 'location', label: 'Location', points: 5 });
   }
   if (!contact.linkedinUrl) {
-    suggestions.push({ field: 'linkedinUrl', label: 'LinkedIn', points: 5 });
+    suggestions.push({ field: 'linkedinUrl', label: 'LinkedIn URL', points: 5 });
   }
   if (!contact.notes) {
     suggestions.push({ field: 'notes', label: 'Notes', points: 5 });
   }
   if (!contact.primaryPhone) {
-    suggestions.push({ field: 'primaryPhone', label: 'Phone', points: 4 });
+    suggestions.push({ field: 'primaryPhone', label: 'Phone Number', points: 4 });
   }
   if (!contact.lastName) {
     suggestions.push({ field: 'lastName', label: 'Last Name', points: 3 });
