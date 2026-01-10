@@ -77,7 +77,7 @@ export function PullToRefresh({
   const rotation = progress * 360;
 
   return (
-    <div ref={containerRef} className="relative overflow-auto">
+    <div ref={containerRef} className="relative h-full overflow-hidden">
       {/* Pull indicator */}
       <div
         className={cn(
@@ -104,6 +104,7 @@ export function PullToRefresh({
 
       {/* Content with pull offset */}
       <div
+        className="h-full"
         style={{
           transform: `translateY(${pullDistance}px)`,
           transition: isPulling ? 'none' : 'transform 0.2s ease-out',

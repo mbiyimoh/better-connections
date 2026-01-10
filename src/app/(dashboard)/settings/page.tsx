@@ -164,7 +164,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="container max-w-3xl py-8">
+    <div className="container max-w-3xl py-6 px-4 md:py-8 md:px-6">
       {/* Header - 33 Strategies Style */}
       <div className="mb-8">
         <p className="mb-2 font-mono text-xs font-medium uppercase tracking-[0.2em] text-gold-primary">
@@ -198,7 +198,7 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 text-sm">
               <div className="p-3 rounded-lg bg-white/5">
                 <p className="text-zinc-500">Member since</p>
                 <p className="text-white">
@@ -207,7 +207,7 @@ export default function SettingsPage() {
               </div>
               <div className="p-3 rounded-lg bg-white/5">
                 <p className="text-zinc-500">Account ID</p>
-                <p className="text-white font-mono text-xs truncate">
+                <p className="text-white font-mono text-xs break-all md:truncate">
                   {user?.id || "—"}
                 </p>
               </div>
@@ -227,7 +227,7 @@ export default function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-4 rounded-lg bg-white/5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-lg bg-white/5">
               <div>
                 <p className="text-white font-medium">Export Contacts</p>
                 <p className="text-sm text-zinc-400">
@@ -238,7 +238,7 @@ export default function SettingsPage() {
                 onClick={handleExportContacts}
                 disabled={exporting}
                 variant="secondary"
-                className="shrink-0"
+                className="h-11 shrink-0 w-full md:w-auto"
               >
                 <Download size={16} />
                 {exporting ? "Exporting..." : "Export"}
@@ -246,7 +246,7 @@ export default function SettingsPage() {
             </div>
 
             {contactCount > 0 && (
-              <div className="flex items-center justify-between p-4 rounded-lg bg-white/5">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-lg bg-white/5">
                 <div>
                   <p className="text-white font-medium">Delete All Contacts</p>
                   <p className="text-sm text-zinc-400">
@@ -256,7 +256,7 @@ export default function SettingsPage() {
                 <Button
                   variant="destructive"
                   onClick={() => setShowDeleteAllDialog(true)}
-                  className="shrink-0 bg-red-600 hover:bg-red-700"
+                  className="h-11 shrink-0 w-full md:w-auto bg-red-600 hover:bg-red-700"
                 >
                   <Trash2 size={16} />
                   Delete All
@@ -264,7 +264,7 @@ export default function SettingsPage() {
               </div>
             )}
 
-            <div className="flex items-center justify-between p-4 rounded-lg bg-red-500/10 border border-red-500/20">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-lg bg-red-500/10 border border-red-500/20">
               <div>
                 <p className="text-white font-medium">Delete Account</p>
                 <p className="text-sm text-zinc-400">
@@ -275,7 +275,7 @@ export default function SettingsPage() {
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="destructive"
-                    className="shrink-0 bg-red-600 hover:bg-red-700"
+                    className="h-11 shrink-0 w-full md:w-auto bg-red-600 hover:bg-red-700"
                   >
                     <Trash2 size={16} />
                     Delete
@@ -323,14 +323,14 @@ export default function SettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between p-4 rounded-lg bg-white/5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-lg bg-white/5">
               <div>
                 <p className="text-white font-medium">Sign Out</p>
                 <p className="text-sm text-zinc-400">
                   Sign out of your account on this device
                 </p>
               </div>
-              <Button onClick={handleLogout} variant="secondary">
+              <Button onClick={handleLogout} variant="secondary" className="h-11 w-full md:w-auto">
                 <LogOut size={16} />
                 Sign Out
               </Button>

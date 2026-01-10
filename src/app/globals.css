@@ -79,6 +79,26 @@
     background-color: var(--bg-primary);
     color: var(--text-primary);
   }
+
+  /* Dark scrollbar styling to match the app theme */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #3a3a3f #1A1A1F;
+  }
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  *::-webkit-scrollbar-track {
+    background: #1A1A1F;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: #3a3a3f;
+    border-radius: 4px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: #4a4a4f;
+  }
 }
 
 @layer utilities {
@@ -98,5 +118,14 @@
     background: rgba(45, 45, 50, 0.95);
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  /* Hide scrollbar but keep scroll functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari, Opera */
   }
 }

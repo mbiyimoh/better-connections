@@ -76,7 +76,8 @@ export default async function DashboardLayout({
       enrichQueueCount={enrichQueueCount}
     >
       {children}
-      <FeedbackButton />
+      {/* Hide on mobile - ContactsView handles its own FeedbackButton for mobile */}
+      <FeedbackButton hideOnMobile />
     </AppShell>
   );
 }

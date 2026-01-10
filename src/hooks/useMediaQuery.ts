@@ -7,10 +7,10 @@ import { useState, useEffect } from 'react';
  * Returns undefined during SSR, then actual value after hydration.
  *
  * @param query - CSS media query string (e.g., "(max-width: 767px)")
- * @returns boolean indicating if the media query matches
+ * @returns undefined during SSR, boolean after hydration
  */
-export function useMediaQuery(query: string): boolean {
-  // Initialize with undefined to avoid hydration mismatch
+export function useMediaQuery(query: string): boolean | undefined {
+  // Initialize with undefined to detect SSR/hydration state
   const [matches, setMatches] = useState<boolean | undefined>(undefined);
 
   useEffect(() => {
@@ -22,17 +22,17 @@ export function useMediaQuery(query: string): boolean {
     return () => media.removeEventListener('change', listener);
   }, [query]);
 
-  // Return false during SSR/initial render, actual value after hydration
-  return matches ?? false;
+  // Return undefined during SSR to allow proper guards
+  return matches;
 }
 
 /**
  * Convenience hook for mobile detection.
  * Mobile = viewport < 768px (below Tailwind's md: breakpoint)
  *
- * @returns boolean indicating if viewport is mobile-sized
+ * @returns undefined during SSR, boolean after hydration
  */
-export function useIsMobile(): boolean {
+export function useIsMobile(): boolean | undefined {
   return useMediaQuery('(max-width: 767px)');
 }
 
@@ -40,8 +40,8 @@ export function useIsMobile(): boolean {
  * Convenience hook for tablet and above detection.
  * Tablet+ = viewport >= 768px (at or above Tailwind's md: breakpoint)
  *
- * @returns boolean indicating if viewport is tablet-sized or larger
+ * @returns undefined during SSR, boolean after hydration
  */
-export function useIsTabletOrAbove(): boolean {
+export function useIsTabletOrAbove(): boolean | undefined {
   return useMediaQuery('(min-width: 768px)');
 }

@@ -2,14 +2,18 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Search, MessageSquare } from "lucide-react";
+import { Search, MessageSquare, Users, MessageSquarePlus } from "lucide-react";
+import Link from "next/link";
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ContactCard } from "@/components/chat/ContactCard";
 import { DraftIntroModal } from "@/components/chat/DraftIntroModal";
+import { MobileContactOverlay } from "@/components/explore/MobileContactOverlay";
+import { JumpToBottomIndicator } from "@/components/chat/JumpToBottomIndicator";
 import { parseContactSuggestions } from "@/lib/chat-parser";
 import { useDebouncedCallback } from "use-debounce";
 import { getDisplayName } from "@/types/contact";
+import { useIsMobile } from "@/hooks/useMediaQuery";
 
 interface ContactTag {
   id: string;
@@ -47,6 +51,7 @@ interface ChatMessageData {
 
 export default function ExplorePage() {
   const router = useRouter();
+  const isMobile = useIsMobile();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const contactsRef = useRef<Contact[]>([]);
   const highlightTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -61,6 +66,17 @@ export default function ExplorePage() {
   const [hoveredContactId, setHoveredContactId] = useState<string | null>(null);
   // Maps identifiers (IDs, emails, names) to actual contact IDs for chip hover/click
   const identifierToIdMap = useRef<Map<string, string>>(new Map());
+
+  // Mobile-specific state
+  const [mobileOverlayOpen, setMobileOverlayOpen] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const [showJumpIndicator, setShowJumpIndicator] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const userJustSentMessage = useRef(false);
+  const userScrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const scrollSentinelRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const prevMessagesLength = useRef(0);
 
   const handleChatSubmit = async (userMessage: string) => {
     if (!userMessage.trim() || isLoading) return;
@@ -194,24 +210,102 @@ export default function ExplorePage() {
     fetchContacts();
   }, []);
 
-  // Scroll to bottom when new messages arrive
+  // Desktop: scroll to bottom when new messages arrive
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (!isMobile) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isMobile]);
 
   // Keep contactsRef in sync with contacts state to avoid stale closure
   useEffect(() => {
     contactsRef.current = contacts;
   }, [contacts]);
 
-  // Cleanup highlight timeout on unmount
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (highlightTimeoutRef.current) {
         clearTimeout(highlightTimeoutRef.current);
       }
+      if (userScrollTimeoutRef.current) {
+        clearTimeout(userScrollTimeoutRef.current);
+      }
     };
   }, []);
+
+  // Mobile: scroll position tracking with IntersectionObserver
+  useEffect(() => {
+    if (!isMobile) return;
+    const sentinel = scrollSentinelRef.current;
+    const container = scrollContainerRef.current;
+    if (!sentinel || !container) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+        const atBottom = entry.isIntersecting;
+        setIsAtBottom(atBottom);
+        if (atBottom) {
+          setShowJumpIndicator(false);
+          setUnreadCount(0);
+        }
+      },
+      {
+        root: container,
+        threshold: 0.1,
+        rootMargin: '-100px'
+      }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [isMobile]);
+
+  // Mobile: track unread count when not at bottom
+  useEffect(() => {
+    if (!isMobile) return;
+    if (!isAtBottom && messages.length > prevMessagesLength.current) {
+      const newMessages = messages.length - prevMessagesLength.current;
+      setUnreadCount(prev => Math.min(prev + newMessages, 99));
+    }
+    prevMessagesLength.current = messages.length;
+  }, [messages, isAtBottom, isMobile]);
+
+  // Mobile: show jump indicator when streaming and not at bottom
+  useEffect(() => {
+    if (!isMobile) return;
+    if (isLoading && !isAtBottom && !userJustSentMessage.current) {
+      setShowJumpIndicator(true);
+    }
+  }, [isLoading, isAtBottom, isMobile]);
+
+  // Mobile: auto-scroll only when user sends a message
+  useEffect(() => {
+    if (!isMobile) return;
+    if (userJustSentMessage.current && scrollContainerRef.current) {
+      requestAnimationFrame(() => {
+        scrollContainerRef.current?.scrollTo({
+          top: scrollContainerRef.current.scrollHeight,
+          behavior: 'smooth',
+        });
+      });
+      if (userScrollTimeoutRef.current) {
+        clearTimeout(userScrollTimeoutRef.current);
+      }
+      userScrollTimeoutRef.current = setTimeout(() => {
+        userJustSentMessage.current = false;
+      }, 500);
+    }
+  }, [messages, isMobile]);
+
+  // Auto-close overlay when resizing to desktop
+  useEffect(() => {
+    if (!isMobile && mobileOverlayOpen) {
+      setMobileOverlayOpen(false);
+    }
+  }, [isMobile, mobileOverlayOpen]);
 
   // Resolve identifier (could be ID, email, or name) to actual contact ID
   const resolveContactId = useCallback((identifier: string): string | null => {
@@ -252,15 +346,32 @@ export default function ExplorePage() {
       // Silently ignore unresolved identifiers - expected when AI references contacts outside loaded set
       return;
     }
-    const element = document.getElementById(`contact-card-${actualId}`);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "center" });
-      setHoveredContactId(actualId);
-      highlightTimeoutRef.current = setTimeout(() => {
-        setHoveredContactId(null);
-      }, 2000);
+
+    if (isMobile) {
+      // Open overlay first, then scroll after animation completes
+      setMobileOverlayOpen(true);
+      setTimeout(() => {
+        const element = document.getElementById(`contact-card-${actualId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+          setHoveredContactId(actualId);
+          highlightTimeoutRef.current = setTimeout(() => {
+            setHoveredContactId(null);
+          }, 2000);
+        }
+      }, 350); // Wait for spring animation
+    } else {
+      // Desktop: existing behavior
+      const element = document.getElementById(`contact-card-${actualId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+        setHoveredContactId(actualId);
+        highlightTimeoutRef.current = setTimeout(() => {
+          setHoveredContactId(null);
+        }, 2000);
+      }
     }
-  }, [resolveContactId]);
+  }, [resolveContactId, isMobile]);
 
   const fetchContacts = async () => {
     try {
@@ -280,6 +391,7 @@ export default function ExplorePage() {
   };
 
   const handleSendMessage = (message: string) => {
+    userJustSentMessage.current = true;
     handleChatSubmit(message);
   };
 
@@ -343,9 +455,23 @@ export default function ExplorePage() {
     return suggested?.dynamicWhyNow;
   };
 
+  const handleShowContacts = useCallback(() => {
+    setMobileOverlayOpen(true);
+  }, []);
+
+  const handleJumpToBottom = useCallback(() => {
+    scrollContainerRef.current?.scrollTo({
+      top: scrollContainerRef.current.scrollHeight,
+      behavior: 'smooth',
+    });
+    setShowJumpIndicator(false);
+    setUnreadCount(0);
+  }, []);
+
   const displayedContacts = getFilteredContacts();
 
-  if (loading) {
+  // SSR guard
+  if (isMobile === undefined || loading) {
     return (
       <div className="min-h-screen bg-[#0D0D0F] flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-gold-primary" />
@@ -353,6 +479,160 @@ export default function ExplorePage() {
     );
   }
 
+  // Mobile layout
+  if (isMobile) {
+    return (
+      <div className="h-screen bg-bg-primary flex flex-col">
+        {/* Header with contacts button - pl-16 clears hamburger menu */}
+        <header className="flex items-center justify-between p-4 pl-16 border-b border-border shrink-0">
+          <div>
+            <p className="font-mono text-xs font-medium uppercase tracking-[0.2em] text-gold-primary">
+              03 — Discover
+            </p>
+            <h2 className="font-display text-lg text-white flex items-center gap-2">
+              <MessageSquare size={20} className="text-gold-primary" />
+              Explore
+            </h2>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Feedback button */}
+            <Link
+              href="/feedback"
+              className="p-2 rounded-lg bg-bg-secondary border border-border hover:border-gold-primary/50 transition-colors"
+              aria-label="Send Feedback"
+            >
+              <MessageSquarePlus className="w-5 h-5 text-gold-primary" />
+            </Link>
+            {/* Contacts button */}
+            <button
+              onClick={handleShowContacts}
+              className="relative p-2 rounded-lg bg-bg-secondary border border-border hover:border-gold-primary/50 transition-colors"
+              aria-label="View contacts"
+            >
+              <Users className="w-5 h-5 text-gold-primary" />
+              {suggestedContacts.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-gold-primary text-black text-xs font-bold rounded-full flex items-center justify-center">
+                  {Math.min(suggestedContacts.length, 9)}
+                </span>
+              )}
+            </button>
+          </div>
+        </header>
+
+        {/* Chat messages - scrollable */}
+        <div
+          ref={scrollContainerRef}
+          className="flex-1 overflow-y-auto relative min-h-0"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          <div className="p-4 space-y-4">
+            {messages.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-zinc-500 mb-4">
+                  Start by asking a question about your network
+                </p>
+                <div className="space-y-2">
+                  {[
+                    "Who should I talk to about raising a seed round?",
+                    "Find contacts who work in AI or machine learning",
+                    "Who do I know in San Francisco?",
+                  ].map((prompt, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleSendMessage(prompt)}
+                      className="block w-full text-left px-4 py-3 rounded-lg bg-white/5 hover:bg-white/10 text-sm text-zinc-400 hover:text-white transition-colors"
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {messages.map((message) => (
+              <ChatMessage
+                key={message.id}
+                content={message.content}
+                isUser={message.role === "user"}
+                onContactHover={handleContactHover}
+                onContactClick={handleContactClick}
+              />
+            ))}
+
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="bg-white/10 rounded-2xl px-4 py-3">
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce" />
+                    <div className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce [animation-delay:0.1s]" />
+                    <div className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce [animation-delay:0.2s]" />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Scroll sentinel for IntersectionObserver */}
+          <div ref={scrollSentinelRef} className="h-1" />
+
+          <JumpToBottomIndicator
+            visible={showJumpIndicator}
+            unreadCount={unreadCount}
+            onClick={handleJumpToBottom}
+          />
+        </div>
+
+        {/* Chat input - fixed at bottom with padding + safe area */}
+        <div className="px-4 pt-3 pb-4 border-t border-border shrink-0" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+          <ChatInput
+            onSend={handleSendMessage}
+            disabled={isLoading}
+            placeholder="Ask about your network..."
+          />
+        </div>
+
+        {/* Contact overlay */}
+        <MobileContactOverlay
+          isOpen={mobileOverlayOpen}
+          onClose={() => setMobileOverlayOpen(false)}
+          title={suggestedContacts.length > 0 ? 'Suggested Contacts' : 'Your Contacts'}
+          subtitle={suggestedContacts.length > 0 ? `${suggestedContacts.length} matches` : undefined}
+        >
+          <div className="p-4 space-y-3">
+            {displayedContacts.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-zinc-500">
+                  {searchQuery ? "No contacts match your search" : "No contacts to display"}
+                </p>
+              </div>
+            ) : (
+              displayedContacts.map((contact) => (
+                <ContactCard
+                  key={contact.id}
+                  contact={contact}
+                  dynamicWhyNow={getDynamicWhyNow(contact.id)}
+                  isPinned={pinnedIds.has(contact.id)}
+                  isHighlighted={hoveredContactId === contact.id}
+                  onPin={handlePin}
+                  onDraftIntro={handleDraftIntro}
+                  onViewContact={handleViewContact}
+                />
+              ))
+            )}
+          </div>
+        </MobileContactOverlay>
+
+        {/* Draft Intro Modal */}
+        <DraftIntroModal
+          contact={draftIntroContact}
+          isOpen={!!draftIntroContact}
+          onClose={() => setDraftIntroContact(null)}
+        />
+      </div>
+    );
+  }
+
+  // Desktop layout
   return (
     <div className="min-h-screen bg-[#0D0D0F]">
       <div className="flex h-screen">

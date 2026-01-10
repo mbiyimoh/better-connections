@@ -9,6 +9,38 @@ interface MessageContentProps {
   onContactClick: (id: string) => void;
 }
 
+/**
+ * Parse inline markdown (bold only) and return React nodes
+ */
+function parseInlineMarkdown(text: string, keyPrefix: string): React.ReactNode[] {
+  const result: React.ReactNode[] = [];
+  // Match **bold** text
+  const boldPattern = /\*\*([^*]+)\*\*/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = boldPattern.exec(text)) !== null) {
+    // Text before the bold
+    if (match.index > lastIndex) {
+      result.push(text.slice(lastIndex, match.index));
+    }
+    // Bold text
+    result.push(
+      <strong key={`${keyPrefix}-bold-${match.index}`} className="font-semibold">
+        {match[1]}
+      </strong>
+    );
+    lastIndex = boldPattern.lastIndex;
+  }
+
+  // Remaining text
+  if (lastIndex < text.length) {
+    result.push(text.slice(lastIndex));
+  }
+
+  return result.length > 0 ? result : [text];
+}
+
 export function MessageContent({
   content,
   onContactHover,
@@ -22,11 +54,12 @@ export function MessageContent({
   const pattern = createContactPattern();
 
   while ((match = pattern.exec(content)) !== null) {
-    // Text before this match
+    // Text before this match - parse for markdown
     if (match.index > lastIndex) {
+      const textBefore = content.slice(lastIndex, match.index);
       parts.push(
         <span key={`text-${lastIndex}`}>
-          {content.slice(lastIndex, match.index)}
+          {parseInlineMarkdown(textBefore, `pre-${lastIndex}`)}
         </span>
       );
     }
@@ -50,16 +83,23 @@ export function MessageContent({
       />
     );
 
-    // Reason text (trailing)
-    parts.push(<span key={`reason-${match.index}`}> {reason.trim()}</span>);
+    // Reason text (trailing) - parse for markdown
+    parts.push(
+      <span key={`reason-${match.index}`}>
+        {" "}{parseInlineMarkdown(reason.trim(), `reason-${match.index}`)}
+      </span>
+    );
 
     lastIndex = pattern.lastIndex;
   }
 
-  // Remaining text after last match
+  // Remaining text after last match - parse for markdown
   if (lastIndex < content.length) {
+    const remaining = content.slice(lastIndex);
     parts.push(
-      <span key={`text-${lastIndex}`}>{content.slice(lastIndex)}</span>
+      <span key={`text-${lastIndex}`}>
+        {parseInlineMarkdown(remaining, `end-${lastIndex}`)}
+      </span>
     );
   }
 

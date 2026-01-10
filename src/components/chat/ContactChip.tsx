@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { getInitialsFromName, getHueFromName } from "@/lib/contact-utils";
@@ -18,6 +18,7 @@ export function ContactChip({
   onHover,
   onClick,
 }: ContactChipProps) {
+  const [isPressed, setIsPressed] = useState(false);
   const initials = getInitialsFromName(name);
   const hue = useMemo(() => getHueFromName(name), [name]);
 
@@ -32,6 +33,46 @@ export function ContactChip({
     focusRing: `hsla(${hue}, 60%, 50%, 0.50)`,
   }), [hue]);
 
+  // Unified handler for press state (touch + mouse)
+  const handlePointerDown = (e: React.PointerEvent) => {
+    setIsPressed(true);
+    // Only call onHover for mouse (desktop hover preview)
+    if (e.pointerType === 'mouse') {
+      onHover(contactId);
+    }
+  };
+
+  const handlePointerUp = () => {
+    setIsPressed(false);
+  };
+
+  const handlePointerLeave = (e: React.PointerEvent) => {
+    setIsPressed(false);
+    // Only call onHover(null) for mouse
+    if (e.pointerType === 'mouse') {
+      onHover(null);
+    }
+  };
+
+  const handlePointerCancel = () => {
+    setIsPressed(false);
+  };
+
+  // Keep mouse enter/leave for desktop hover (when not pressing)
+  const handleMouseEnter = () => {
+    if (!isPressed) {
+      onHover(contactId);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (!isPressed) {
+      onHover(null);
+    }
+  };
+
+  const isHighlighted = isPressed;
+
   return (
     <motion.button
       className={cn(
@@ -41,26 +82,21 @@ export function ContactChip({
         "focus:outline-none focus:ring-2"
       )}
       style={{
-        backgroundColor: colors.bg,
+        backgroundColor: isHighlighted ? colors.bgHover : colors.bg,
         borderWidth: "1px",
         borderStyle: "solid",
-        borderColor: colors.border,
+        borderColor: isHighlighted ? colors.borderHover : colors.border,
         color: colors.text,
         // @ts-expect-error CSS custom property for focus ring
         "--tw-ring-color": colors.focusRing,
       }}
-      onMouseEnter={(e) => {
-        onHover(contactId);
-        e.currentTarget.style.backgroundColor = colors.bgHover;
-        e.currentTarget.style.borderColor = colors.borderHover;
-      }}
-      onMouseLeave={(e) => {
-        onHover(null);
-        e.currentTarget.style.backgroundColor = colors.bg;
-        e.currentTarget.style.borderColor = colors.border;
-      }}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerLeave}
+      onPointerCancel={handlePointerCancel}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       onClick={() => onClick(contactId)}
-      whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       role="button"
       aria-label={`View contact: ${name}`}

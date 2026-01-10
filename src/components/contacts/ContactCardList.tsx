@@ -1,7 +1,7 @@
 'use client';
 
 import type { CSSProperties, ReactElement } from 'react';
-import { useRef, useState, useCallback } from 'react';
+import { useRef } from 'react';
 import { List, type ListImperativeAPI } from 'react-window';
 import { ContactCard } from './ContactCard';
 import { PullToRefresh } from '@/components/ui/PullToRefresh';
@@ -11,8 +11,10 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import type { Contact } from '@/types/contact';
 
-const CARD_HEIGHT = 100;
-const CARD_GAP = 12;
+// Height to fit contact info (name, title, email/phone, relationship dots)
+// Increased to accommodate full card content with padding
+const CARD_HEIGHT = 140;
+const CARD_GAP = 16;
 
 interface ContactCardListProps {
   contacts: Contact[];
@@ -24,8 +26,6 @@ interface ContactCardListProps {
 // Row props that will be passed via rowProps
 interface ContactRowProps {
   contacts: Contact[];
-  expandedId: string | null;
-  onExpand: (id: string) => void;
 }
 
 // Row component for virtualized list - receives rowProps merged with index/style/ariaAttributes
@@ -38,17 +38,25 @@ function ContactRow(props: {
     role: 'listitem';
   };
 } & ContactRowProps): ReactElement {
-  const { index, style, contacts, expandedId, onExpand } = props;
+  const { index, style, contacts } = props;
   const contact = contacts[index];
+  // react-window uses absolute positioning with fixed row heights.
+  // The outer div maintains position, inner div adds visual spacing.
+  const isFirst = index === 0;
   return (
-    <div style={{ ...style, paddingLeft: 16, paddingRight: 16, paddingBottom: CARD_GAP }}>
-      {contact && (
-        <ContactCard
-          contact={contact}
-          isExpanded={expandedId === contact.id}
-          onExpand={onExpand}
-        />
-      )}
+    <div style={style}>
+      <div
+        style={{
+          paddingLeft: 16,
+          paddingRight: 16,
+          paddingTop: isFirst ? CARD_GAP : CARD_GAP / 2,
+          paddingBottom: CARD_GAP / 2,
+        }}
+      >
+        {contact && (
+          <ContactCard contact={contact} />
+        )}
+      </div>
     </div>
   );
 }
@@ -60,12 +68,6 @@ export function ContactCardList({
   isRefreshing,
 }: ContactCardListProps) {
   const listRef = useRef<ListImperativeAPI>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  // Toggle expand - clicking same card collapses it
-  const handleExpand = useCallback((id: string) => {
-    setExpandedId((prev) => (prev === id ? null : id));
-  }, []);
 
   if (isLoading) {
     return (
@@ -114,13 +116,13 @@ export function ContactCardList({
   }
 
   const content = (
-    <div className="h-[calc(100vh-180px)]">
+    <div className="h-full">
       <List<ContactRowProps>
         listRef={listRef}
         rowComponent={ContactRow}
         rowCount={contacts.length}
         rowHeight={CARD_HEIGHT + CARD_GAP}
-        rowProps={{ contacts, expandedId, onExpand: handleExpand }}
+        rowProps={{ contacts }}
         overscanCount={5}
         className="w-full h-full"
       />

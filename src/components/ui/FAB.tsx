@@ -48,8 +48,8 @@ export function FAB({
       }}
       transition={{ duration: 0.2 }}
       className={cn(
-        'fixed z-40 md:hidden',
-        'right-4 bottom-20',
+        'fixed z-30 md:hidden',
+        'right-4 bottom-6',
         'w-14 h-14 rounded-full',
         'bg-gold-primary hover:bg-gold-light active:bg-gold-primary',
         'flex items-center justify-center',
