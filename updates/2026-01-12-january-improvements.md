@@ -26,7 +26,7 @@ Review the AI's recommendations and apply the ones you want. All research runs a
 
 ### Mobile-first experience
 
-Better Connections now works beautifully on your phone:
+Better Contacts now works beautifully on your phone:
 
 - Swipe left on contact cards to quickly delete
 - Pull down to refresh your contact list
