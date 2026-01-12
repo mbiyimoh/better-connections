@@ -436,9 +436,18 @@ bubbleCategoryToTagCategory(category) => category.toUpperCase() as TagCategory
 
 **Purpose:** Instagram-style story slides for first-time users.
 
-**Files:** `src/app/(dashboard)/onboarding/page.tsx`, `src/components/onboarding/StoryOnboarding.tsx`, `DotIndicator.tsx`, `slides/SlideLayout.tsx`, `Slide3MagicMoment.tsx`, `Slide5EnrichmentPreview.tsx`, `src/app/api/user/complete-onboarding/route.ts`
+**Files:** `src/app/(dashboard)/onboarding/page.tsx`, `src/components/onboarding/StoryOnboarding.tsx`, `DotIndicator.tsx`, `slides/SlideLayout.tsx`, `Slide3MagicMoment.tsx`, `Slide5EnrichmentPreview.tsx`, `Slide6AIResearch.tsx`, `src/app/api/user/complete-onboarding/route.ts`
 
-**Flow:** Login → check `hasCompletedOnboarding` → redirect if false → 6 slides → click anywhere to advance → CTA → set flag → redirect to `/contacts/new`
+**Flow:** Login → check `hasCompletedOnboarding` → redirect if false → 7 slides → click anywhere to advance → CTA → set flag → redirect to `/contacts`
+
+**Slides:**
+1. Pain Point - "You have the perfect connection..."
+2. Frustration - "Scrolling through names doesn't work"
+3. Magic Moment - Chat query → contact suggestions (Explore)
+4. How It Works - "Because you told it—in 30 seconds"
+5. Enrichment Preview - Timer + bubbles + Why Now
+6. AI Research - "Add what you know. Discover what you don't."
+7. CTA - "Get Started"
 
 **Navigation:** Click-to-advance (not auto-timed). Dot indicators show progress. Arrow keys and swipe gestures also work.
 
