@@ -1,5 +1,5 @@
 /**
- * Centralized design system constants for Better Connections.
+ * Centralized design system constants for Better Contacts.
  * See CLAUDE.md for full design system documentation.
  */
 

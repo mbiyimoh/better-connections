@@ -3,7 +3,7 @@ import { getCurrentUser } from '@/lib/auth-helpers';
 import { FeedbackList } from '@/components/feedback/FeedbackList';
 
 export const metadata = {
-  title: 'Feedback | Better Connections',
+  title: 'Feedback | Better Contacts',
   description: 'Share your feedback, report bugs, or suggest improvements',
 };
 

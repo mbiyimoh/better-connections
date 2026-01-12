@@ -32,6 +32,7 @@ const contactFormSchema = z.object({
   primaryPhone: z.string().max(50).optional().or(z.literal('')),
   secondaryPhone: z.string().max(50).optional().or(z.literal('')),
   title: z.string().max(255).optional(),
+  organizationalTitle: z.string().max(255).optional(),
   company: z.string().max(255).optional(),
   location: z.string().max(255).optional(),
   linkedinUrl: z.string().url('Invalid URL').optional().or(z.literal('')),
@@ -83,6 +84,7 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
       primaryPhone: contact?.primaryPhone || '',
       secondaryPhone: contact?.secondaryPhone || '',
       title: contact?.title || '',
+      organizationalTitle: contact?.organizationalTitle || '',
       company: contact?.company || '',
       location: contact?.location || '',
       linkedinUrl: contact?.linkedinUrl || '',
@@ -277,12 +279,21 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="title">Title</Label>
+              <Label htmlFor="title">Job Role</Label>
               <Input
                 id="title"
                 {...register('title')}
-                placeholder="CEO"
+                placeholder="Venture Capitalist, Software Engineer..."
                 className={getFieldClasses('title')}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="organizationalTitle">Position</Label>
+              <Input
+                id="organizationalTitle"
+                {...register('organizationalTitle')}
+                placeholder="President, VP of Engineering..."
+                className={getFieldClasses('organizationalTitle')}
               />
             </div>
             <div className="space-y-2">

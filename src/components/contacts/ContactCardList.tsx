@@ -92,7 +92,7 @@ export function ContactCardList({
       <div className="flex flex-col items-center justify-center py-16 px-4">
         <Users className="h-16 w-16 text-text-tertiary opacity-30 mb-4" />
         <p className="text-xl font-semibold text-text-primary mb-2">
-          Welcome to Better Connections
+          Welcome to Better Contacts
         </p>
         <p className="text-base text-text-secondary text-center mb-8 max-w-xs">
           Import your existing contacts to get started.

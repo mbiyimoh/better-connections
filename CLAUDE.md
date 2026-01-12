@@ -19,6 +19,38 @@
 - Run ALL commands proactively (npm, git, docker, prisma, etc.)
 - Handle errors autonomously; only escalate when user input truly needed
 
+---
+
+## Dev Server Configuration
+
+**Dedicated Port: 3333**
+
+This project uses port 3333 to avoid conflicts with other local applications (port 3001 is reserved for another project).
+
+**Starting the dev server:**
+```bash
+PORT=3333 npm run dev
+```
+
+**Restarting the dev server (CRITICAL - port-specific kill):**
+```bash
+# Kill ONLY processes on port 3333, then restart
+lsof -ti:3333 | xargs kill -9 2>/dev/null || true
+rm -rf .next
+PORT=3333 npm run dev
+```
+
+**NEVER use these commands (kills other apps):**
+```bash
+# WRONG - kills ALL Next.js servers across all projects
+pkill -f "next dev"
+
+# WRONG - kills by process name, not port
+killall node
+```
+
+**Prisma Studio:** Runs on port 5555 (default)
+
 **ABSOLUTE PROHIBITIONS (require EXPLICIT approval):**
 - NEVER reset/modify passwords or credentials
 - NEVER delete user accounts or data
@@ -80,11 +112,161 @@ const colors = {
 | Frontend | Next.js 14+ (App Router), React, TypeScript, Tailwind CSS, shadcn/ui, Framer Motion, Lucide React |
 | Backend | Next.js API routes, Supabase PostgreSQL, Prisma ORM, Supabase Auth |
 | AI | OpenAI GPT-4o-mini via Vercel AI SDK |
-| Special | react-speech-recognition, react-resizable-panels, react-countdown-circle-timer, vcard4-ts, react-window v2.2.3, use-debounce |
+| Special | react-speech-recognition, react-resizable-panels, react-countdown-circle-timer, vcard4-ts, react-window v2.2.3, use-debounce, @tailwindcss/typography, diff, react-markdown |
 
 ---
 
 ## Agent Protocols & Patterns
+
+### Contact Research & Apply Workflow Pattern
+
+**Purpose:** Autonomous web research to enrich contact profiles with verified, sourced information.
+
+**Key Files:**
+- `src/app/api/contacts/[id]/research/[runId]/apply/route.ts` - Applies approved recommendations, generates human-readable summaries
+- `src/components/research/ResearchApplyCelebration.tsx` - Post-apply celebration with score improvement
+- `src/components/research/ResearchRunHistory.tsx` - Accordion history of past research runs
+- `src/components/research/RecommendationCard.tsx` - Individual recommendation with approve/reject/edit actions
+- `src/lib/research/types.ts` - Shared type definitions including `RESEARCH_FIELD_LABELS`
+
+**User Flow:**
+1. Click "Research" button on contact detail page
+2. AI performs web search → generates structured recommendations
+3. User reviews, edits, approves/rejects each recommendation
+4. Click "Apply" → celebrates with animation showing:
+   - Score improvement (previous → new)
+   - Rank change (#5 → #3 of 47 contacts)
+   - Human-readable changes list ("Added job role", "Updated company")
+5. User dismisses celebration → research collapses into history tile
+
+**Critical Patterns:**
+
+**Per-item async loading state:**
+```typescript
+// Track which specific item is loading
+const [loadingRecommendation, setLoadingRecommendation] = useState<{
+  id: string;
+  action: 'approve' | 'reject';
+} | null>(null);
+
+// In async handler
+setLoadingRecommendation({ id, action });
+try {
+  await fetch(...);
+} finally {
+  setLoadingRecommendation(null);
+}
+
+// Pass to child
+<RecommendationCard
+  isLoading={loadingRecommendation?.id === rec.id}
+  loadingAction={loadingRecommendation?.action}
+/>
+```
+
+**Client state reset after router.refresh():**
+```typescript
+// Problem: router.refresh() updates server props but client state persists
+// Solution: Watch props with useEffect and reset state
+
+const [expandedId, setExpandedId] = useState(getDefaultExpandedId());
+
+useEffect(() => {
+  setExpandedId(getDefaultExpandedId());
+  // Use JSON.stringify for stable comparison of object arrays
+}, [JSON.stringify(sortedRuns.map(r => ({ id: r.id, appliedAt: r.appliedAt })))]);
+```
+
+**Gotchas:**
+- **ALWAYS** call `router.refresh()` after applying recommendations to fetch updated data
+- Use `JSON.stringify` in `useEffect` dependencies for object array comparisons
+- Store loading state as `{id, action}` object, not boolean, for multi-item lists
+- Celebration must be dismissed manually - no auto-dismiss after async operations
+- Research history auto-collapses tiles when `appliedAt` is set (marks as "already applied")
+
+**Extending this:**
+- Add new researchable fields by updating `RESEARCH_FIELD_LABELS` in `src/lib/research/types.ts`
+- Customize celebration duration by adjusting timing constants in `ResearchApplyCelebration.tsx`
+- Add new recommendation sources by extending the apply route's data flow
+
+**Location:** `src/components/research/` (all research UI components), `src/app/api/contacts/[id]/research/` (API routes)
+
+---
+
+### What's New Update Notifications Pattern
+
+**Purpose:** Show users a modal popup when new features are released, with expandable bullet summaries and cross-device tracking.
+
+**Files:**
+- `src/lib/updates/types.ts` - Type definitions (Update, UpdateSummaryItem)
+- `src/lib/updates/parser.ts` - Parse markdown files into Update objects
+- `src/lib/updates/index.ts` - getLatestUpdate(), getAllUpdates() helpers
+- `src/components/whats-new/WhatsNewModal.tsx` - Modal with accordion items
+- `src/components/whats-new/WhatsNewProvider.tsx` - Client wrapper for layout integration
+- `src/app/api/user/seen-update/route.ts` - PATCH endpoint to mark update as seen
+- `updates/*.md` - Update content files (YYYY-MM-DD-slug.md)
+
+**Update File Format:**
+```markdown
+---
+version: "2026-01-11"
+title: "AI-Powered Contact Research"
+published: true
+---
+
+## Summary
+
+- **Feature Title** - Brief description (under 100 chars)
+
+## Details
+
+### Feature Title
+
+Detailed explanation with full markdown support...
+```
+
+**Creating Updates:**
+Use the slash command: `/create-product-update <description of changes>`
+
+**User Flow:**
+1. User logs into dashboard
+2. Layout fetches `lastSeenUpdateVersion` from DB + localStorage
+3. If latestUpdate.version > lastSeen, show WhatsNewModal
+4. User reads update, clicks "Got it!" or dismisses
+5. Version saved to localStorage (instant) + database (cross-device)
+
+**Critical Patterns:**
+
+**Server Component + Client Modal:**
+```typescript
+// Dashboard layout is Server Component (async)
+// Pass data as props to client wrapper
+<WhatsNewProvider
+  latestUpdate={getLatestUpdate()}
+  userLastSeenVersion={dbUser?.lastSeenUpdateVersion ?? null}
+/>
+```
+
+**Hybrid localStorage + Database:**
+```typescript
+// Check both sources for instant feedback
+const localLastSeen = localStorage.getItem('lastSeenUpdateVersion');
+const lastSeen = userLastSeenVersion || localLastSeen;
+
+// On dismiss, update both
+localStorage.setItem('lastSeenUpdateVersion', version);
+await fetch('/api/user/seen-update', { method: 'PATCH', body: { version } });
+```
+
+**Gotchas:**
+- Version comparison uses string comparison (ISO dates are lexicographically sortable)
+- Always check both localStorage AND database for lastSeenVersion
+- Summary bullet titles MUST match Details H3 headings exactly
+- Set `published: false` in frontmatter to hide draft updates
+
+**Location:** `src/components/whats-new/`, `src/lib/updates/`, `updates/`
+
+---
 
 ### VCF Import Pattern
 
@@ -329,6 +511,82 @@ BRAND_GOLD.primary  // "#d4a54a"
 
 ---
 
+### Contact Deep Research Pattern
+
+**Purpose:** AI-powered research to find publicly available information about contacts and generate profile enrichment recommendations.
+
+**Files:**
+- `src/lib/research/` - Core research logic (orchestrator, prompts, schemas, types)
+- `src/components/research/` - UI components (ResearchButton, ResearchResultsPanel, RecommendationCard, InlineDiff)
+- `src/app/api/contacts/[id]/research/route.ts` - Initiate research
+- `src/app/api/contacts/[id]/research/[runId]/apply/route.ts` - Apply approved recommendations
+
+**Flow:**
+1. User clicks "Research" on contact detail page
+2. Selects focus areas (professional, expertise, interests, news)
+3. System builds search query → Tavily API → GPT-4o synthesis → Recommendations
+4. User reviews recommendations with inline diff view
+5. Approve/reject/edit each → Apply approved changes
+
+**Key Types:**
+```typescript
+// src/lib/research/types.ts
+interface ContactContext {
+  firstName, lastName, primaryEmail, title, organizationalTitle, company, location, linkedinUrl, expertise, interests, whyNow, notes
+}
+
+type FocusArea = 'professional' | 'expertise' | 'interests' | 'news';
+
+interface GeneratedRecommendation {
+  fieldName: 'expertise' | 'interests' | 'whyNow' | 'notes' | 'title' | 'organizationalTitle' | 'company' | 'location' | 'tags';
+  action: 'ADD' | 'UPDATE';
+  proposedValue: string;
+  confidence: number;
+  sourceUrls: string[];
+}
+```
+
+**Title vs OrganizationalTitle:**
+- `title` = Job Role (what they do): "Venture Capitalist", "Software Engineer"
+- `organizationalTitle` = Position (rank in org): "President", "VP of Engineering", "Managing Partner"
+
+**Inline Diff for UPDATE:**
+```typescript
+// src/components/research/InlineDiff.tsx
+import { diffWords } from 'diff';
+// Shows: strikethrough (red) for deletions, bold-italic (green) for additions
+```
+
+**Duplicate Filtering:**
+```typescript
+// src/lib/research/orchestrator.ts - Post-generation filter
+.filter((r) => {
+  if (!r.currentValue) return true;
+  const current = r.currentValue.trim().toLowerCase();
+  const proposed = r.proposedValue.trim().toLowerCase();
+  return current !== proposed && !current.includes(proposed);
+})
+```
+
+**Markdown Rendering:**
+- `@tailwindcss/typography` plugin required for prose classes to work
+- Wrap ReactMarkdown in div with `prose prose-invert prose-sm max-w-none` classes
+- Full report shows proper paragraph spacing, headers, lists when plugin installed
+
+**Notes Field Formatting Protocol:**
+- AI prompt enforces bullet-point format for all Notes recommendations
+- If >6 bullets, organize into sections with `## Headers`
+- Never use bracketed metadata like `[Field: Value]`
+- See `src/lib/research/prompts.ts` NOTES FIELD FORMATTING PROTOCOL section
+
+**Gotchas:**
+- ReactMarkdown doesn't accept className prop - wrap in div with prose classes
+- Confidence threshold is 0.5 (MIN_CONFIDENCE_THRESHOLD in orchestrator.ts)
+- Use `whitespace-pre-wrap` for multi-line content display
+- Apply route must include `organizationalTitle` in allowed fields Pick<>
+
+---
+
 ### Delete All Contacts Pattern
 
 **Purpose:** Bulk delete all contacts with confirmation dialog requiring "DELETE" text.
@@ -481,8 +739,8 @@ JSX with inline styles (no Tailwind), Framer Motion, Lucide React icons.
 | Item | Value |
 |------|-------|
 | Project | Better Connections (Personal CRM) |
-| Stack | Next.js 14 + Supabase PostgreSQL + Prisma + OpenAI GPT-4o-mini + shadcn/ui |
+| Stack | Next.js 14 + Supabase PostgreSQL + Prisma + OpenAI GPT-4o-mini + shadcn/ui + Tavily AI Search |
 | Auth | Supabase (email/password) |
 | Design | Dark theme, gold (#d4a54a), glassmorphism |
-| Core Feature | "Why Now" contextual relevance |
-| Last Updated | 2026-01-08 |
+| Core Feature | "Why Now" contextual relevance + AI-powered contact research |
+| Last Updated | 2026-01-11 |

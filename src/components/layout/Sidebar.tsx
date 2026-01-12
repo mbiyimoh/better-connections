@@ -142,7 +142,7 @@ export function Sidebar({ user, contactCount, enrichQueueCount }: SidebarProps) 
         </div>
         {!isCollapsed && (
           <span className="font-display text-[15px] text-white">
-            Better <span className="text-gold-primary">Connections</span>
+            Better <span className="text-gold-primary">Contacts</span>
           </span>
         )}
       </div>

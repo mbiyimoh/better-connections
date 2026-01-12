@@ -1,5 +1,6 @@
 import type { Config } from 'tailwindcss';
 import tailwindcssAnimate from 'tailwindcss-animate';
+import typography from '@tailwindcss/typography';
 
 const config: Config = {
   darkMode: ['class'],
@@ -52,7 +53,7 @@ const config: Config = {
           '4': 'hsl(var(--chart-4))',
           '5': 'hsl(var(--chart-5))',
         },
-        // Better Connections Design System - OLED optimized
+        // Better Contacts Design System - OLED optimized
         bg: {
           primary: '#121212',    // OLED optimized (was #0D0D0F)
           secondary: '#1E1E1E',  // (was #1A1A1F)
@@ -130,7 +131,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [tailwindcssAnimate],
+  plugins: [tailwindcssAnimate, typography],
 };
 
 export default config;

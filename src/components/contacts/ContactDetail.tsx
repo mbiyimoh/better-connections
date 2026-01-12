@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft,
   Edit,
@@ -37,6 +38,10 @@ import type { Contact } from '@/types/contact';
 import { getDisplayName, getInitials as getContactInitials, getAvatarColor } from '@/types/contact';
 import { EnrichmentScoreCard } from './EnrichmentScoreCard';
 import { TagsSection } from './TagsSection';
+import { ResearchButton, type Recommendation } from '@/components/research';
+import { ResearchApplyCelebration } from '@/components/research/ResearchApplyCelebration';
+import { ResearchRunHistory } from '@/components/research/ResearchRunHistory';
+import type { ResearchRunTileData } from '@/components/research/ResearchRunTile';
 
 function formatDate(dateString: string | null): string {
   if (!dateString) return 'Not set';
@@ -56,19 +61,128 @@ const strengthDescriptions: Record<number, string> = {
   4: "Close connection - trusted relationship, can reach out anytime",
 };
 
-interface ContactDetailProps {
-  contact: Contact;
+// Type for serialized research run from server
+export interface SerializedResearchRun {
+  id: string;
+  status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED';
+  summary: string | null;
+  fullReport: string | null;
+  sourceUrls: string[];
+  executionTimeMs: number | null;
+  createdAt: string;
+  completedAt: string | null;
+  appliedAt: string | null;
+  appliedChangesSummary: string | null;
+  previousScore: number | null;
+  newScore: number | null;
+  recommendations: Recommendation[];
 }
 
-export function ContactDetail({ contact }: ContactDetailProps) {
+// Celebration state
+interface CelebrationData {
+  previousScore: number;
+  newScore: number;
+  appliedChangesSummary: string[];
+  currentRank: number;
+  previousRank: number;
+}
+
+interface ContactDetailProps {
+  contact: Contact;
+  researchRuns?: SerializedResearchRun[];
+  totalContacts?: number;
+}
+
+export function ContactDetail({ contact, researchRuns = [], totalContacts = 1 }: ContactDetailProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
+  const [celebrationData, setCelebrationData] = useState<CelebrationData | null>(null);
 
   // Refresh contact data after tag changes
   const handleTagAdded = useCallback(() => {
     router.refresh();
   }, [router]);
+
+  // Handle successful apply - show celebration if score improved
+  const handleApplySuccess = useCallback(async (data: {
+    previousScore: number;
+    newScore: number;
+    appliedChangesSummary: string[];
+  }) => {
+    // Only show celebration if score improved
+    if (data.newScore > data.previousScore) {
+      // Fetch ranking data
+      try {
+        const rankRes = await fetch(`/api/contacts/${contact.id}/ranking`);
+        if (rankRes.ok) {
+          const rankData = await rankRes.json();
+          // Calculate approximate previous rank based on score improvement
+          // This is an estimation - actual previous rank would need to be calculated before apply
+          const scoreDelta = data.newScore - data.previousScore;
+          const estimatedPreviousRank = Math.min(
+            rankData.currentRank + Math.ceil(scoreDelta / 5), // Rough estimate: 5 points per rank position
+            rankData.totalContacts
+          );
+          setCelebrationData({
+            previousScore: data.previousScore,
+            newScore: data.newScore,
+            appliedChangesSummary: data.appliedChangesSummary,
+            currentRank: rankData.currentRank,
+            previousRank: estimatedPreviousRank,
+          });
+        } else {
+          // Show celebration without rank data
+          setCelebrationData({
+            previousScore: data.previousScore,
+            newScore: data.newScore,
+            appliedChangesSummary: data.appliedChangesSummary,
+            currentRank: 1,
+            previousRank: 1,
+          });
+        }
+      } catch {
+        // Show celebration without rank data
+        setCelebrationData({
+          previousScore: data.previousScore,
+          newScore: data.newScore,
+          appliedChangesSummary: data.appliedChangesSummary,
+          currentRank: 1,
+          previousRank: 1,
+        });
+      }
+    } else {
+      // No score improvement - just show toast and refresh
+      toast({
+        title: 'Recommendations applied',
+        description: `${data.appliedChangesSummary.length} changes made to profile`,
+      });
+      router.refresh();
+    }
+  }, [contact.id, router, toast]);
+
+  // Handle celebration complete
+  const handleCelebrationComplete = useCallback(() => {
+    setCelebrationData(null);
+    router.refresh();
+  }, [router]);
+
+  // Convert serialized research runs to tile data
+  const researchRunTileData: ResearchRunTileData[] = researchRuns.map((run) => ({
+    id: run.id,
+    status: run.status,
+    createdAt: new Date(run.createdAt),
+    completedAt: run.completedAt ? new Date(run.completedAt) : null,
+    appliedAt: run.appliedAt ? new Date(run.appliedAt) : null,
+    appliedChangesSummary: run.appliedChangesSummary,
+    previousScore: run.previousScore,
+    newScore: run.newScore,
+    summary: run.summary,
+    fullReport: run.fullReport,
+    sourceUrls: run.sourceUrls,
+    executionTimeMs: run.executionTimeMs,
+    recommendations: run.recommendations,
+  }));
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this contact?')) return;
@@ -118,8 +232,10 @@ export function ContactDetail({ contact }: ContactDetailProps) {
             </Avatar>
             <div>
               <h1 className="text-2xl font-bold text-white">{getDisplayName(contact)}</h1>
-              {(contact.title || contact.company) && (
+              {(contact.title || contact.organizationalTitle || contact.company) && (
                 <p className="mt-1 text-text-secondary">
+                  {contact.organizationalTitle}
+                  {contact.organizationalTitle && (contact.title || contact.company) && ', '}
                   {contact.title}
                   {contact.title && contact.company && ' at '}
                   {contact.company}
@@ -134,6 +250,11 @@ export function ContactDetail({ contact }: ContactDetailProps) {
                 Edit
               </Link>
             </Button>
+            <ResearchButton
+              contactId={contact.id}
+              contactName={`${contact.firstName} ${contact.lastName || ''}`.trim()}
+              disabled={!contact.firstName || !contact.lastName}
+            />
             <Button
               className="bg-gold-primary hover:bg-gold-light text-bg-primary font-semibold"
               asChild
@@ -177,6 +298,35 @@ export function ContactDetail({ contact }: ContactDetailProps) {
         <div className="mb-6">
           <TagsSection contact={contact} onTagAdded={handleTagAdded} />
         </div>
+
+        {/* Celebration UI - shows after successful apply with score improvement */}
+        <AnimatePresence>
+          {celebrationData && (
+            <div className="mb-6">
+              <ResearchApplyCelebration
+                previousScore={celebrationData.previousScore}
+                newScore={celebrationData.newScore}
+                appliedChangesSummary={celebrationData.appliedChangesSummary}
+                contactName={getDisplayName(contact)}
+                currentRank={celebrationData.currentRank}
+                previousRank={celebrationData.previousRank}
+                totalContacts={totalContacts}
+                onComplete={handleCelebrationComplete}
+              />
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Research Run History */}
+        {researchRunTileData.length > 0 && !celebrationData && (
+          <div className="mb-6">
+            <ResearchRunHistory
+              researchRuns={researchRunTileData}
+              contactId={contact.id}
+              onApplySuccess={handleApplySuccess}
+            />
+          </div>
+        )}
 
         {/* Why Now - Key Section */}
         {contact.whyNow && (

@@ -51,7 +51,7 @@ export default async function Home() {
 
         {/* Subheadline - DM Sans */}
         <p className="mb-12 max-w-lg font-body text-base text-text-secondary sm:text-lg">
-          Better Connections is a personal CRM that helps you remember the{' '}
+          Better Contacts is a personal CRM that helps you remember the{' '}
           <span className="text-white">context</span> behind every relationship —
           why they matter <span className="text-white">right now</span>.
         </p>

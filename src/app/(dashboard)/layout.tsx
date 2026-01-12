@@ -4,6 +4,8 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { AppShell } from '@/components/layout';
 import { prisma } from '@/lib/db';
 import { FeedbackButton } from '@/components/feedback/FeedbackButton';
+import { getLatestUpdate } from '@/lib/updates';
+import { WhatsNewProvider } from '@/components/whats-new';
 
 export default async function DashboardLayout({
   children,
@@ -29,13 +31,17 @@ export default async function DashboardLayout({
   let contactCount = 0;
   let enrichQueueCount = 0;
   let hasCompletedOnboarding = true; // Default to true to avoid redirect loop on error
+  let lastSeenUpdateVersion: string | null = null;
 
   try {
-    // Get user's onboarding status and contact counts in parallel
+    // Get user's onboarding status, contact counts, and update version in parallel
     const [dbUser, totalContacts, enrichQueue] = await Promise.all([
       prisma.user.findUnique({
         where: { id: user.id },
-        select: { hasCompletedOnboarding: true },
+        select: {
+          hasCompletedOnboarding: true,
+          lastSeenUpdateVersion: true,
+        },
       }),
       prisma.contact.count({
         where: { userId: user.id },
@@ -49,12 +55,16 @@ export default async function DashboardLayout({
     ]);
 
     hasCompletedOnboarding = dbUser?.hasCompletedOnboarding ?? true;
+    lastSeenUpdateVersion = dbUser?.lastSeenUpdateVersion ?? null;
     contactCount = totalContacts;
     enrichQueueCount = enrichQueue;
   } catch {
     // Database might not be connected yet during development
     console.warn('Could not fetch user data');
   }
+
+  // Get latest update for What's New modal
+  const latestUpdate = getLatestUpdate();
 
   // Redirect to onboarding if not completed and not already on onboarding page
   if (!hasCompletedOnboarding && !isOnboardingPage) {
@@ -78,6 +88,11 @@ export default async function DashboardLayout({
       {children}
       {/* Hide on mobile - ContactsView handles its own FeedbackButton for mobile */}
       <FeedbackButton hideOnMobile />
+      {/* What's New modal - shows when new updates are available */}
+      <WhatsNewProvider
+        latestUpdate={latestUpdate}
+        userLastSeenVersion={lastSeenUpdateVersion}
+      />
     </AppShell>
   );
 }

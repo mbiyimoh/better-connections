@@ -33,7 +33,7 @@ export default async function AuthLayout({
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-gold-primary to-gold-light font-display text-xl text-black">
             33
           </div>
-          <h1 className="font-display text-2xl text-white">Better Connections</h1>
+          <h1 className="font-display text-2xl text-white">Better Contacts</h1>
           <p className="mt-2 font-body text-sm text-text-secondary">
             Your contacts are flat.{' '}
             <span className="text-gold-primary">Give them some depth.</span>

@@ -513,7 +513,7 @@ export function ContactsTable() {
           <div className="flex flex-1 flex-col items-center justify-center py-16 px-4">
             <Users className="mb-4 h-16 w-16 text-text-tertiary opacity-30" />
             <p className="mb-2 text-xl font-semibold text-text-primary">
-              {searchQuery || activeFilters > 0 ? 'No results found' : 'Welcome to Better Connections'}
+              {searchQuery || activeFilters > 0 ? 'No results found' : 'Welcome to Better Contacts'}
             </p>
             <p className="mb-8 text-base text-text-secondary text-center max-w-md">
               {searchQuery || activeFilters > 0
@@ -644,10 +644,12 @@ export function ContactsTable() {
                       </TableCell>
                       <TableCell className="text-text-secondary">
                         <div className="truncate">
-                          {contact.title || contact.company ? (
+                          {contact.organizationalTitle || contact.title || contact.company ? (
                             <>
+                              {contact.organizationalTitle}
+                              {contact.organizationalTitle && contact.title && ', '}
                               {contact.title}
-                              {contact.title && contact.company && ' · '}
+                              {(contact.organizationalTitle || contact.title) && contact.company && ' · '}
                               {contact.company}
                             </>
                           ) : '—'}

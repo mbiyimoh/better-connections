@@ -25,7 +25,8 @@ export interface Contact {
   secondaryPhone: string | null;
 
   // Other fields
-  title: string | null;
+  title: string | null; // Job role (e.g., "Venture Capitalist", "Software Engineer")
+  organizationalTitle: string | null; // Position within organization (e.g., "President", "VP of Engineering")
   company: string | null;
   location: string | null;
   linkedinUrl: string | null;

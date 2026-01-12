@@ -9,30 +9,33 @@ datasource db {
 }
 
 model User {
-  id                     String                @id @default(uuid())
-  email                  String                @unique
-  name                   String
-  emailNotifications     Boolean               @default(true)
-  weeklyDigest           Boolean               @default(true)
-  enrichmentReminders    Boolean               @default(false)
-  createdAt              DateTime              @default(now())
-  updatedAt              DateTime              @updatedAt
-  lastLoginAt            DateTime?
-  hasCompletedOnboarding Boolean               @default(false)
-  role                   UserRole              @default(USER)
-  contacts               Contact[]
-  contactMentions        ContactMention[]
-  contactRelationships   ContactRelationship[]
-  enrichmentStreaks      EnrichmentStreak[]
-  feedbackSubmissions    Feedback[]
-  feedbackVotes          FeedbackVote[]
+  id                      String                @id @default(uuid())
+  email                   String                @unique
+  name                    String
+  emailNotifications      Boolean               @default(true)
+  weeklyDigest            Boolean               @default(true)
+  enrichmentReminders     Boolean               @default(false)
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  lastLoginAt             DateTime?
+  hasCompletedOnboarding  Boolean               @default(false)
+  lastSeenUpdateVersion   String?               // ISO date string (e.g., "2026-01-15") for What's New tracking
+  role                    UserRole              @default(USER)
+  contacts                Contact[]
+  contactMentions         ContactMention[]
+  contactRelationships    ContactRelationship[]
+  enrichmentStreaks       EnrichmentStreak[]
+  feedbackSubmissions     Feedback[]
+  feedbackVotes           FeedbackVote[]
+  researchRuns            ContactResearchRun[]
 }
 
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
 model Contact {
   id                   String                @id @default(uuid())
   userId               String
-  title                String?
+  title                String?               // Job role (e.g., "Venture Capitalist", "Software Engineer")
+  organizationalTitle  String?               // Position within organization (e.g., "President", "VP of Engineering")
   company              String?
   location             String?
   linkedinUrl          String?
@@ -68,6 +71,8 @@ model Contact {
   relationshipsA       ContactRelationship[] @relation("RelationshipA")
   relationshipsB       ContactRelationship[] @relation("RelationshipB")
   tags                 Tag[]
+  researchRuns         ContactResearchRun[]
+  enrichmentLogs       ContactEnrichmentLog[]
 
   @@index([userId])
   @@index([firstName])
@@ -138,6 +143,102 @@ model ContactMention {
   @@index([userId])
   @@index([sourceContactId])
   @@index([status])
+}
+
+// Contact Deep Research models
+model ContactResearchRun {
+  id              String         @id @default(cuid())
+  contactId       String
+  userId          String
+
+  // Research configuration
+  searchQuery     String         // Optimized query sent to Tavily
+  focusAreas      String[]       // ["professional", "expertise", "interests", "news"]
+
+  // Status tracking
+  status          ResearchStatus @default(PENDING)
+  progressStage   String?        // "Searching...", "Analyzing...", "Generating recommendations..."
+  errorMessage    String?
+
+  // Results
+  summary         String?        @db.Text  // Bullet summary for quick display
+  fullReport      String?        @db.Text  // Detailed markdown report
+  sourceUrls      String[]       // All sources found during research
+
+  // Metadata
+  startedAt       DateTime?
+  completedAt     DateTime?
+  executionTimeMs Int?
+
+  // Apply tracking (for post-apply celebration and history)
+  appliedChangesSummary String?    @db.Text  // JSON array of change descriptions
+  appliedAt             DateTime?            // When recommendations were applied
+  previousScore         Int?                 // Enrichment score before apply
+  newScore              Int?                 // Enrichment score after apply
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relations
+  contact         Contact        @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recommendations ContactRecommendation[]
+
+  @@index([contactId])
+  @@index([userId, createdAt])
+  @@index([status])
+}
+
+model ContactRecommendation {
+  id              String               @id @default(cuid())
+  researchRunId   String
+
+  // What to update
+  fieldName       String               // expertise | interests | whyNow | notes | title | company | location | tags
+  action          RecommendationAction // ADD (empty field) | UPDATE (existing value)
+  currentValue    String?              @db.Text  // For comparison/diff display
+  proposedValue   String               @db.Text  // The suggested new value
+
+  // For tag recommendations (fieldName = "tags")
+  tagCategory     String?              // RELATIONSHIP | OPPORTUNITY | EXPERTISE | INTEREST
+
+  // Justification
+  reasoning       String               @db.Text  // Why this recommendation was made
+  confidence      Float                // 0.0 - 1.0
+  sourceUrls      String[]             // Specific sources for this recommendation
+
+  // Status
+  status          RecommendationStatus @default(PENDING)
+  editedValue     String?              @db.Text  // User-edited value (if different from proposed)
+  reviewedAt      DateTime?
+  appliedAt       DateTime?
+
+  createdAt       DateTime             @default(now())
+
+  // Relations
+  researchRun     ContactResearchRun   @relation(fields: [researchRunId], references: [id], onDelete: Cascade)
+
+  @@index([researchRunId, status])
+  @@index([researchRunId, fieldName])
+}
+
+model ContactEnrichmentLog {
+  id              String   @id @default(cuid())
+  contactId       String
+
+  fieldName       String
+  previousValue   String?  @db.Text
+  newValue        String   @db.Text
+  source          String   // MANUAL | VOICE | RESEARCH | IMPORT
+  researchRunId   String?  // Reference to research run if source = RESEARCH
+
+  createdAt       DateTime @default(now())
+
+  // Relations
+  contact         Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId, createdAt])
+  @@index([source])
 }
 
 model Feedback {
@@ -257,4 +358,24 @@ enum FeedbackStatus {
   IN_PROGRESS
   COMPLETED
   CLOSED
+}
+
+// Contact Deep Research enums
+enum ResearchStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum RecommendationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  APPLIED
+}
+
+enum RecommendationAction {
+  ADD
+  UPDATE
 }

@@ -25,7 +25,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Better Connections',
+  title: 'Better Contacts',
   description: 'Your contacts are flat. Give them some depth.',
 };
 

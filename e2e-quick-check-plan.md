@@ -73,7 +73,7 @@ export default defineConfig({
   reporter: [['list']],
   timeout: 60000,
   use: {
-    baseURL: 'http://localhost:3003',
+    baseURL: 'http://localhost:3333',
     trace: 'off',
     screenshot: 'only-on-failure',
     video: 'off',
@@ -302,8 +302,8 @@ END:VCARD
 ### Run Tests
 
 ```bash
-# Ensure dev server is running on port 3003
-PORT=3003 npm run dev
+# Ensure dev server is running on port 3333
+PORT=3333 npm run dev
 
 # Run individual tests (in separate terminal)
 cd .quick-checks
