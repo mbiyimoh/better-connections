@@ -8,9 +8,10 @@ import { Slide2Frustration } from "./slides/Slide2Frustration";
 import { Slide3MagicMoment } from "./slides/Slide3MagicMoment";
 import { Slide4HowItWorks } from "./slides/Slide4HowItWorks";
 import { Slide5EnrichmentPreview } from "./slides/Slide5EnrichmentPreview";
-import { Slide6CTA } from "./slides/Slide6CTA";
+import { Slide6AIResearch } from "./slides/Slide6AIResearch";
+import { Slide7CTA } from "./slides/Slide7CTA";
 
-const TOTAL_SLIDES = 6;
+const TOTAL_SLIDES = 7;
 
 export function StoryOnboarding() {
   const router = useRouter();
@@ -60,7 +61,8 @@ export function StoryOnboarding() {
       {currentSlide === 2 && <Slide3MagicMoment />}
       {currentSlide === 3 && <Slide4HowItWorks />}
       {currentSlide === 4 && <Slide5EnrichmentPreview />}
-      {currentSlide === 5 && <Slide6CTA onComplete={handleComplete} />}
+      {currentSlide === 5 && <Slide6AIResearch />}
+      {currentSlide === 6 && <Slide7CTA onComplete={handleComplete} />}
     </div>
   );
 }

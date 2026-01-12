@@ -4,11 +4,11 @@ import { SlideLayout } from "./SlideLayout";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-interface Slide6CTAProps {
+interface Slide7CTAProps {
   onComplete: () => void;
 }
 
-export function Slide6CTA({ onComplete }: Slide6CTAProps) {
+export function Slide7CTA({ onComplete }: Slide7CTAProps) {
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent tap navigation
     onComplete();
