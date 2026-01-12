@@ -46,3 +46,4 @@ prisma/*.db-journal
 
 # Quick checks (ephemeral tests)
 .quick-checks/
+Screenshot*.png
