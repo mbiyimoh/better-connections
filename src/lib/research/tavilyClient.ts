@@ -69,6 +69,11 @@ export async function searchTavily(
   query: string,
   personName?: string
 ): Promise<ResearchFindings> {
+  // DEBUG: Log the query being sent to Tavily
+  console.log(`[Tavily Search] Query: "${query}"`);
+  console.log(`[Tavily Search] Person name filter: "${personName || 'none'}"`);
+  console.log(`[Tavily Search] Config: depth=${MODERATE_CONFIG.searchDepth}, maxResults=${MODERATE_CONFIG.maxResults}`);
+
   const data = await tavilyFetch<TavilyResponse>('search', {
     query,
     search_depth: MODERATE_CONFIG.searchDepth,
@@ -76,6 +81,9 @@ export async function searchTavily(
     include_raw_content: MODERATE_CONFIG.includeRawContent,
     include_answer: false,
   });
+
+  // DEBUG: Log raw Tavily response
+  console.log(`[Tavily Search] Raw results count: ${data.results?.length || 0}`);
 
   // Map all results first
   const allSources: TavilySearchResult[] = (data.results || []).map(
@@ -88,28 +96,40 @@ export async function searchTavily(
     })
   );
 
+  // DEBUG: Log all sources before filtering
+  console.log(`[Tavily Search] Sources before filtering:`);
+  allSources.forEach((s, i) => {
+    console.log(`  [${i + 1}] score=${s.score.toFixed(2)} url=${s.url}`);
+    console.log(`      title: ${s.title.slice(0, 80)}...`);
+    console.log(`      content length: ${s.content.length} chars`);
+  });
+
   // Filter sources by relevance score
   let filteredSources = allSources.filter((s) => s.score >= MIN_RELEVANCE_SCORE);
+  const afterScoreFilter = filteredSources.length;
+  console.log(`[Tavily Search] After score filter (>=${MIN_RELEVANCE_SCORE}): ${afterScoreFilter}/${allSources.length}`);
 
   // If person name provided, also filter to sources that mention the name
   if (personName) {
     const nameParts = personName.toLowerCase().split(' ').filter(Boolean);
     const lastName = nameParts[nameParts.length - 1];
+    console.log(`[Tavily Search] Filtering for last name: "${lastName}"`);
 
     filteredSources = filteredSources.filter((s) => {
       const contentLower = ((s.content || '') + ' ' + (s.title || '')).toLowerCase();
-      // Must contain at least the last name
-      return lastName ? contentLower.includes(lastName) : true;
+      const hasName = lastName ? contentLower.includes(lastName) : true;
+      if (!hasName) {
+        console.log(`[Tavily Search] Filtered out (no name): ${s.url}`);
+      }
+      return hasName;
     });
+    console.log(`[Tavily Search] After name filter: ${filteredSources.length}/${afterScoreFilter}`);
   }
 
-  // Log filtering results for debugging
-  const filteredOut = allSources.length - filteredSources.length;
-  if (filteredOut > 0) {
-    console.log(
-      `[Tavily] Filtered out ${filteredOut}/${allSources.length} sources ` +
-      `(score < ${MIN_RELEVANCE_SCORE} or name not found)`
-    );
+  // Log final results
+  console.log(`[Tavily Search] FINAL: ${filteredSources.length} sources passed all filters`);
+  if (filteredSources.length === 0 && allSources.length > 0) {
+    console.warn(`[Tavily Search] WARNING: All ${allSources.length} sources were filtered out!`);
   }
 
   return {

@@ -27,10 +27,20 @@ export async function executeContactResearch(options: {
   const { contact, focusAreas, onProgress } = options;
   const startTime = Date.now();
 
+  // DEBUG: Log research start
+  console.log(`[Research] ========== STARTING RESEARCH ==========`);
+  console.log(`[Research] Contact: ${contact.firstName} ${contact.lastName}`);
+  console.log(`[Research] Company: ${contact.company || 'none'}`);
+  console.log(`[Research] Title: ${contact.title || 'none'}`);
+  console.log(`[Research] Location: ${contact.location || 'none'}`);
+  console.log(`[Research] LinkedIn: ${contact.linkedinUrl || 'none'}`);
+  console.log(`[Research] Focus areas: ${focusAreas.join(', ')}`);
+
   try {
     // Step 1: Build search query
     await onProgress?.('Building search query...');
     const searchQuery = buildSearchQuery(contact, focusAreas);
+    console.log(`[Research] Built search query: "${searchQuery}"`);
 
     // Step 2a: If LinkedIn URL provided, extract profile content directly
     let linkedInContent: string | null = null;
@@ -63,6 +73,8 @@ export async function executeContactResearch(options: {
     }
 
     if (findings.sources.length === 0) {
+      console.log(`[Research] No sources found after filtering - returning empty result`);
+      console.log(`[Research] Sources analyzed: ${findings.sourcesAnalyzed}`);
       return {
         success: true,
         searchQuery,
@@ -72,6 +84,8 @@ export async function executeContactResearch(options: {
         executionTimeMs: Date.now() - startTime,
       };
     }
+
+    console.log(`[Research] ${findings.sources.length} sources available for synthesis`);
 
     // Step 3: Synthesize report with GPT
     await onProgress?.('Analyzing findings...');
