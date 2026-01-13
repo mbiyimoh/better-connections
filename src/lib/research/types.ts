@@ -75,3 +75,11 @@ export const RESEARCH_FIELD_LABELS: Record<string, string> = {
   notes: 'notes',
   tags: 'tag',
 };
+
+// LinkedIn profile extraction result
+export interface LinkedInExtraction {
+  success: boolean;
+  url: string;
+  rawContent: string | null;
+  error?: string;
+}

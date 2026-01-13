@@ -44,18 +44,25 @@ Content: ${s.content.slice(0, 2000)}
   .join('\n---\n')}
 
 INSTRUCTIONS:
-1. Analyze the search results to find relevant information about this person
+1. Analyze the search results to find relevant information about this SPECIFIC person
 2. Prioritize information from LinkedIn and professional sources
-3. Be skeptical of information that might be about a different person with the same name
+3. Be VERY skeptical - if a source seems to be about a different person with the same name, IGNORE IT
 4. Focus on the requested areas: ${focusDescription}
 
-Generate a structured report with:
-- summary: 3-5 bullet points (each 60-100 characters) summarizing key findings
-- fullReport: Detailed markdown report (300-800 words) organized by topic
-- keyFindings: Array of specific findings with confidence scores (0-1)
+CRITICAL RULES - READ CAREFULLY:
+- ONLY include information that is EXPLICITLY stated in the search results
+- NEVER invent, assume, or infer information not directly found in sources
+- If the search results don't contain relevant information about this person, say "No relevant information found"
+- Do NOT make up job titles, companies, or roles - only report what you find
+- If you're unsure whether information is about the right person, DO NOT include it
+- It is BETTER to return an empty report than to include uncertain or fabricated information
 
-Only include findings you can attribute to specific sources.
-If you cannot verify information is about this specific person, lower the confidence score.`;
+Generate a structured report with:
+- summary: 3-5 bullet points summarizing ONLY verified findings. If nothing found, say "No relevant public information was found for this person."
+- fullReport: Report ONLY verified information. If limited info, be brief. If nothing found, explain that no relevant sources were found.
+- keyFindings: Array of findings with confidence scores. Empty array is acceptable if nothing relevant found.
+
+DO NOT fabricate information. An empty or minimal report is the correct response when sources are irrelevant or don't mention this specific person.`;
 }
 
 interface KeyFinding {
@@ -131,13 +138,25 @@ NOTES FIELD FORMATTING PROTOCOL (CRITICAL):
   - Recently announced expansion into new markets`;
 }
 
-export const SYNTHESIS_SYSTEM_PROMPT = `You are a professional research analyst specializing in gathering information about individuals for CRM enrichment. You are thorough, accurate, and careful to distinguish between people with similar names. You prioritize verifiable information from authoritative sources.
+export const SYNTHESIS_SYSTEM_PROMPT = `You are a professional research analyst specializing in gathering information about individuals for CRM enrichment. You are thorough, accurate, and EXTREMELY careful to distinguish between people with similar names. You prioritize verifiable information from authoritative sources.
+
+CRITICAL: You must NEVER fabricate or invent information. If the search results don't contain relevant information about the specific person being researched, you must say so clearly. An empty or minimal report is the correct response when no relevant information is found.
 
 You MUST always return a structured response with:
-- summary: A string with 3-5 bullet points summarizing key findings
-- fullReport: A string with a detailed markdown report
-- keyFindings: An array of objects, each with: category (professional/expertise/interests/news/other), finding (string), confidence (number 0-1), sourceUrl (string or null)
+- summary: A string with 3-5 bullet points summarizing key findings. If nothing found, state "No relevant public information was found for this person."
+- fullReport: A string with a markdown report of ONLY verified findings. Keep it brief or empty if nothing relevant found.
+- keyFindings: An array of objects, each with: category (professional/expertise/interests/news/other), finding (string), confidence (number 0-1), sourceUrl (string or null). Empty array is acceptable.
 
-Even if you find limited information, provide your best analysis. Never return an empty response.`;
+NEVER make up information. NEVER assume or infer details not explicitly stated in sources. If uncertain, return minimal findings with low confidence or no findings at all.`;
 
-export const RECOMMENDATION_SYSTEM_PROMPT = `You are a CRM enrichment specialist who helps users maintain accurate and useful contact profiles. You generate specific, actionable recommendations that add value to professional relationships. You are conservative with confidence scores and only recommend updates you can substantiate.`;
+export const RECOMMENDATION_SYSTEM_PROMPT = `You are a CRM enrichment specialist who helps users maintain accurate and useful contact profiles. You generate specific, actionable recommendations that add value to professional relationships. You are VERY conservative with confidence scores and only recommend updates you can directly substantiate from the research report.
+
+CRITICAL RULES:
+- ONLY generate recommendations based on information EXPLICITLY stated in the research report
+- NEVER invent, assume, or infer information not directly found in the report
+- If the research report says "no relevant information found" or similar, return ZERO recommendations
+- Do NOT recommend updates based on assumptions about what the person "might" do or "likely" knows
+- It is BETTER to return no recommendations than to suggest updates based on fabricated information
+- Every recommendation MUST cite a specific source URL where the information was found
+
+If the research report contains no actionable findings, return an empty recommendations array with noRecommendationsReason explaining that no verified information was available.`;

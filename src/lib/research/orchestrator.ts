@@ -9,7 +9,7 @@ import type {
 } from './types';
 import { reportSynthesisSchema, recommendationOutputSchema } from './schemas';
 import { buildSearchQuery } from './queryBuilder';
-import { searchTavily } from './tavilyClient';
+import { searchTavily, extractLinkedInProfile } from './tavilyClient';
 import {
   buildSynthesisPrompt,
   buildRecommendationPrompt,
@@ -32,9 +32,35 @@ export async function executeContactResearch(options: {
     await onProgress?.('Building search query...');
     const searchQuery = buildSearchQuery(contact, focusAreas);
 
-    // Step 2: Execute Tavily search
+    // Step 2a: If LinkedIn URL provided, extract profile content directly
+    let linkedInContent: string | null = null;
+    if (contact.linkedinUrl) {
+      await onProgress?.('Extracting LinkedIn profile...');
+      const linkedInResult = await extractLinkedInProfile(contact.linkedinUrl);
+      if (linkedInResult.success && linkedInResult.rawContent) {
+        linkedInContent = linkedInResult.rawContent;
+        console.log(`[Research] LinkedIn extraction succeeded for ${contact.firstName} ${contact.lastName}`);
+      } else {
+        console.log(`[Research] LinkedIn extraction failed: ${linkedInResult.error}`);
+      }
+    }
+
+    // Step 2b: Execute Tavily web search
     await onProgress?.('Searching the web...');
-    const findings = await searchTavily(searchQuery);
+    const fullName = `${contact.firstName} ${contact.lastName}`.trim();
+    const findings = await searchTavily(searchQuery, fullName);
+
+    // Add LinkedIn as a source if we have content
+    if (linkedInContent && contact.linkedinUrl) {
+      findings.sources.unshift({
+        url: contact.linkedinUrl,
+        title: `LinkedIn Profile - ${fullName}`,
+        content: linkedInContent.slice(0, 5000), // Limit content size
+        score: 1.0, // High relevance since it's the actual profile
+        publishedDate: undefined,
+      });
+      console.log(`[Research] Added LinkedIn as primary source`);
+    }
 
     if (findings.sources.length === 0) {
       return {
