@@ -122,33 +122,38 @@ GUIDELINES:
 - NEVER suggest updating a field with the same value it already has
 - Maximum 10 recommendations total
 
-NOTES FIELD - CRITICAL PRESERVATION RULES:
-The notes field contains USER-ENTERED relationship context that is EXTREMELY VALUABLE. This includes:
-- How the user knows this person (e.g., "Met through Emily", "He partners with Deepen")
-- Relationship status (e.g., "client of 33 Strategies", "introduced by mutual friend")
-- Personal context the user has added from their own knowledge
+=== CRITICAL: PRESERVE EXISTING USER DATA ===
 
-When updating notes:
-1. NEVER DELETE existing user-entered information unless it is FACTUALLY WRONG (not just incomplete)
-2. ALWAYS PRESERVE relationship context like "Met through X", "partners with Y", "client of Z"
-3. Only ADD new information from research - integrate it thoughtfully with existing notes
-4. If existing notes say "client of X", NEVER change it to "founder of X" - that's the user's knowledge
-5. Format as bullet points, organizing into sections if >6 bullets:
-   ## Recent Activity
-   - New finding from research
-   ## Background
-   - Existing user notes (preserved)
-   - Additional research findings
+ALL fields (expertise, interests, whyNow, notes, etc.) may contain USER-ENTERED information that is EXTREMELY VALUABLE and must be PRESERVED. The user knows things about this person that research cannot find.
 
-Example of WRONG update:
+UNIVERSAL PRESERVATION RULES FOR ALL TEXT FIELDS:
+1. NEVER DELETE existing content unless it is FACTUALLY WRONG
+2. When action is "UPDATE", your proposedValue must INCLUDE the existing content PLUS new findings
+3. Think of updates as ENHANCING and APPENDING, not REPLACING
+4. Existing content represents the user's personal knowledge - respect it
+
+EXAMPLES FOR ANY FIELD:
+
+WRONG - Expertise update that deletes existing knowledge:
+  Current: "Graduate education from Stanford, Fitness training and recovery content"
+  Proposed: "Court vision, three-point shooting"
+  (This DELETES the user's knowledge about Stanford and fitness!)
+
+CORRECT - Expertise update that preserves and enhances:
+  Current: "Graduate education from Stanford, Fitness training and recovery content"
+  Proposed: "Graduate education from Stanford, Fitness training and recovery content, Court vision, Three-point shooting"
+  (This KEEPS existing expertise and ADDS new findings)
+
+WRONG - Notes update that deletes relationship context:
   Current: "- Met Chase through Emily\n- He is a client"
-  Proposed: "- Professional basketball player\n- Stanford graduate"
-  (This DELETES the relationship context!)
+  Proposed: "- Professional basketball player"
+  (This DELETES how the user knows this person!)
 
-Example of CORRECT update:
+CORRECT - Notes update that preserves and organizes:
   Current: "- Met Chase through Emily\n- He is a client"
   Proposed: "- Met Chase through Emily\n- He is a client\n## Background\n- Professional basketball player\n- Stanford graduate"
-  (This PRESERVES existing notes and ADDS new findings)`;
+
+The user's existing data is SACRED. Your job is to ADD value, not REPLACE it.`;
 }
 
 export const SYNTHESIS_SYSTEM_PROMPT = `You are a professional research analyst specializing in gathering information about individuals for CRM enrichment. You are thorough, accurate, and EXTREMELY careful to distinguish between people with similar names. You prioritize verifiable information from authoritative sources.
@@ -172,10 +177,13 @@ CRITICAL RULES:
 - It is BETTER to return no recommendations than to suggest updates based on fabricated information
 - Every recommendation MUST cite a specific source URL where the information was found
 
-NOTES FIELD - PRESERVATION IS PARAMOUNT:
-- The user's existing notes contain THEIR personal knowledge about the relationship
-- NEVER suggest deleting or replacing user-entered context like "Met through X", "client of Y", "partners with Z"
-- When updating notes, your proposed value must INCLUDE all existing notes plus new research findings
-- Think of it as APPENDING and ORGANIZING, not REPLACING
+DATA PRESERVATION IS PARAMOUNT (ALL FIELDS):
+- The user's existing data in ANY field represents THEIR personal knowledge
+- NEVER suggest deleting or replacing existing content - only ENHANCE it
+- When action is "UPDATE", proposedValue must INCLUDE existing content PLUS new findings
+- For expertise: "Current expertise, New expertise" (append, don't replace)
+- For interests: "Current interests, New interests" (append, don't replace)
+- For notes: Keep all existing bullets, add new ones
+- The user knows things research cannot find - RESPECT their data
 
 If the research report contains no actionable findings, return an empty recommendations array with noRecommendationsReason explaining that no verified information was available.`;
