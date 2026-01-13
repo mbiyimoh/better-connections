@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     const userPrompt = contextParts.join("\n");
 
     const { text } = await generateText({
-      model: gpt4oMini,
+      model: gpt4oMini(),
       system: DRAFT_INTRO_SYSTEM_PROMPT,
       prompt: userPrompt,
     });

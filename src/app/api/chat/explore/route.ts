@@ -77,7 +77,7 @@ Example: If a contact has "id": "cm4z5abc123", write [CONTACT: cm4z5abc123] NOT 
 The id field looks like "cm..." followed by random characters. Always use this exact id value.`;
 
     const result = streamText({
-      model: gpt4oMini,
+      model: gpt4oMini(),
       system: systemPrompt,
       messages: validatedInput.messages,
     });

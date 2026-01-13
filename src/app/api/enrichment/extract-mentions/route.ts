@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
 
     // 5. Call GPT-4o-mini
     const { object } = await generateObject({
-      model: gpt4oMini,
+      model: gpt4oMini(),
       schema: mentionExtractionResponseSchema,
       system: MENTION_EXTRACTION_SYSTEM_PROMPT,
       prompt: userPrompt,

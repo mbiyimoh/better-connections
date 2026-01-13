@@ -1,27 +1,44 @@
-import { createOpenAI } from "@ai-sdk/openai";
+import { createOpenAI, type OpenAIProvider } from "@ai-sdk/openai";
 import { generateText, generateObject } from "ai";
 import { z } from "zod";
+import type { LanguageModel } from "ai";
 
-// Validate API key format (don't throw at module load to avoid build issues)
-const apiKey = process.env.OPENAI_API_KEY;
-if (!apiKey) {
-  console.warn(
-    "Warning: OPENAI_API_KEY environment variable is not set. " +
-      "AI features will not work. Get your key from https://platform.openai.com/api-keys"
-  );
-} else if (!apiKey.startsWith("sk-")) {
-  console.warn(
-    "Warning: OPENAI_API_KEY doesn't start with 'sk-'. " +
-      "This may indicate an invalid key format."
-  );
+// Lazy initialization pattern to avoid build-time env var issues
+// Same pattern as tavilyClient.ts
+let _openai: OpenAIProvider | null = null;
+let _gpt4oMini: LanguageModel | null = null;
+
+function getOpenAIClient(): OpenAIProvider {
+  if (!_openai) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error(
+        "OPENAI_API_KEY environment variable is not set. " +
+          "AI features will not work. Get your key from https://platform.openai.com/api-keys"
+      );
+    }
+    if (!apiKey.startsWith("sk-")) {
+      console.warn(
+        "Warning: OPENAI_API_KEY doesn't start with 'sk-'. " +
+          "This may indicate an invalid key format."
+      );
+    }
+    _openai = createOpenAI({ apiKey });
+  }
+  return _openai;
 }
 
-// Create OpenAI client with environment variable
-const openai = createOpenAI({
-  apiKey: apiKey,
-});
-
-export const gpt4oMini = openai("gpt-4o-mini");
+/**
+ * Get the GPT-4o-mini model instance (lazy initialization)
+ * IMPORTANT: Always use this getter to ensure the API key is read at runtime,
+ * not at build time. This fixes "Missing apiKey" errors in production.
+ */
+export function gpt4oMini(): LanguageModel {
+  if (!_gpt4oMini) {
+    _gpt4oMini = getOpenAIClient()("gpt-4o-mini");
+  }
+  return _gpt4oMini;
+}
 
 // Chat Exploration System Prompt
 export const EXPLORATION_SYSTEM_PROMPT = `You are an AI assistant helping a user explore their professional network.
@@ -260,7 +277,7 @@ New Content:
 "${trimmedNew}"`;
 
     const result = await generateObject({
-      model: gpt4oMini,
+      model: gpt4oMini(),
       system: NOTES_MERGE_SYSTEM_PROMPT,
       prompt,
       schema: mergeResultSchema,
@@ -293,7 +310,7 @@ export async function refineNotesWithAI(rawNotes: string): Promise<string> {
   try {
     // Use a simpler prompt for pure refinement (no merge needed)
     const { text } = await generateText({
-      model: gpt4oMini,
+      model: gpt4oMini(),
       system: `You are a note-formatting assistant. Convert this unstructured text into clean bullet points.
 
 Rules:

@@ -58,7 +58,7 @@ export async function executeContactResearch(options: {
     let synthesisResult;
     try {
       synthesisResult = await generateObject({
-        model: gpt4oMini,
+        model: gpt4oMini(),
         system: SYNTHESIS_SYSTEM_PROMPT,
         prompt: synthesisPrompt,
         schema: reportSynthesisSchema,
@@ -67,7 +67,7 @@ export async function executeContactResearch(options: {
       console.error('Synthesis generation failed:', synthesisError);
       // Retry with a simpler prompt
       synthesisResult = await generateObject({
-        model: gpt4oMini,
+        model: gpt4oMini(),
         system: SYNTHESIS_SYSTEM_PROMPT,
         prompt: `${synthesisPrompt}\n\nIMPORTANT: You MUST return a valid JSON object with summary (string), fullReport (string), and keyFindings (array). Even if limited information is found, provide your best analysis.`,
         schema: reportSynthesisSchema,
@@ -91,7 +91,7 @@ export async function executeContactResearch(options: {
     let recResult;
     try {
       recResult = await generateObject({
-        model: gpt4oMini,
+        model: gpt4oMini(),
         system: RECOMMENDATION_SYSTEM_PROMPT,
         prompt: recommendationPrompt,
         schema: recommendationOutputSchema,
@@ -100,7 +100,7 @@ export async function executeContactResearch(options: {
       console.error('Recommendation generation failed:', recError);
       // Retry with explicit instructions
       recResult = await generateObject({
-        model: gpt4oMini,
+        model: gpt4oMini(),
         system: RECOMMENDATION_SYSTEM_PROMPT,
         prompt: `${recommendationPrompt}\n\nIMPORTANT: Return a valid JSON with recommendations array. Each recommendation must have: fieldName, action, proposedValue, reasoning, confidence, sourceUrls. If no recommendations apply, return { "recommendations": [], "noRecommendationsReason": "explanation" }`,
         schema: recommendationOutputSchema,

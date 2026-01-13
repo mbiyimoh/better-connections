@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
 
     // Call generateObject with structured schema
     const result = await generateObject({
-      model: gpt4oMini,
+      model: gpt4oMini(),
       system: ENRICHMENT_EXTRACTION_SYSTEM_PROMPT,
       prompt: userPrompt,
       schema: enrichmentExtractionResponseSchema,

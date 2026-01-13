@@ -92,7 +92,7 @@ export async function POST(
 
     // Generate suggestions using GPT-4o-mini
     const result = await generateObject({
-      model: gpt4oMini,
+      model: gpt4oMini(),
       system: TAG_SUGGESTION_SYSTEM_PROMPT,
       prompt: `Contact Information:\n${contactContext}`,
       schema: tagSuggestionSchema,
