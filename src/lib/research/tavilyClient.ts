@@ -19,15 +19,18 @@ interface TavilyResponse {
   results?: TavilyResult[];
 }
 
-const MODERATE_CONFIG: TavilyConfig = {
+// Use 'advanced' depth to get multiple semantically relevant snippets per URL
+// This costs 2 credits per search but provides much better results for person research
+const SEARCH_CONFIG: TavilyConfig = {
   maxResults: 10,
-  searchDepth: 'basic',
+  searchDepth: 'advanced',
   includeRawContent: true,
 };
 
 // Minimum relevance score from Tavily (0-1 scale)
-// Sources below this threshold are filtered out as likely irrelevant
-const MIN_RELEVANCE_SCORE = 0.3;
+// Lowered from 0.3 to 0.2 to avoid filtering out relevant results
+// that Tavily scored lower due to name ambiguity
+const MIN_RELEVANCE_SCORE = 0.2;
 
 // Lazy initialization pattern (same as openai.ts)
 let _tavilyApiKey: string | null = null;
@@ -72,13 +75,13 @@ export async function searchTavily(
   // DEBUG: Log the query being sent to Tavily
   console.log(`[Tavily Search] Query: "${query}"`);
   console.log(`[Tavily Search] Person name filter: "${personName || 'none'}"`);
-  console.log(`[Tavily Search] Config: depth=${MODERATE_CONFIG.searchDepth}, maxResults=${MODERATE_CONFIG.maxResults}`);
+  console.log(`[Tavily Search] Config: depth=${SEARCH_CONFIG.searchDepth}, maxResults=${SEARCH_CONFIG.maxResults}`);
 
   const data = await tavilyFetch<TavilyResponse>('search', {
     query,
-    search_depth: MODERATE_CONFIG.searchDepth,
-    max_results: MODERATE_CONFIG.maxResults,
-    include_raw_content: MODERATE_CONFIG.includeRawContent,
+    search_depth: SEARCH_CONFIG.searchDepth,
+    max_results: SEARCH_CONFIG.maxResults,
+    include_raw_content: SEARCH_CONFIG.includeRawContent,
     include_answer: false,
   });
 
@@ -109,21 +112,36 @@ export async function searchTavily(
   const afterScoreFilter = filteredSources.length;
   console.log(`[Tavily Search] After score filter (>=${MIN_RELEVANCE_SCORE}): ${afterScoreFilter}/${allSources.length}`);
 
-  // If person name provided, also filter to sources that mention the name
-  if (personName) {
+  // If person name provided, apply name filter but with fallback
+  // Only filter by name if we have enough results to be selective
+  // This prevents filtering out all results when snippets don't mention the name
+  if (personName && filteredSources.length > 3) {
     const nameParts = personName.toLowerCase().split(' ').filter(Boolean);
     const lastName = nameParts[nameParts.length - 1];
-    console.log(`[Tavily Search] Filtering for last name: "${lastName}"`);
+    const firstName = nameParts[0];
+    console.log(`[Tavily Search] Filtering for name: first="${firstName}", last="${lastName}"`);
 
-    filteredSources = filteredSources.filter((s) => {
+    const nameFilteredSources = filteredSources.filter((s) => {
       const contentLower = ((s.content || '') + ' ' + (s.title || '')).toLowerCase();
-      const hasName = lastName ? contentLower.includes(lastName) : true;
+      // Check for either first name or last name (more lenient)
+      const hasLastName = lastName ? contentLower.includes(lastName) : false;
+      const hasFirstName = firstName ? contentLower.includes(firstName) : false;
+      const hasName = hasLastName || hasFirstName;
       if (!hasName) {
-        console.log(`[Tavily Search] Filtered out (no name): ${s.url}`);
+        console.log(`[Tavily Search] Would filter (no name): ${s.url}`);
       }
       return hasName;
     });
-    console.log(`[Tavily Search] After name filter: ${filteredSources.length}/${afterScoreFilter}`);
+
+    // Only apply name filter if it doesn't remove ALL sources
+    if (nameFilteredSources.length > 0) {
+      filteredSources = nameFilteredSources;
+      console.log(`[Tavily Search] After name filter: ${filteredSources.length}/${afterScoreFilter}`);
+    } else {
+      console.log(`[Tavily Search] Skipping name filter - would remove all ${afterScoreFilter} sources`);
+    }
+  } else if (personName) {
+    console.log(`[Tavily Search] Skipping name filter - only ${filteredSources.length} sources (need >3 to filter)`);
   }
 
   // Log final results
