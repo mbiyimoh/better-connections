@@ -22,16 +22,14 @@ export function buildSynthesisPrompt(
 
   return `You are analyzing web search results about a person to create a research report.
 
-PERSON:
+PERSON TO RESEARCH:
 - Name: ${contact.firstName} ${contact.lastName}
-- Current Title: ${contact.title || 'Unknown'}
-- Company: ${contact.company || 'Unknown'}
-- Location: ${contact.location || 'Unknown'}
-- LinkedIn: ${contact.linkedinUrl || 'Not provided'}
+${contact.company ? `- Hint (for disambiguation only): They may work at ${contact.company}` : ''}
+${contact.location ? `- Hint (for disambiguation only): They may be located in ${contact.location}` : ''}
 
 FOCUS AREAS: ${focusDescription}
 
-SEARCH RESULTS:
+SEARCH RESULTS FROM THE WEB:
 ${sources
   .map(
     (s, i) => `
@@ -50,16 +48,18 @@ INSTRUCTIONS:
 4. Focus on the requested areas: ${focusDescription}
 
 CRITICAL RULES - READ CAREFULLY:
-- ONLY include information that is EXPLICITLY stated in the search results
-- NEVER invent, assume, or infer information not directly found in sources
+- ONLY include information that is EXPLICITLY stated in the SEARCH RESULTS above
+- The "Hints" provided above are ONLY for disambiguating between people with similar names - do NOT include them in your report unless they are CONFIRMED by the search results
+- NEVER invent, assume, or infer information not directly found in the search results
 - If the search results don't contain relevant information about this person, say "No relevant information found"
-- Do NOT make up job titles, companies, or roles - only report what you find
+- Do NOT make up job titles, companies, or roles - only report what you find IN THE SEARCH RESULTS
 - If you're unsure whether information is about the right person, DO NOT include it
 - It is BETTER to return an empty report than to include uncertain or fabricated information
+- Do NOT confuse the person being researched with other people or companies mentioned in their profile
 
 Generate a structured report with:
-- summary: 3-5 bullet points summarizing ONLY verified findings. If nothing found, say "No relevant public information was found for this person."
-- fullReport: Report ONLY verified information. If limited info, be brief. If nothing found, explain that no relevant sources were found.
+- summary: 3-5 bullet points summarizing ONLY findings from the SEARCH RESULTS. If nothing found, say "No relevant public information was found for this person."
+- fullReport: Report ONLY information found in the SEARCH RESULTS. If limited info, be brief. If nothing found, explain that no relevant sources were found.
 - keyFindings: Array of findings with confidence scores. Empty array is acceptable if nothing relevant found.
 
 DO NOT fabricate information. An empty or minimal report is the correct response when sources are irrelevant or don't mention this specific person.`;
@@ -122,20 +122,33 @@ GUIDELINES:
 - NEVER suggest updating a field with the same value it already has
 - Maximum 10 recommendations total
 
-NOTES FIELD FORMATTING PROTOCOL (CRITICAL):
-- Notes MUST always be formatted as bullet points, one insight per line
-- Each bullet should be a complete, readable sentence (not bracketed metadata)
-- If there are more than 6 bullets, organize into sections with headers like:
-  ## Recent Activity
-  - Bullet point here
-  ## Background
-  - Bullet point here
-- NEVER use bracketed metadata format like "[Field: Value]"
-- Convert raw data into human-readable prose
-- Example of WRONG format: "[Organization Name: Acme Corp] [Title: VP]"
-- Example of CORRECT format:
-  - Currently serves as VP at Acme Corp
-  - Recently announced expansion into new markets`;
+NOTES FIELD - CRITICAL PRESERVATION RULES:
+The notes field contains USER-ENTERED relationship context that is EXTREMELY VALUABLE. This includes:
+- How the user knows this person (e.g., "Met through Emily", "He partners with Deepen")
+- Relationship status (e.g., "client of 33 Strategies", "introduced by mutual friend")
+- Personal context the user has added from their own knowledge
+
+When updating notes:
+1. NEVER DELETE existing user-entered information unless it is FACTUALLY WRONG (not just incomplete)
+2. ALWAYS PRESERVE relationship context like "Met through X", "partners with Y", "client of Z"
+3. Only ADD new information from research - integrate it thoughtfully with existing notes
+4. If existing notes say "client of X", NEVER change it to "founder of X" - that's the user's knowledge
+5. Format as bullet points, organizing into sections if >6 bullets:
+   ## Recent Activity
+   - New finding from research
+   ## Background
+   - Existing user notes (preserved)
+   - Additional research findings
+
+Example of WRONG update:
+  Current: "- Met Chase through Emily\n- He is a client"
+  Proposed: "- Professional basketball player\n- Stanford graduate"
+  (This DELETES the relationship context!)
+
+Example of CORRECT update:
+  Current: "- Met Chase through Emily\n- He is a client"
+  Proposed: "- Met Chase through Emily\n- He is a client\n## Background\n- Professional basketball player\n- Stanford graduate"
+  (This PRESERVES existing notes and ADDS new findings)`;
 }
 
 export const SYNTHESIS_SYSTEM_PROMPT = `You are a professional research analyst specializing in gathering information about individuals for CRM enrichment. You are thorough, accurate, and EXTREMELY careful to distinguish between people with similar names. You prioritize verifiable information from authoritative sources.
@@ -158,5 +171,11 @@ CRITICAL RULES:
 - Do NOT recommend updates based on assumptions about what the person "might" do or "likely" knows
 - It is BETTER to return no recommendations than to suggest updates based on fabricated information
 - Every recommendation MUST cite a specific source URL where the information was found
+
+NOTES FIELD - PRESERVATION IS PARAMOUNT:
+- The user's existing notes contain THEIR personal knowledge about the relationship
+- NEVER suggest deleting or replacing user-entered context like "Met through X", "client of Y", "partners with Z"
+- When updating notes, your proposed value must INCLUDE all existing notes plus new research findings
+- Think of it as APPENDING and ORGANIZING, not REPLACING
 
 If the research report contains no actionable findings, return an empty recommendations array with noRecommendationsReason explaining that no verified information was available.`;
