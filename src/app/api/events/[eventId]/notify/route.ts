@@ -175,15 +175,19 @@ export async function POST(request: NextRequest, context: RouteContext) {
             break;
         }
 
-        // Send email
-        const emailResult = await sendEmail({
-          to: attendee.email,
-          subject: emailContent.subject,
-          html: emailContent.html,
-          text: emailContent.text,
-        });
+        // Send email only if attendee has an email address
+        if (attendee.email) {
+          const emailResult = await sendEmail({
+            to: attendee.email,
+            subject: emailContent.subject,
+            html: emailContent.html,
+            text: emailContent.text,
+          });
 
-        result.email = emailResult;
+          result.email = emailResult;
+        } else {
+          result.email = { success: false, error: 'No email address' };
+        }
 
         // Send SMS if phone is available
         if (attendee.phone) {

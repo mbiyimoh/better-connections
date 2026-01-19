@@ -15,6 +15,7 @@ interface Contact {
   firstName: string;
   lastName: string | null;
   primaryEmail: string | null;
+  primaryPhone: string | null;
   title: string | null;
   company: string | null;
 }
@@ -75,6 +76,7 @@ export default function AddAttendeesPage() {
     return (
       fullName.includes(query) ||
       contact.primaryEmail?.toLowerCase().includes(query) ||
+      contact.primaryPhone?.toLowerCase().includes(query) ||
       contact.company?.toLowerCase().includes(query)
     );
   });
@@ -122,7 +124,7 @@ export default function AddAttendeesPage() {
       toast.success(
         `Added ${data.imported} attendee${data.imported !== 1 ? 's' : ''}` +
           (data.skipped > 0 ? ` (${data.skipped} already added)` : '') +
-          (data.noEmail > 0 ? ` (${data.noEmail} missing email)` : '')
+          (data.noContactInfo > 0 ? ` (${data.noContactInfo} missing email/phone)` : '')
       );
       router.push(`/events/${eventId}`);
     } catch (error) {
@@ -140,8 +142,8 @@ export default function AddAttendeesPage() {
     );
   }
 
-  const contactsWithEmail = filteredContacts.filter((c) => c.primaryEmail);
-  const allSelected = contactsWithEmail.length > 0 && selectedIds.size === contactsWithEmail.length;
+  const contactsWithContactInfo = filteredContacts.filter((c) => c.primaryEmail || c.primaryPhone);
+  const allSelected = contactsWithContactInfo.length > 0 && selectedIds.size === contactsWithContactInfo.length;
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
@@ -189,10 +191,10 @@ export default function AddAttendeesPage() {
               id="select-all"
               checked={allSelected}
               onCheckedChange={toggleAll}
-              disabled={contactsWithEmail.length === 0}
+              disabled={contactsWithContactInfo.length === 0}
             />
             <label htmlFor="select-all" className="text-sm text-text-secondary cursor-pointer">
-              Select all ({contactsWithEmail.length})
+              Select all ({contactsWithContactInfo.length})
             </label>
           </div>
         </CardContent>
@@ -215,22 +217,22 @@ export default function AddAttendeesPage() {
             <div className="space-y-2">
               {filteredContacts.map((contact) => {
                 const fullName = `${contact.firstName} ${contact.lastName || ''}`.trim();
-                const hasEmail = !!contact.primaryEmail;
+                const hasContactInfo = !!(contact.primaryEmail || contact.primaryPhone);
                 const isSelected = selectedIds.has(contact.id);
 
                 return (
                   <div
                     key={contact.id}
                     className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
-                      hasEmail
+                      hasContactInfo
                         ? 'cursor-pointer hover:bg-bg-tertiary/50'
                         : 'opacity-50 cursor-not-allowed'
                     } ${isSelected ? 'bg-bg-tertiary/50' : ''}`}
-                    onClick={() => hasEmail && toggleContact(contact.id)}
+                    onClick={() => hasContactInfo && toggleContact(contact.id)}
                   >
                     <Checkbox
                       checked={isSelected}
-                      disabled={!hasEmail}
+                      disabled={!hasContactInfo}
                       onCheckedChange={() => toggleContact(contact.id)}
                       onClick={(e) => e.stopPropagation()}
                     />
@@ -242,7 +244,7 @@ export default function AddAttendeesPage() {
                     <div className="flex-1">
                       <p className="text-text-primary font-medium">{fullName}</p>
                       <p className="text-text-secondary text-sm">
-                        {contact.primaryEmail || 'No email'}
+                        {contact.primaryEmail || contact.primaryPhone || 'No contact info'}
                         {contact.title && contact.company && (
                           <span className="text-text-tertiary"> • {contact.title} at {contact.company}</span>
                         )}

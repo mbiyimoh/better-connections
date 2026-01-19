@@ -44,7 +44,7 @@ interface AttendeeData {
   id: string;
   firstName: string;
   lastName: string | null;
-  email: string;
+  email: string | null;
   rsvpStatus: 'PENDING' | 'CONFIRMED' | 'MAYBE' | 'DECLINED';
   questionnaireCompletedAt: string | null;
   profile: Profile | null;

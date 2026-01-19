@@ -42,14 +42,14 @@ interface MatchData {
     id: string;
     firstName: string;
     lastName: string | null;
-    email: string;
+    email: string | null;
     profile: Profile | null;
   };
   matchedWith: {
     id: string;
     firstName: string;
     lastName: string | null;
-    email: string;
+    email: string | null;
     profile: Profile | null;
   };
 }

@@ -87,12 +87,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    // Filter out contacts without email
-    const validContacts = contacts.filter((c) => c.primaryEmail);
+    // Filter out contacts without email OR phone
+    const validContacts = contacts.filter((c) => c.primaryEmail || c.primaryPhone);
 
     if (validContacts.length === 0) {
       return NextResponse.json(
-        { error: 'All selected contacts are missing email addresses', code: 'NO_EMAILS', retryable: false },
+        { error: 'All selected contacts are missing email and phone', code: 'NO_CONTACT_INFO', retryable: false },
         { status: 400 }
       );
     }
@@ -113,21 +113,30 @@ export async function POST(request: NextRequest, context: RouteContext) {
       );
     }
 
-    // Get existing attendees by email to avoid duplicates
-    const existingEmails = await prisma.eventAttendee.findMany({
+    // Get existing attendees to avoid duplicates (check by contactId, email, or phone)
+    const existingAttendees = await prisma.eventAttendee.findMany({
       where: {
         eventId,
-        email: { in: validContacts.map((c) => c.primaryEmail!.toLowerCase()) },
+        OR: [
+          { contactId: { in: validContacts.map((c) => c.id) } },
+          { email: { in: validContacts.filter((c) => c.primaryEmail).map((c) => c.primaryEmail!.toLowerCase()) } },
+          { phone: { in: validContacts.filter((c) => c.primaryPhone).map((c) => c.primaryPhone!) } },
+        ],
       },
-      select: { email: true },
+      select: { contactId: true, email: true, phone: true },
     });
 
-    const existingEmailSet = new Set(existingEmails.map((e) => e.email.toLowerCase()));
+    const existingContactIds = new Set(existingAttendees.map((e) => e.contactId).filter(Boolean));
+    const existingEmails = new Set(existingAttendees.map((e) => e.email?.toLowerCase()).filter(Boolean));
+    const existingPhones = new Set(existingAttendees.map((e) => e.phone).filter(Boolean));
 
-    // Filter to only new contacts
-    const newContacts = validContacts.filter(
-      (c) => !existingEmailSet.has(c.primaryEmail!.toLowerCase())
-    );
+    // Filter to only new contacts (not already added by contactId, email, or phone)
+    const newContacts = validContacts.filter((c) => {
+      if (existingContactIds.has(c.id)) return false;
+      if (c.primaryEmail && existingEmails.has(c.primaryEmail.toLowerCase())) return false;
+      if (c.primaryPhone && existingPhones.has(c.primaryPhone)) return false;
+      return true;
+    });
 
     if (newContacts.length === 0) {
       return NextResponse.json({
@@ -165,7 +174,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return {
         eventId,
         contactId: contact.id,
-        email: contact.primaryEmail!.toLowerCase(),
+        email: contact.primaryEmail?.toLowerCase() || null,
         phone: contact.primaryPhone,
         firstName: contact.firstName || 'Guest',
         lastName: contact.lastName,

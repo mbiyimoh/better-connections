@@ -499,8 +499,8 @@ model EventAttendee {
   contactId       String?
   contact         Contact? @relation(fields: [contactId], references: [id])
 
-  // Basic Info
-  email           String
+  // Basic Info (at least one of email or phone required for invites)
+  email           String?
   phone           String?  // E.164 format for SMS
   firstName       String
   lastName        String?

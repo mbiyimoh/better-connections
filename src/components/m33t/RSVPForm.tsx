@@ -20,7 +20,7 @@ interface RSVPFormProps {
     id: string;
     firstName: string;
     lastName: string | null;
-    email: string;
+    email: string | null;
     phone: string | null;
     rsvpStatus: string;
     rsvpRespondedAt: Date | null;

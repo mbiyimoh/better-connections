@@ -13,7 +13,7 @@ function getSecret(): string {
 
 export interface RSVPTokenPayload {
   eventId: string;
-  email: string;
+  email: string | null;
   attendeeId: string;
   type: 'rsvp';
   exp: number;
@@ -26,7 +26,7 @@ export interface RSVPTokenPayload {
  */
 export function generateRSVPToken(
   eventId: string,
-  email: string,
+  email: string | null,
   attendeeId: string,
   eventDate: Date
 ): string {
@@ -86,7 +86,7 @@ export function isTokenExpired(token: string): boolean {
  */
 export function generateRSVPUrl(
   eventId: string,
-  email: string,
+  email: string | null,
   attendeeId: string,
   eventDate: Date,
   baseUrl: string
