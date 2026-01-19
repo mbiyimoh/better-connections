@@ -28,6 +28,13 @@ model User {
   feedbackSubmissions     Feedback[]
   feedbackVotes           FeedbackVote[]
   researchRuns            ContactResearchRun[]
+  events                  Event[]               // M33T: Events organized by user
+  hasM33tAccess           Boolean               @default(false) // Feature flag for M33T Events access
+  eventOrganizers         EventOrganizer[]      // M33T: Events where user is a co-organizer
+
+  // M33T audit relations
+  attendeesAdded           EventAttendee[] @relation("AttendeeAddedBy")
+  attendeeOverridesEdited  EventAttendee[] @relation("AttendeeOverridesEditedBy")
 }
 
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -73,6 +80,7 @@ model Contact {
   tags                 Tag[]
   researchRuns         ContactResearchRun[]
   enrichmentLogs       ContactEnrichmentLog[]
+  eventAttendees       EventAttendee[]       // M33T: Contact linked to event attendance
 
   @@index([userId])
   @@index([firstName])
@@ -378,4 +386,245 @@ enum RecommendationStatus {
 enum RecommendationAction {
   ADD
   UPDATE
+}
+
+// ========== M33T EVENT NETWORKING ENUMS ==========
+
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum RevealTiming {
+  IMMEDIATE
+  TWENTY_FOUR_HOURS_BEFORE
+  FORTY_EIGHT_HOURS_BEFORE
+}
+
+enum RSVPStatus {
+  PENDING
+  CONFIRMED
+  MAYBE
+  DECLINED
+}
+
+enum MatchStatus {
+  PENDING    // AI-generated, awaiting review
+  APPROVED   // Organizer approved
+  REJECTED   // Organizer rejected
+  REVEALED   // Sent to attendee
+}
+
+// ========== M33T EVENT MODEL ==========
+
+model Event {
+  id                String   @id @default(cuid())
+  userId            String   // Primary Organizer
+  user              User     @relation(fields: [userId], references: [id])
+
+  // Basic Info
+  name              String
+  tagline           String?
+  description       String?
+
+  // Timing
+  date              DateTime
+  startTime         String   // "18:00"
+  endTime           String   // "21:00"
+  timezone          String   @default("America/Chicago")
+
+  // Location
+  venueName         String
+  venueAddress      String
+  venueLatitude     Float?             // For map display
+  venueLongitude    Float?             // For map display
+  googlePlaceId     String?            // Google Places ID for photos
+
+  // New wizard fields
+  eventType         String?          // networking, conference, workshop, social, other
+  eventGoals        String[]         // fundraising, hiring, partnerships, learning, community
+  parkingNotes      String?
+  dressCode         String?          // casual, business-casual, formal, creative
+
+  // Settings
+  capacity          Int      @default(50)
+  rsvpDeadline      DateTime?
+
+  // Questionnaire (inline JSON instead of separate model)
+  questions         Json     @default("[]") // Array of Question objects
+
+  // Card Display Settings
+  cardSettings      Json     @default("{}") // { showCompany, showRole, showExpertise }
+
+  // Match Settings
+  matchesPerAttendee Int     @default(5)
+  revealTiming       RevealTiming @default(TWENTY_FOUR_HOURS_BEFORE)
+
+  // Status
+  status            EventStatus @default(DRAFT)
+
+  // Public Landing Page
+  slug              String?   @unique  // URL-safe identifier for /events/[slug]
+  schedule          Json?              // Array of { time, title, description }
+  hostBio           String?            // Bio text for host section
+  hostQuote         String?            // Quote text for host section
+  whatToExpect      Json?              // Array of { id, icon, title, description }
+  landingPageSettings Json   @default("{}")  // { showVenue, showSchedule, showHost, showWhatToExpect, showAttendees }
+
+  // Relations
+  attendees         EventAttendee[]
+  matches           Match[]
+  organizers        EventOrganizer[]  // Co-organizers with permissions
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@index([date])
+  @@index([status])
+  @@index([slug])
+}
+
+// ========== M33T ATTENDEE MODEL ==========
+
+model EventAttendee {
+  id              String   @id @default(cuid())
+  eventId         String
+  event           Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // Link to Better Contacts (optional)
+  contactId       String?
+  contact         Contact? @relation(fields: [contactId], references: [id])
+
+  // Basic Info
+  email           String
+  phone           String?  // E.164 format for SMS
+  firstName       String
+  lastName        String?
+
+  // RSVP Status
+  rsvpStatus      RSVPStatus @default(PENDING)
+  rsvpRespondedAt DateTime?
+
+  // Questionnaire Response (inline JSON)
+  questionnaireResponses Json? // Array of { questionId, value, context?, answeredAt }
+  questionnaireCompletedAt DateTime?
+
+  // Extracted Profile (inline JSON instead of separate model)
+  profile            Json?     // See ProfileSchema
+  profileExtractedAt DateTime?
+
+  // Organizer Profile Customizations (event-specific overrides)
+  profileOverrides   Json?     // Sparse overrides (see ProfileOverridesSchema)
+  overridesEditedAt  DateTime? // Last override edit timestamp
+
+  // Audit: Who added this attendee to the event
+  addedById             String?
+  addedBy               User?     @relation("AttendeeAddedBy", fields: [addedById], references: [id])
+
+  // Audit: Who last edited profile overrides
+  overridesEditedById   String?
+  overridesEditedBy     User?     @relation("AttendeeOverridesEditedBy", fields: [overridesEditedById], references: [id])
+
+  // Matching Fields (extracted and indexed for queries)
+  goalsText       String?  // Raw text for future embedding
+  idealMatchText  String?  // Raw text for future embedding
+  experienceLevel String?  // early | mid | senior | executive | founder
+  topicsOfInterest String[] // For rule-based matching
+  expertise       String[] // For rule-based matching
+  seekingKeywords String[] // Extracted keywords from goals
+  offeringKeywords String[] // Extracted keywords from offerings
+
+  // Trading Card (cached display data)
+  tradingCard     Json?    // L1-L3 data
+
+  // Matches
+  matches         Match[]  @relation("AttendeeMatches")
+  matchedWith     Match[]  @relation("MatchedWithAttendee")
+
+  // Notification tracking (simple timestamps)
+  inviteSentAt    DateTime?
+  rsvpReminderSentAt DateTime?
+  matchRevealSentAt DateTime?
+  eventReminderSentAt DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([eventId, email])
+  @@index([eventId])
+  @@index([rsvpStatus])
+  @@index([experienceLevel])
+}
+
+// ========== M33T EVENT ORGANIZER MODEL ==========
+
+model EventOrganizer {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  // Permissions
+  canInvite   Boolean @default(true)   // Can add guests from their contacts
+  canCurate   Boolean @default(true)   // Can suggest/override match recommendations
+  canEdit     Boolean @default(false)  // Can modify event details
+  canManage   Boolean @default(false)  // Can add/remove other organizers
+
+  // Invitation tracking
+  invitedAt   DateTime @default(now())
+  acceptedAt  DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
+}
+
+// ========== M33T MATCH MODEL ==========
+
+model Match {
+  id              String   @id @default(cuid())
+  eventId         String
+  event           Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // The attendee receiving this match recommendation
+  attendeeId      String
+  attendee        EventAttendee @relation("AttendeeMatches", fields: [attendeeId], references: [id], onDelete: Cascade)
+
+  // The person they're matched with
+  matchedWithId   String
+  matchedWith     EventAttendee @relation("MatchedWithAttendee", fields: [matchedWithId], references: [id], onDelete: Cascade)
+
+  // Position in attendee's match list
+  position        Int
+
+  // Scoring
+  score           Float    // 0-100
+
+  // Explanation
+  whyMatch        String[] // Array of reasons (2-3 items)
+  conversationStarters String[] // Array of prompts (2-3 items)
+
+  // Status
+  status          MatchStatus @default(PENDING)
+
+  // Organizer curation
+  isManual        Boolean  @default(false)
+  curatorNotes    String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([eventId, attendeeId, matchedWithId])
+  @@index([eventId])
+  @@index([attendeeId])
+  @@index([status])
 }

@@ -624,6 +624,217 @@ import { diffWords } from 'diff';
 
 ---
 
+### M33T Public Event Landing Page Pattern
+
+**Purpose:** Public-facing event landing page showing event details, attendees by RSVP status, profile modals, and scrollytelling for NO EDGES events.
+
+**URL Structure:**
+- `/events/[slug]` → Public landing page (no auth required)
+- `/api/events/[slug]` → Public API endpoint
+
+**Files:**
+- `src/app/events/[slug]/page.tsx` — Server Component (data fetching)
+- `src/app/events/[slug]/not-found.tsx` — 404 page
+- `src/app/events/[slug]/EventLandingClient.tsx` — Client Component (interactions)
+- `src/app/events/[slug]/types.ts` — Shared types
+- `src/app/events/[slug]/components/` — All UI components
+- `src/app/api/events/[slug]/route.ts` — Public API endpoint
+- `src/lib/m33t/slug.ts` — Slug generation utility
+
+**Components:**
+- `EventHero` — Event name, tagline, date/time, primary CTA
+- `VenueSection` — Venue details with image placeholder
+- `AttendeeCarousel` — Horizontal scrollable attendee list with nav buttons
+- `AttendeeCard` — Individual attendee card with status dot
+- `ProfileModal` — Full attendee profile with trading card data
+- `FullGuestListModal` — Grid view with status tabs
+- `ScheduleSection` — Event agenda timeline
+- `HostSection` — Organizer profile
+- `FooterCTA` — Bottom call-to-action
+- `ScrollytellingSection` — Scroll-based story slides (NO EDGES only)
+
+**RSVPStatus Mapping:**
+```typescript
+// Database enum → Display string
+PENDING → 'invited'
+CONFIRMED → 'confirmed'
+MAYBE → 'maybe'
+DECLINED → not displayed
+```
+
+**Slug Generation:**
+```typescript
+import { generateSlug, generateUniqueSlug } from '@/lib/m33t';
+
+// Basic slug
+const slug = generateSlug("NO EDGES – 33 Strategies Launch");
+// → "no-edges-33-strategies-launch"
+
+// With collision handling
+const uniqueSlug = await generateUniqueSlug(name, async (slug) => {
+  const existing = await prisma.event.findFirst({ where: { slug } });
+  return !!existing;
+});
+// → "no-edges-33-strategies-launch-a7b2" (if collision)
+```
+
+**Design System (33 Strategies Brand):**
+- Background: `bg-zinc-950`
+- Gold accent: `text-amber-500`, `bg-amber-500`
+- Font: Georgia serif for headings
+- Status colors: emerald (confirmed), amber (maybe), zinc (invited)
+
+**Scrollytelling Behavior:**
+- Only enabled for events with "NO EDGES" in name
+- 5 slides occupying 500vh total
+- Active slide determined by: `floor((scrollY + vh * 0.4) / vh)`
+- Fade transitions between slides (700ms)
+
+**Privacy Filtering (API):**
+- Public endpoint, no authentication
+- Excludes: email, phone, questionnaireResponses
+- Includes: name, title, company, tradingCard (background, whyMatch, conversationStarters)
+- DECLINED attendees excluded entirely
+
+**Gotchas:**
+- Company/title extracted from `tradingCard` or `profile` JSON, not direct fields
+- Use `Cache-Control: no-store` header for fresh data
+- Mobile: All carousels support touch/swipe scrolling
+- Empty states: Hide carousels with no attendees, show "Be the first to RSVP!"
+
+**Location:** `src/app/events/[slug]/`, `src/app/api/events/[slug]/`, `src/lib/m33t/slug.ts`
+
+---
+
+### M33T Multi-Organizer Collaboration Pattern
+
+**Purpose:** Allow event owners to add co-organizers with granular permission levels for collaborative event management.
+
+**Key Files:**
+- `src/lib/m33t/auth.ts` - `checkEventAccess()` authorization helper
+- `src/app/api/events/[eventId]/organizers/route.ts` - Organizer CRUD (owner-only for mutations)
+- `src/app/api/events/route.ts` - Event list includes co-organizer events
+- `src/components/events/wizard/steps/OrganizersStep.tsx` - Wizard UI for adding co-organizers
+
+**Permission Hierarchy:**
+```typescript
+type EventPermission = 'view' | 'curate' | 'edit' | 'manage';
+
+// Owner ALWAYS has all permissions
+// Co-organizers checked against EventOrganizer record:
+// - view: Any co-organizer can see event
+// - curate: canCurate = true (edit attendee profiles, manage matches)
+// - edit: canEdit = true (modify event details)
+// - manage: canManage = true OR owner (add/remove organizers)
+```
+
+**Authorization Helper Pattern:**
+```typescript
+// src/lib/m33t/auth.ts
+import { checkEventAccess, type EventPermission } from '@/lib/m33t';
+
+// In API route handlers:
+const access = await checkEventAccess(eventId, user.id, 'curate');
+if (!access) {
+  return NextResponse.json(
+    { error: 'Event not found or insufficient permissions', code: 'FORBIDDEN' },
+    { status: 403 }
+  );
+}
+
+// Owner always returns full permissions
+// Co-organizer returns their specific permissions
+// Returns null if no access
+```
+
+**Co-Organizer Events in List Query:**
+```typescript
+// src/app/api/events/route.ts
+// CRITICAL: Include BOTH owner AND co-organizer events
+const events = await prisma.event.findMany({
+  where: {
+    OR: [
+      { userId: user.id }, // Owner
+      { organizers: { some: { userId: user.id } } }, // Co-organizer
+    ],
+  },
+  include: {
+    // Include organizer permissions for UI to distinguish role
+    organizers: {
+      where: { userId: user.id },
+      select: { canInvite: true, canCurate: true, canEdit: true, canManage: true }
+    }
+  }
+});
+```
+
+**EventOrganizer Model:**
+```prisma
+model EventOrganizer {
+  id         String   @id @default(cuid())
+  eventId    String
+  userId     String
+  canInvite  Boolean  @default(true)  // Add attendees from contacts
+  canCurate  Boolean  @default(true)  // Edit profiles, manage matches
+  canEdit    Boolean  @default(false) // Modify event details
+  canManage  Boolean  @default(false) // Add/remove organizers
+  createdAt  DateTime @default(now())
+
+  event      Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([eventId, userId])
+}
+```
+
+**Audit Trail for Attendee Changes:**
+```prisma
+model EventAttendee {
+  // ... other fields
+  addedById           String?   // Who added this attendee
+  addedBy             User?     @relation("AttendeeAddedBy", ...)
+  overridesEditedById String?   // Who last edited profile overrides
+  overridesEditedBy   User?     @relation("AttendeeOverridesEditedBy", ...)
+  overridesEditedAt   DateTime? // When last edited
+}
+```
+
+**API Route Permission Matrix:**
+
+| Route | Method | Required Permission |
+|-------|--------|---------------------|
+| `/api/events` | GET | (includes co-organizer events) |
+| `/api/events/[id]` | GET | `view` |
+| `/api/events/[id]` | PUT | `edit` |
+| `/api/events/[id]/matches/*` | GET/POST/PUT/DELETE | `curate` |
+| `/api/events/[id]/notify` | POST | `curate` |
+| `/api/events/[id]/organizers` | GET | (owner or organizer) |
+| `/api/events/[id]/organizers` | POST/PUT/DELETE | **owner-only** |
+
+**Critical Gotchas:**
+- **Event list must use OR clause** - without it, co-organizers can't see events they're added to
+- **Organizer mutations are owner-only** - even `canManage` doesn't allow adding other organizers (security)
+- **Always import from barrel**: `import { checkEventAccess } from '@/lib/m33t'`
+- **Run `npx prisma generate`** after schema changes for new relation fields
+- **Use `formatDistanceToNow`** for "edited X hours ago" display
+
+**UI Display for Audit Trail:**
+```tsx
+// In AttendeeProfileEditModal header
+{attendee?.overridesEditedBy && (
+  <p className="text-xs text-text-tertiary mt-1">
+    Last edited by {attendee.overridesEditedBy.name}
+    {attendee.overridesEditedAt && (
+      <> {formatDistanceToNow(new Date(attendee.overridesEditedAt))} ago</>
+    )}
+  </p>
+)}
+```
+
+**Location:** `src/lib/m33t/auth.ts`, `src/app/api/events/[eventId]/organizers/`, `src/components/events/wizard/steps/OrganizersStep.tsx`
+
+---
+
 ## Data Models
 
 ### Contact
@@ -752,4 +963,4 @@ JSX with inline styles (no Tailwind), Framer Motion, Lucide React icons.
 | Auth | Supabase (email/password) |
 | Design | Dark theme, gold (#d4a54a), glassmorphism |
 | Core Feature | "Why Now" contextual relevance + AI-powered contact research |
-| Last Updated | 2026-01-11 |
+| Last Updated | 2026-01-18 |
