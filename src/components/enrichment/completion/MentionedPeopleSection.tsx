@@ -8,13 +8,11 @@ import type { MentionMatch } from "@/lib/schemas/mentionExtraction";
 
 interface MentionedPeopleSectionProps {
   mentions: MentionMatch[];
-  sourceContactId: string;
   onMentionProcessed: (mentionId: string) => void;
 }
 
 export function MentionedPeopleSection({
   mentions,
-  sourceContactId,
   onMentionProcessed,
 }: MentionedPeopleSectionProps) {
   const [isExpanded, setIsExpanded] = useState(true);
@@ -93,7 +91,6 @@ export function MentionedPeopleSection({
                 <MentionedPersonCard
                   key={mention.mentionId || `${mention.name}-${index}`}
                   mention={mention}
-                  sourceContactId={sourceContactId}
                   onProcessed={() =>
                     handleMentionProcessed(mention.mentionId || mention.name)
                   }

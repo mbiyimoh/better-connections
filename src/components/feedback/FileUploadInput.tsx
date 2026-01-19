@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Upload, X, File, Image, Loader2 } from 'lucide-react';
+import { Upload, X, File, Image as ImageIcon, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { FILE_UPLOAD_LIMITS } from '@/lib/design-system';
@@ -105,7 +105,7 @@ export function FileUploadInput({
   const getFileIcon = (fileName: string) => {
     const ext = fileName.split('.').pop()?.toLowerCase();
     if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) {
-      return <Image className="w-4 h-4 text-text-secondary" />;
+      return <ImageIcon className="w-4 h-4 text-text-secondary" />;
     }
     return <File className="w-4 h-4 text-text-secondary" />;
   };

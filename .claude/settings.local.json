@@ -41,7 +41,8 @@
       "WebFetch(domain:developers.google.com)",
       "WebFetch(domain:maps.app.goo.gl)",
       "WebFetch(domain:gist.github.com)",
-      "WebFetch(domain:varun.ca)"
+      "WebFetch(domain:varun.ca)",
+      "WebFetch(domain:www.framer.com)"
     ],
     "deny": [],
     "ask": []

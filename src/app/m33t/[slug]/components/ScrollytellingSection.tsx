@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
-import { motion, useInView, useScroll, useTransform } from 'framer-motion';
+import { useRef, useEffect, useState, useMemo } from 'react';
+import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import { BRAND_GOLD } from '@/lib/design-system';
 
 // ============================================================================
@@ -10,29 +10,91 @@ import { BRAND_GOLD } from '@/lib/design-system';
 const GOLD = BRAND_GOLD.primary;
 const BG_PRIMARY = '#0a0a0f';
 
-// Deterministic particle positions for dissolving boundary effect
-const BOUNDARY_PARTICLES = [
-  { cx: 20, cy: 23 }, { cx: 180, cy: 23 },
-  { cx: 20, cy: 39 }, { cx: 180, cy: 39 },
-  { cx: 20, cy: 55 }, { cx: 180, cy: 55 },
-  { cx: 20, cy: 71 }, { cx: 180, cy: 71 },
-  { cx: 20, cy: 87 }, { cx: 180, cy: 87 },
-  { cx: 20, cy: 103 }, { cx: 180, cy: 103 },
-  { cx: 20, cy: 119 }, { cx: 180, cy: 119 },
-  { cx: 31, cy: 15 }, { cx: 53, cy: 15 },
-  { cx: 75, cy: 15 }, { cx: 97, cy: 15 },
-  { cx: 119, cy: 15 }, { cx: 141, cy: 15 },
-  { cx: 163, cy: 15 }, { cx: 31, cy: 135 },
-  { cx: 53, cy: 135 }, { cx: 75, cy: 135 },
-  { cx: 97, cy: 135 }, { cx: 119, cy: 135 },
-  { cx: 141, cy: 135 }, { cx: 163, cy: 135 },
-];
+const PARTICLE_COUNT = 35;
+const TRIGGER_DELAY_MS = 1000; // 1 second delay before dissolve
+
+// Container dimensions (matches w-64 h-48)
+const CONTAINER_WIDTH = 256;
+const CONTAINER_HEIGHT = 192;
+
+// SVG viewBox dimensions
+const SVG_WIDTH = 200;
+const SVG_HEIGHT = 150;
+
+// Rectangle bounds in SVG coordinates
+const RECT = { x: 20, y: 15, width: 160, height: 120 };
 
 // ============================================================================
 // TYPES
 // ============================================================================
+interface Particle {
+  id: number;
+  x: number;
+  y: number;
+  endY: number;
+  endX: number;
+  delay: number;
+  duration: number;
+  size: number;
+}
+
 export interface ScrollytellingSectionProps {
   onComplete: () => void;
+}
+
+// ============================================================================
+// PARTICLE GENERATION
+// ============================================================================
+function generateEdgeParticles(count: number): Particle[] {
+  const particles: Particle[] = [];
+
+  // Scale factors from SVG to container
+  const scaleX = CONTAINER_WIDTH / SVG_WIDTH;
+  const scaleY = CONTAINER_HEIGHT / SVG_HEIGHT;
+
+  const rectX = RECT.x * scaleX;
+  const rectY = RECT.y * scaleY;
+  const rectWidth = RECT.width * scaleX;
+  const rectHeight = RECT.height * scaleY;
+
+  const perimeter = 2 * (rectWidth + rectHeight);
+
+  for (let i = 0; i < count; i++) {
+    const position = (i / count) * perimeter;
+    let x: number, y: number;
+
+    if (position < rectWidth) {
+      // Top edge
+      x = rectX + position;
+      y = rectY;
+    } else if (position < rectWidth + rectHeight) {
+      // Right edge
+      x = rectX + rectWidth;
+      y = rectY + (position - rectWidth);
+    } else if (position < 2 * rectWidth + rectHeight) {
+      // Bottom edge
+      x = rectX + rectWidth - (position - rectWidth - rectHeight);
+      y = rectY + rectHeight;
+    } else {
+      // Left edge
+      x = rectX;
+      y = rectY + rectHeight - (position - 2 * rectWidth - rectHeight);
+    }
+
+    particles.push({
+      id: i,
+      x,
+      y,
+      // Upward evaporation: primarily negative Y, slight X drift
+      endY: -80 - Math.random() * 70,  // -80 to -150
+      endX: (Math.random() - 0.5) * 40, // -20 to +20
+      delay: Math.random() * 0.3,
+      duration: 0.8 + Math.random() * 0.4,
+      size: 2 + Math.random() * 2,
+    });
+  }
+
+  return particles;
 }
 
 // ============================================================================
@@ -59,44 +121,60 @@ function ProgressBar() {
 }
 
 /**
- * Dissolving Boundary Visualization - Rectangle with particles floating off edges
+ * DissolvingBoundary - Visual metaphor for "constraints dissolving"
+ *
+ * Animation phases:
+ * 1. IDLE: Solid gold rectangle visible (isActive=false)
+ * 2. WAITING: Hold for 1 second after slide becomes active
+ * 3. DISSOLVING: Rectangle fades, particles evaporate upward
+ * 4. COMPLETE: Only center glow remains
+ *
+ * One-shot animation - resets only when component remounts (via "Replay Intro")
  */
 function DissolvingBoundary({ isActive }: { isActive: boolean }) {
+  const [isDissolving, setIsDissolving] = useState(false);
+
+  // Generate particles once on mount
+  const particles = useMemo(() => generateEdgeParticles(PARTICLE_COUNT), []);
+
+  // Trigger dissolve after delay when slide becomes active
+  useEffect(() => {
+    if (isActive && !isDissolving) {
+      const timer = setTimeout(() => {
+        setIsDissolving(true);
+      }, TRIGGER_DELAY_MS);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isActive, isDissolving]);
+
   return (
     <div className="relative w-64 h-48 mx-auto mb-12">
-      <svg viewBox="0 0 200 150" className="w-full h-full">
-        {/* Main rectangle frame - dissolving edges */}
-        <rect
-          x="20"
-          y="15"
-          width="160"
-          height="120"
+      {/* SVG Layer - Rectangle and center glow */}
+      <svg
+        viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
+        className="absolute inset-0 w-full h-full"
+      >
+        {/* Solid rectangle - fades out when dissolving */}
+        <motion.rect
+          x={RECT.x}
+          y={RECT.y}
+          width={RECT.width}
+          height={RECT.height}
           fill="none"
           stroke={GOLD}
           strokeWidth="2"
-          strokeDasharray={isActive ? '4,8' : '200,0'}
-          className="transition-all duration-1000"
-          style={{ opacity: isActive ? 0.4 : 0.8 }}
+          initial={{ opacity: 0.8 }}
+          animate={{
+            opacity: isDissolving ? 0 : 0.8,
+          }}
+          transition={{
+            duration: 0.4,
+            ease: 'easeOut',
+          }}
         />
 
-        {/* Particles floating off the edges */}
-        {isActive &&
-          BOUNDARY_PARTICLES.map((pos, i) => (
-            <circle
-              key={i}
-              cx={pos.cx}
-              cy={pos.cy}
-              r="2"
-              fill={GOLD}
-              className="animate-pulse"
-              style={{
-                animation: `float-particle 3s ease-out ${i * 0.1}s infinite`,
-                opacity: 0.6,
-              }}
-            />
-          ))}
-
-        {/* Glowing center point */}
+        {/* Glowing center point - persists */}
         <circle
           cx="100"
           cy="75"
@@ -108,13 +186,39 @@ function DissolvingBoundary({ isActive }: { isActive: boolean }) {
         <circle cx="100" cy="75" r="2" fill="#fff" />
       </svg>
 
-      <style>{`
-        @keyframes float-particle {
-          0% { transform: translate(0, 0); opacity: 0.6; }
-          50% { opacity: 0.8; }
-          100% { transform: translate(var(--dx, 20px), var(--dy, -30px)); opacity: 0; }
-        }
-      `}</style>
+      {/* Particle Layer - Absolute positioned divs */}
+      <AnimatePresence>
+        {isDissolving && particles.map((p) => (
+          <motion.div
+            key={p.id}
+            className="absolute rounded-full"
+            style={{
+              left: p.x,
+              top: p.y,
+              width: p.size,
+              height: p.size,
+              backgroundColor: GOLD,
+            }}
+            initial={{
+              opacity: 0.8,
+              scale: 1,
+              x: 0,
+              y: 0,
+            }}
+            animate={{
+              opacity: 0,
+              scale: 0.3,
+              x: p.endX,
+              y: p.endY,
+            }}
+            transition={{
+              delay: p.delay,
+              duration: p.duration,
+              ease: [0.43, 0.13, 0.23, 0.96],
+            }}
+          />
+        ))}
+      </AnimatePresence>
     </div>
   );
 }
@@ -305,7 +409,7 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
             className="text-3xl md:text-4xl lg:text-5xl font-medium leading-tight mb-8"
             style={{ fontFamily: 'Georgia, serif' }}
           >
-            "How do we adopt AI into our organization?"
+            &ldquo;How do we adopt AI into our organization?&rdquo;
           </h1>
           <p className="text-zinc-400 text-lg md:text-xl mb-4">
             But that question assumes your current way of working is the
@@ -315,7 +419,7 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
             className="text-2xl md:text-3xl font-medium"
             style={{ fontFamily: 'Georgia, serif' }}
           >
-            It's not. <span style={{ color: GOLD }}>It's obsolete.</span>
+            It&apos;s not. <span style={{ color: GOLD }}>It&apos;s obsolete.</span>
           </p>
         </div>
       </div>
@@ -335,7 +439,7 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
             className="text-4xl md:text-5xl lg:text-6xl font-medium leading-tight mb-6"
             style={{ fontFamily: 'Georgia, serif' }}
           >
-            The constraints you're operating under{' '}
+            The constraints you&apos;re operating under{' '}
             <span style={{ color: GOLD }}>no longer exist.</span>
           </h1>
           <p
@@ -343,7 +447,7 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
             style={{ fontFamily: 'Georgia, serif' }}
           >
             Where you think there are edges,{' '}
-            <span style={{ color: GOLD }}>there aren't.</span>
+            <span style={{ color: GOLD }}>there aren&apos;t.</span>
           </p>
         </div>
       </div>
@@ -358,8 +462,8 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
       >
         <div className="text-center max-w-4xl">
           <p className="text-zinc-500 text-lg mb-6">
-            Speed vs cost vs quality. What requires a developer. What's
-            "feasible" for a small team.
+            Speed vs cost vs quality. What requires a developer. What&apos;s
+            &ldquo;feasible&rdquo; for a small team.
           </p>
           <h2
             className="text-3xl md:text-4xl lg:text-5xl font-medium leading-tight mb-8"
@@ -390,7 +494,7 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
       >
         <div className="text-center max-w-4xl">
           <p className="text-zinc-400 text-lg md:text-xl mb-8">
-            The question isn't how to fit AI into what you're doing.
+            The question isn&apos;t how to fit AI into what you&apos;re doing.
           </p>
           <h2
             className="text-3xl md:text-4xl lg:text-5xl font-medium leading-tight"
@@ -400,7 +504,7 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
             <span style={{ color: GOLD }}>
               what would you build if you started from scratch,
             </span>{' '}
-            knowing what's now possible?
+            knowing what&apos;s now possible?
           </h2>
         </div>
       </div>
@@ -472,7 +576,7 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
                 style={{ fontFamily: 'Georgia, serif' }}
               >
                 Learning to imagine{' '}
-                <span style={{ color: GOLD }}>what's now possible.</span>
+                <span style={{ color: GOLD }}>what&apos;s now possible.</span>
               </p>
             </div>
           </div>

@@ -15,17 +15,6 @@ import { mergeProfileWithOverrides } from '@/lib/m33t/profile-utils';
 export const dynamic = 'force-dynamic';
 
 /**
- * Landing page section visibility settings (internal default)
- */
-interface DefaultLandingPageSettings {
-  showVenue: boolean;
-  showSchedule: boolean;
-  showHost: boolean;
-  showWhatToExpect: boolean;
-  showAttendees: boolean;
-}
-
-/**
  * Map RSVPStatus enum to display string
  */
 function mapRsvpStatus(status: RSVPStatus): 'confirmed' | 'maybe' | 'invited' | null {

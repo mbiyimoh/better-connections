@@ -13,7 +13,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Menu,
-  X,
   CalendarDays,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';

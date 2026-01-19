@@ -50,7 +50,6 @@ interface CompletionCelebrationProps {
   completionData: CompletionData | null;
   notesChangeSummary?: string;
   mentionedPeople?: MentionMatch[];
-  sourceContactId: string;
   onMentionProcessed?: (mentionId: string) => void;
   onEnrichNext: () => void;
   onBackToQueue: () => void;
@@ -74,7 +73,6 @@ export function CompletionCelebration({
   completionData,
   notesChangeSummary,
   mentionedPeople,
-  sourceContactId,
   onMentionProcessed,
   onEnrichNext,
   onBackToQueue,
@@ -253,7 +251,6 @@ export function CompletionCelebration({
             <div className="mb-6">
               <MentionedPeopleSection
                 mentions={mentionedPeople}
-                sourceContactId={sourceContactId}
                 onMentionProcessed={(id) => {
                   onMentionProcessed?.(id);
                 }}

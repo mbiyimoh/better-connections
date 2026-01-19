@@ -2,7 +2,7 @@ import type { Event } from '@prisma/client';
 import type { Question, WhatToExpectItem, LandingPageSettings } from '@/lib/m33t/schemas';
 import { DEFAULT_LANDING_PAGE_SETTINGS } from '@/lib/m33t/schemas';
 import { STARTER_QUESTIONS } from '@/lib/m33t/questions';
-import { DEFAULT_CARD_SETTINGS, DEFAULT_EVENT_DATA, type EventWizardData } from './types';
+import { DEFAULT_CARD_SETTINGS, type EventWizardData } from './types';
 
 /**
  * Maps a Prisma Event model to EventWizardData for use in wizard/editor forms.

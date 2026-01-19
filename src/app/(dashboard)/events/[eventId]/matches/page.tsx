@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -251,14 +251,13 @@ function MatchCard({
 }
 
 function AttendeeMatchGroup({
-  attendeeId,
   attendeeName,
   matches,
   onApprove,
   onReject,
   loadingMatchId,
 }: {
-  attendeeId: string;
+  attendeeId: string; // Required for key prop in parent
   attendeeName: string;
   matches: MatchData[];
   onApprove: (id: string) => void;
@@ -327,7 +326,6 @@ function AttendeeMatchGroup({
 }
 
 export default function MatchCurationPage() {
-  const router = useRouter();
   const params = useParams();
   const eventId = params.eventId as string;
 
@@ -404,7 +402,7 @@ export default function MatchCurationPage() {
       setMatches((prev) => prev.map((m) => (m.id === matchId ? { ...m, status } : m)));
 
       toast.success(`Match ${status.toLowerCase()}`);
-    } catch (error) {
+    } catch {
       toast.error('Failed to update match');
     } finally {
       setLoadingMatchId(null);
@@ -432,7 +430,7 @@ export default function MatchCurationPage() {
 
       toast.success(`Approved ${pendingMatches.length} matches`);
       fetchData();
-    } catch (error) {
+    } catch {
       toast.error('Failed to bulk approve');
     } finally {
       setGenerating(false);

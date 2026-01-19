@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import Link from 'next/link';
+import Link from 'next/link'; // eslint-disable-line @typescript-eslint/no-unused-vars
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +14,7 @@ import {
   MapPin,
   Users,
   Sparkles,
-  Bell,
+  // Bell, - removed, unused
   Edit,
   ArrowLeft,
   Check,

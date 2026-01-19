@@ -20,13 +20,11 @@ import { ContactSearchModal } from "./ContactSearchModal";
 
 interface MentionedPersonCardProps {
   mention: MentionMatch;
-  sourceContactId: string;
   onProcessed: (mentionId: string) => void;
 }
 
 export function MentionedPersonCard({
   mention,
-  sourceContactId,
   onProcessed,
 }: MentionedPersonCardProps) {
   const router = useRouter();

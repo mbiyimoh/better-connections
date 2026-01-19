@@ -62,7 +62,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Contact, ContactsResponse, TagCategory } from '@/types/contact';
-import { getDisplayName, getInitials as getContactInitials, getAvatarColor } from '@/types/contact';
+import { getInitials as getContactInitials, getAvatarColor } from '@/types/contact';
 import Link from 'next/link';
 
 function getRelativeTime(dateString: string | null): string {

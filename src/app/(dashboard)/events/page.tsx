@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import Link from 'next/link'; // eslint-disable-line @typescript-eslint/no-unused-vars
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -190,7 +190,7 @@ export default function EventsListPage() {
 
       setEvents((prev) => prev.filter((e) => e.id !== eventId));
       toast.success('Event deleted');
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete event');
     }
   };

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MapPin, Car, Shirt, Image, ExternalLink } from 'lucide-react';
+import { MapPin, Car, Shirt, Image as ImageIcon, ExternalLink } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -87,7 +87,7 @@ export function VenueStep({ data, onChange }: VenueStepProps) {
 
       <div className="space-y-2">
         <Label htmlFor="googlePlaceId">
-          <Image className="inline w-4 h-4 mr-1" />
+          <ImageIcon className="inline w-4 h-4 mr-1" />
           Google Place ID
           <span className="text-text-secondary font-normal ml-1">(optional)</span>
         </Label>

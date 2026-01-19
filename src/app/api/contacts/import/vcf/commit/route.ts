@@ -53,8 +53,6 @@ interface CommitError {
 }
 
 // Types for same-name merge
-type ParsedContact = z.infer<typeof parsedContactSchema>;
-
 interface ContactData {
   id?: string;
   firstName: string;

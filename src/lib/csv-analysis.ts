@@ -303,6 +303,7 @@ export function isLinkedInUrl(url: string): boolean {
  * @param header - The CSV column header
  * @param _sampleValue - Unused, kept for backwards compatibility. URL detection now happens at row level in buildContactFromRow()
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function detectFieldMapping(header: string, _sampleValue?: string): { field: string; priority: number } | null {
   const normalizedHeader = header.trim();
 

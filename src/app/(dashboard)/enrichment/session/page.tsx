@@ -774,7 +774,6 @@ function EnrichmentSessionContent() {
         bubbles={bubbles}
         completionData={completionData}
         notesChangeSummary={notesChangeSummary}
-        sourceContactId={contact.id}
         mentionedPeople={mentionedPeople}
         onMentionProcessed={(id) => {
           setMentionedPeople((prev) =>
