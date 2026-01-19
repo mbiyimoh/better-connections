@@ -46,4 +46,6 @@ prisma/*.db-journal
 
 # Quick checks (ephemeral tests)
 .quick-checks/
-Screenshot*.png
+
+# Screenshots in root directory only (mobile-screenshots/ is tracked)
+/Screenshot*.png

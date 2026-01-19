@@ -1,0 +1,130 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { VenueGallery } from '@/components/maps/VenueGallery';
+import { MapPin, ExternalLink } from 'lucide-react';
+
+interface VenueSectionProps {
+  venueName: string;
+  venueAddress: string;
+  parkingNotes?: string | null;
+  dressCode?: string | null;
+  googlePlaceId?: string | null;
+}
+
+export function VenueSection({
+  venueName,
+  venueAddress,
+  parkingNotes,
+  dressCode,
+  googlePlaceId,
+}: VenueSectionProps) {
+  const hasGooglePlaceId = googlePlaceId !== null && googlePlaceId !== undefined && googlePlaceId !== '';
+  const [mapEmbedUrl, setMapEmbedUrl] = useState<string | null>(null);
+
+  // Fetch place data to get the map embed URL
+  useEffect(() => {
+    if (!hasGooglePlaceId) return;
+
+    async function fetchMapUrl() {
+      try {
+        const response = await fetch(`/api/places/${googlePlaceId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setMapEmbedUrl(data.mapEmbedUrl);
+        }
+      } catch (err) {
+        console.error('Error fetching map URL:', err);
+      }
+    }
+
+    fetchMapUrl();
+  }, [googlePlaceId, hasGooglePlaceId]);
+
+  const googleMapsUrl = hasGooglePlaceId
+    ? `https://www.google.com/maps/place/?q=place_id:${googlePlaceId}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(venueAddress)}`;
+
+  return (
+    <section className="py-24 px-4">
+      <div className="max-w-4xl mx-auto">
+        <p className="text-amber-500 text-sm font-medium tracking-widest uppercase mb-4 text-center">
+          THE VENUE
+        </p>
+
+        {/* Venue text info - now directly below header */}
+        <div className="text-center mb-6">
+          <h3
+            className="text-2xl text-white mb-2"
+            style={{ fontFamily: 'Georgia, serif' }}
+          >
+            {venueName}
+          </h3>
+          <p className="text-zinc-500">{venueAddress}</p>
+
+          {parkingNotes && (
+            <p className="text-zinc-600 text-sm mt-2">{parkingNotes}</p>
+          )}
+
+          {dressCode && (
+            <p className="text-zinc-500 text-sm mt-2">
+              Dress Code: <span className="text-zinc-300">{dressCode}</span>
+            </p>
+          )}
+        </div>
+
+        {/* Photo gallery (if Google Place ID available), or fallback to placeholder */}
+        {hasGooglePlaceId ? (
+          <VenueGallery
+            googlePlaceId={googlePlaceId}
+            venueName={venueName}
+            venueAddress={venueAddress}
+            className="mb-6"
+          />
+        ) : (
+          <div className="aspect-video bg-zinc-900 rounded-3xl flex items-center justify-center mb-6">
+            <div className="text-center">
+              <MapPin className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+              <p className="text-zinc-400 text-sm">{venueName}</p>
+              <p className="text-zinc-600 text-xs mt-1">{venueAddress}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Dark-styled map embed - smaller, below carousel */}
+        {mapEmbedUrl && (
+          <a
+            href={googleMapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block relative rounded-xl overflow-hidden border border-zinc-800 hover:border-amber-500/50 transition-colors"
+          >
+            <div className="aspect-[3/1] w-full">
+              <iframe
+                src={mapEmbedUrl}
+                width="100%"
+                height="100%"
+                style={{
+                  border: 0,
+                  // CSS filters to create dark/gold-tinted appearance
+                  filter: 'grayscale(100%) invert(92%) sepia(15%) saturate(200%) hue-rotate(10deg) brightness(90%) contrast(95%)',
+                }}
+                allowFullScreen={false}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                className="w-full h-full pointer-events-none"
+              />
+            </div>
+            {/* Subtle overlay for better integration */}
+            <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/30 to-transparent pointer-events-none" />
+            {/* "View on Google Maps" hint */}
+            <div className="absolute bottom-3 right-3 flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900/90 text-zinc-300 text-xs rounded-full border border-zinc-700">
+              <ExternalLink className="w-3 h-3" />
+              <span>View on Maps</span>
+            </div>
+          </a>
+        )}
+      </div>
+    </section>
+  );
+}

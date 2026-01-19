@@ -7,6 +7,7 @@ export interface AuthUser {
   email: string;
   name: string;
   role: UserRole;
+  hasM33tAccess?: boolean;
 }
 
 /**
@@ -23,7 +24,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 
   const dbUser = await prisma.user.findUnique({
     where: { email: supabaseUser.email },
-    select: { id: true, email: true, name: true, role: true },
+    select: { id: true, email: true, name: true, role: true, hasM33tAccess: true },
   });
 
   return dbUser;
@@ -70,4 +71,26 @@ export async function requireAdmin(): Promise<AuthUser> {
  */
 export async function getUserById(id: string): Promise<User | null> {
   return prisma.user.findUnique({ where: { id } });
+}
+
+/**
+ * Check if the current user has M33T Events access.
+ */
+export async function hasM33tAccess(): Promise<boolean> {
+  const user = await getCurrentUser();
+  return user?.hasM33tAccess === true;
+}
+
+/**
+ * Require M33T access - throws if user doesn't have access.
+ * Use in API routes that require M33T feature access.
+ */
+export async function requireM33tAccess(): Promise<AuthUser> {
+  const user = await requireAuth();
+
+  if (!user.hasM33tAccess) {
+    throw new Error('Forbidden: M33T Events access required');
+  }
+
+  return user;
 }

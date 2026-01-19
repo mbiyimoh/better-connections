@@ -57,10 +57,10 @@ export default function SettingsPage() {
 
   const fetchContactCount = async () => {
     try {
-      const response = await fetch("/api/contacts?countOnly=true");
+      const response = await fetch("/api/contacts?limit=1");
       if (response.ok) {
         const data = await response.json();
-        setContactCount(data.count || 0);
+        setContactCount(data.pagination?.total || 0);
       }
     } catch (error) {
       console.error("Failed to fetch contact count:", error);

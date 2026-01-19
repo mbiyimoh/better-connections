@@ -34,7 +34,14 @@
       "SlashCommand(/git:push)",
       "SlashCommand(/deploy:push-and-check-railway)",
       "WebFetch(domain:platform.openai.com)",
-      "WebFetch(domain:www.npmjs.com)"
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:help.tavily.com)",
+      "WebFetch(domain:bettercontacts.ai)",
+      "WebFetch(domain:station.railway.com)",
+      "WebFetch(domain:developers.google.com)",
+      "WebFetch(domain:maps.app.goo.gl)",
+      "WebFetch(domain:gist.github.com)",
+      "WebFetch(domain:varun.ca)"
     ],
     "deny": [],
     "ask": []

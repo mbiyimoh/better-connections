@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Menu,
   X,
+  CalendarDays,
 } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -35,12 +36,25 @@ interface NavItem {
   badge?: string | number;
 }
 
-const navItems: NavItem[] = [
+const baseNavItems: NavItem[] = [
   { id: 'contacts', label: 'Contacts', href: '/contacts', icon: Users },
   { id: 'enrich', label: 'Enrich', href: '/enrich', icon: Sparkles },
   { id: 'explore', label: 'Explore', href: '/explore', icon: MessageSquare },
-  { id: 'settings', label: 'Settings', href: '/settings', icon: Settings },
 ];
+
+const m33tNavItem: NavItem = {
+  id: 'events',
+  label: 'Events',
+  href: '/events',
+  icon: CalendarDays,
+};
+
+const settingsNavItem: NavItem = {
+  id: 'settings',
+  label: 'Settings',
+  href: '/settings',
+  icon: Settings,
+};
 
 interface SidebarProps {
   user?: {
@@ -49,6 +63,7 @@ interface SidebarProps {
   };
   contactCount?: number;
   enrichQueueCount?: number;
+  hasM33tAccess?: boolean;
 }
 
 function getInitials(name: string): string {
@@ -65,11 +80,18 @@ function getAvatarColor(name: string): string {
   return `hsl(${hue}, 60%, 40%)`;
 }
 
-export function Sidebar({ user, contactCount, enrichQueueCount }: SidebarProps) {
+export function Sidebar({ user, contactCount, enrichQueueCount, hasM33tAccess }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+
+  // Build nav items based on feature access
+  const navItems: NavItem[] = [
+    ...baseNavItems,
+    ...(hasM33tAccess ? [m33tNavItem] : []),
+    settingsNavItem,
+  ];
 
   // Close mobile menu on route change
   useEffect(() => {

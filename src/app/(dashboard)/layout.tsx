@@ -32,6 +32,7 @@ export default async function DashboardLayout({
   let enrichQueueCount = 0;
   let hasCompletedOnboarding = true; // Default to true to avoid redirect loop on error
   let lastSeenUpdateVersion: string | null = null;
+  let hasM33tAccess = false;
 
   try {
     // Get user's onboarding status, contact counts, and update version in parallel
@@ -41,6 +42,7 @@ export default async function DashboardLayout({
         select: {
           hasCompletedOnboarding: true,
           lastSeenUpdateVersion: true,
+          hasM33tAccess: true,
         },
       }),
       prisma.contact.count({
@@ -56,6 +58,7 @@ export default async function DashboardLayout({
 
     hasCompletedOnboarding = dbUser?.hasCompletedOnboarding ?? true;
     lastSeenUpdateVersion = dbUser?.lastSeenUpdateVersion ?? null;
+    hasM33tAccess = dbUser?.hasM33tAccess ?? false;
     contactCount = totalContacts;
     enrichQueueCount = enrichQueue;
   } catch {
@@ -84,6 +87,7 @@ export default async function DashboardLayout({
       }}
       contactCount={contactCount}
       enrichQueueCount={enrichQueueCount}
+      hasM33tAccess={hasM33tAccess}
     >
       {children}
       {/* Hide on mobile - ContactsView handles its own FeedbackButton for mobile */}

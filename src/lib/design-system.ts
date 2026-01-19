@@ -93,6 +93,25 @@ export const BUBBLE_CATEGORY_LABELS: Record<BubbleCategory, string> = {
 } as const;
 
 // ============================================
+// M33T Event RSVP Status Colors
+// ============================================
+
+/**
+ * RSVP status type for event attendees.
+ */
+export type RSVPStatus = 'confirmed' | 'maybe' | 'invited';
+
+/**
+ * RSVP status color definitions for event landing pages.
+ * Used in AttendeeCard, ProfileModal, and AttendeeCarousel components.
+ */
+export const RSVP_STATUS_COLORS: Record<RSVPStatus, string> = {
+  confirmed: 'bg-emerald-500',
+  maybe: 'bg-amber-500',
+  invited: 'bg-zinc-600',
+} as const;
+
+// ============================================
 // Feedback System Colors
 // ============================================
 
