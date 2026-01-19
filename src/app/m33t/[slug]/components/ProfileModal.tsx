@@ -84,7 +84,7 @@ export function ProfileModal({ attendee, onClose }: ProfileModalProps) {
               {attendee.expertise!.map((tag, idx) => (
                 <span
                   key={idx}
-                  className="text-sm px-3 py-1 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                  className="text-sm px-3 py-1 rounded-full bg-gold-subtle text-gold-primary border border-gold-primary/30"
                 >
                   {tag}
                 </span>

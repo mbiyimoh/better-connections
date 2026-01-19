@@ -88,8 +88,8 @@ function generateEdgeParticles(count: number): Particle[] {
       // Upward evaporation: primarily negative Y, slight X drift
       endY: -80 - Math.random() * 70,  // -80 to -150
       endX: (Math.random() - 0.5) * 40, // -20 to +20
-      delay: Math.random() * 0.3,
-      duration: 0.8 + Math.random() * 0.4,
+      delay: Math.random() * 1.2,       // Staggered start: 0-1.2s
+      duration: 3.2 + Math.random() * 1.6, // Slow dissolve: 3.2-4.8s
       size: 2 + Math.random() * 2,
     });
   }
@@ -169,7 +169,7 @@ function DissolvingBoundary({ isActive }: { isActive: boolean }) {
             opacity: isDissolving ? 0 : 0.8,
           }}
           transition={{
-            duration: 0.4,
+            duration: 1.6,
             ease: 'easeOut',
           }}
         />

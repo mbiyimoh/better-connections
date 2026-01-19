@@ -60,7 +60,7 @@ export function AttendeeCard({ attendee, onClick }: AttendeeCardProps) {
           {attendee.expertise.slice(0, 3).map((tag, i) => (
             <span
               key={i}
-              className="text-xs px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30 truncate max-w-[140px]"
+              className="text-xs px-2 py-0.5 rounded bg-gold-subtle text-gold-primary border border-gold-primary/30 truncate max-w-[140px]"
             >
               {tag}
             </span>
