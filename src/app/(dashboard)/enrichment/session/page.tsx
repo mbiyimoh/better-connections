@@ -782,6 +782,11 @@ function EnrichmentSessionContent() {
         }}
         onEnrichNext={handleEnrichNext}
         onBackToQueue={handleBackToQueue}
+        onBackToContact={() => router.push(`/contacts/${contact.id}`)}
+        onResearchContact={() => router.push(`/contacts/${contact.id}?research=true`)}
+        onEnrichMentionedContact={(contactId, contactName) => {
+          router.push(`/enrichment/session?contact=${contactId}`);
+        }}
         onContinueEnriching={handleContinueEnriching}
         saving={saving}
       />
@@ -816,16 +821,16 @@ function EnrichmentSessionContent() {
         </div>
 
         {/* Timer & Controls */}
-        {isStarted && (
-          <div className="flex flex-col items-center gap-4">
-            <CircularTimer
-              duration={30}
-              isPlaying={isPlaying}
-              remainingTime={remainingTime}
-              setRemainingTime={setRemainingTime}
-              onComplete={handleComplete}
-            />
+        <div className="flex flex-col items-center gap-4">
+          <CircularTimer
+            duration={30}
+            isPlaying={isPlaying}
+            remainingTime={remainingTime}
+            setRemainingTime={setRemainingTime}
+            onComplete={handleComplete}
+          />
 
+          {isStarted ? (
             <div className="flex gap-3">
               <Button
                 variant={listening ? "default" : "secondary"}
@@ -867,23 +872,32 @@ function EnrichmentSessionContent() {
                 {isPlaying ? "Pause" : "Resume"}
               </Button>
             </div>
+          ) : (
+            <Button
+              size="lg"
+              className="bg-gold-primary hover:bg-gold-light text-black font-semibold"
+              onClick={handleStart}
+            >
+              <Sparkles size={20} className="mr-2" />
+              Start Session
+            </Button>
+          )}
 
-            {/* Category hints */}
-            <div className="flex gap-3 justify-center text-xs">
-              <span className="text-blue-400">Relationship</span>
-              <span className="text-green-400">Opportunity</span>
-              <span className="text-purple-400">Expertise</span>
-              <span className="text-amber-400">Interest</span>
-            </div>
-
-            {/* Browser support warning */}
-            {!browserSupportsSpeechRecognition && (
-              <p className="text-amber-500 text-xs text-center">
-                Voice input not supported in this browser. Use Chrome for best experience.
-              </p>
-            )}
+          {/* Category hints */}
+          <div className="flex gap-3 justify-center text-xs">
+            <span className="text-blue-400">Relationship</span>
+            <span className="text-green-400">Opportunity</span>
+            <span className="text-purple-400">Expertise</span>
+            <span className="text-amber-400">Interest</span>
           </div>
-        )}
+
+          {/* Browser support warning */}
+          {!browserSupportsSpeechRecognition && (
+            <p className="text-amber-500 text-xs text-center">
+              Voice input not supported in this browser. Use Chrome for best experience.
+            </p>
+          )}
+        </div>
 
         {/* Live Transcript Display */}
         {listening && transcript && (
@@ -919,13 +933,18 @@ function EnrichmentSessionContent() {
               onDelete={handleDeleteBubble}
             />
           ) : (
-            <p className="text-zinc-500 text-center py-8">
-              {isStarted
-                ? listening
-                  ? "Listening... Try saying 'met at a conference' or 'investor in AI'"
-                  : "Click Voice to speak or type below"
-                : "Start the session to begin enriching"}
-            </p>
+            <div className="text-center py-6">
+              <p className="text-zinc-500">
+                {isStarted
+                  ? listening
+                    ? "Listening... Try saying 'met at a conference' or 'investor in AI'"
+                    : "Click Voice to speak or type below"
+                  : "Click Start Session to begin enriching"}
+              </p>
+              <p className="text-zinc-600 text-sm mt-2">
+                Things we learn about this contact will show up here as you talk
+              </p>
+            </div>
           )}
         </div>
 
@@ -955,27 +974,7 @@ function EnrichmentSessionContent() {
         )}
 
         {/* Action buttons */}
-        {!isStarted ? (
-          <div className="flex gap-3">
-            <Button
-              size="lg"
-              className="flex-1 bg-gold-primary hover:bg-gold-light text-black font-semibold"
-              onClick={handleStart}
-            >
-              <Sparkles size={20} />
-              Start Session
-            </Button>
-            <Button
-              size="lg"
-              variant="ghost"
-              className="text-zinc-400"
-              onClick={handleSkip}
-            >
-              <SkipForward size={20} />
-              Skip
-            </Button>
-          </div>
-        ) : (
+        {isStarted ? (
           <div className="flex gap-3">
             <Button
               size="lg"
@@ -994,6 +993,17 @@ function EnrichmentSessionContent() {
             >
               <Sparkles size={18} />
               Complete Session
+            </Button>
+          </div>
+        ) : (
+          <div className="flex justify-center">
+            <Button
+              variant="ghost"
+              className="text-zinc-400"
+              onClick={handleSkip}
+            >
+              <SkipForward size={18} className="mr-2" />
+              Skip this contact
             </Button>
           </div>
         )}

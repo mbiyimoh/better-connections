@@ -1,6 +1,6 @@
 Please take a methodical, hypothesis-driven approach to debugging this issue:
 
-1) **Review & Understand**: Read all relevant docs, developer guides, READMEs, config files, and reference materials to build a complete mental model of the intended behavior. Pay attention to expected data shapes, dependencies, environment requirements, and any known edge cases.
+1) **Review & Understand**: Use @task-context to guide a deep read all relevant docs, developer guides, READMEs, config files, and reference materials to build a complete mental model of the intended behavior. Pay attention to expected data shapes, dependencies, environment requirements, and any known edge cases.
 
 2) **Map the Expected Flow**: Create a detailed, step-by-step articulation of what SHOULD happen—trace the full path from initial input through all functions, API calls, data transformations, and state changes to the expected final outcome. Document the expected inputs and outputs at each stage.
 

@@ -7,7 +7,7 @@ import type { ContactContext } from '@/lib/research/types';
 import type { Prisma, ResearchStatus } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60; // 60 second timeout for research
+export const maxDuration = 60; // Allow background research execution to complete (fire-and-forget)
 
 export async function POST(
   request: NextRequest,
@@ -83,10 +83,15 @@ export async function POST(
       interests: contact.interests,
       whyNow: contact.whyNow,
       notes: contact.notes,
+      twitterUrl: contact.twitterUrl,
+      githubUrl: contact.githubUrl,
+      instagramUrl: contact.instagramUrl,
     };
 
-    // Execute research
-    const result = await executeContactResearch({
+    // Execute research ASYNCHRONOUSLY (fire-and-forget)
+    // This allows the client to immediately switch to the progress view
+    // and poll for updates while the research runs in the background
+    executeContactResearch({
       contact: contactContext,
       focusAreas,
       onProgress: async (stage) => {
@@ -95,68 +100,81 @@ export async function POST(
           data: { progressStage: stage },
         });
       },
-    });
+    })
+      .then(async (result) => {
+        if (!result.success) {
+          // Update run with error
+          await prisma.contactResearchRun.update({
+            where: { id: researchRun.id },
+            data: {
+              status: 'FAILED',
+              errorMessage: result.error,
+              completedAt: new Date(),
+              executionTimeMs: result.executionTimeMs,
+              progressStage: null,
+            },
+          });
+          return;
+        }
 
-    if (!result.success) {
-      // Update run with error
-      await prisma.contactResearchRun.update({
-        where: { id: researchRun.id },
-        data: {
-          status: 'FAILED',
-          errorMessage: result.error,
-          completedAt: new Date(),
-          executionTimeMs: result.executionTimeMs,
-        },
+        // Save recommendations
+        if (result.recommendations.length > 0) {
+          await prisma.contactRecommendation.createMany({
+            data: result.recommendations.map((rec) => ({
+              researchRunId: researchRun.id,
+              fieldName: rec.fieldName,
+              action: rec.action,
+              currentValue: rec.currentValue,
+              proposedValue: rec.proposedValue,
+              tagCategory: rec.tagCategory || null,
+              reasoning: rec.reasoning,
+              confidence: rec.confidence,
+              sourceUrls: rec.sourceUrls,
+              status: 'PENDING',
+            })),
+          });
+        }
+
+        // Update run with results
+        await prisma.contactResearchRun.update({
+          where: { id: researchRun.id },
+          data: {
+            status: 'COMPLETED',
+            searchQuery: result.searchQuery,
+            summary: result.report?.summary || null,
+            fullReport: result.report?.fullReport || null,
+            sourceUrls: result.report?.sourceUrls || [],
+            completedAt: new Date(),
+            executionTimeMs: result.executionTimeMs,
+            progressStage: 'Research complete!',
+          },
+        });
+      })
+      .catch(async (error) => {
+        console.error('Research execution error:', error);
+        await prisma.contactResearchRun.update({
+          where: { id: researchRun.id },
+          data: {
+            status: 'FAILED',
+            errorMessage: error instanceof Error ? error.message : 'Unknown error',
+            completedAt: new Date(),
+            progressStage: null,
+          },
+        });
       });
 
-      return NextResponse.json(
-        { error: 'Research failed', message: result.error },
-        { status: 500 }
-      );
-    }
-
-    // Save recommendations
-    if (result.recommendations.length > 0) {
-      await prisma.contactRecommendation.createMany({
-        data: result.recommendations.map((rec) => ({
-          researchRunId: researchRun.id,
-          fieldName: rec.fieldName,
-          action: rec.action,
-          currentValue: rec.currentValue,
-          proposedValue: rec.proposedValue,
-          tagCategory: rec.tagCategory || null,
-          reasoning: rec.reasoning,
-          confidence: rec.confidence,
-          sourceUrls: rec.sourceUrls,
-          status: 'PENDING',
-        })),
-      });
-    }
-
-    // Update run with results
-    const completedRun = await prisma.contactResearchRun.update({
-      where: { id: researchRun.id },
-      data: {
-        status: 'COMPLETED',
-        searchQuery: result.searchQuery,
-        summary: result.report?.summary || null,
-        fullReport: result.report?.fullReport || null,
-        sourceUrls: result.report?.sourceUrls || [],
-        completedAt: new Date(),
-        executionTimeMs: result.executionTimeMs,
-        progressStage: null,
+    // Return immediately with the run ID so client can start polling
+    return NextResponse.json(
+      {
+        id: researchRun.id,
+        status: 'RUNNING',
+        progressStage: 'Initializing...',
       },
-      include: {
-        recommendations: {
-          orderBy: { confidence: 'desc' },
-        },
-      },
-    });
-
-    return NextResponse.json(completedRun, {
-      status: 201,
-      headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' },
-    });
+      {
+        status: 202, // Accepted - processing asynchronously
+        headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' },
+      }
+    );
   } catch (error) {
     console.error('Research error:', error);
     return NextResponse.json(

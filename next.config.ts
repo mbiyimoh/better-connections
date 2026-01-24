@@ -10,6 +10,17 @@ const nextConfig: NextConfig = {
   // Disable React Strict Mode in dev - it causes double-mounting which
   // breaks speech recognition (mic toggles on/off rapidly)
   reactStrictMode: false,
+
+  // Allow external image sources
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        pathname: '/**',
+      },
+    ],
+  },
 };
 
 export default nextConfig;

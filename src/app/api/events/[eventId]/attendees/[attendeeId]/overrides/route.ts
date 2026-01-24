@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { checkM33tAccess, m33tAccessDeniedResponse, checkEventAccess } from '@/lib/m33t';
+import { checkM33tAccess, m33tAccessDeniedResponse, checkEventAccess, calculateProfileRichness } from '@/lib/m33t';
 import type { Profile } from '@/lib/m33t/schemas';
 
 type RouteContext = {
@@ -37,11 +37,33 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       );
     }
 
-    // Reset overrides
+    // Fetch attendee to get profile and tradingCard for richness calculation
+    const existingAttendee = await prisma.eventAttendee.findFirst({
+      where: { id: attendeeId, eventId },
+    });
+
+    if (!existingAttendee) {
+      return NextResponse.json(
+        { error: 'Attendee not found', code: 'NOT_FOUND', retryable: false },
+        { status: 404 }
+      );
+    }
+
+    // Recalculate richness with base profile (no overrides)
+    const baseProfile = existingAttendee.profile as Profile | null;
+    const profileRichness = calculateProfileRichness(
+      baseProfile,
+      existingAttendee.tradingCard as Record<string, unknown> | null,
+      existingAttendee.firstName,
+      existingAttendee.lastName
+    );
+
+    // Reset overrides and update richness
     const updatedAttendee = await prisma.eventAttendee.update({
       where: { id: attendeeId },
       data: {
         profileOverrides: undefined,
+        profileRichness, // Recalculate with base profile
         overridesEditedAt: null,
         overridesEditedById: null,  // Clear audit trail when resetting
       },

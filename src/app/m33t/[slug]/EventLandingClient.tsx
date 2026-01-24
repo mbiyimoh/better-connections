@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { PublicEventData, PublicAttendee } from './types';
 import {
   EventHero,
@@ -19,8 +19,13 @@ interface EventLandingClientProps {
   data: PublicEventData;
 }
 
+// Helper to format section number (01, 02, etc.)
+function formatSectionNumber(num: number): string {
+  return num.toString().padStart(2, '0');
+}
+
 export function EventLandingClient({ data }: EventLandingClientProps) {
-  const { event, attendees, host, rsvpUrl } = data;
+  const { event, attendees, hosts, rsvpUrl } = data;
   const [selectedAttendee, setSelectedAttendee] = useState<PublicAttendee | null>(null);
   const [showFullGuestList, setShowFullGuestList] = useState(false);
   const [scrollytellingComplete, setScrollytellingComplete] = useState(false);
@@ -38,6 +43,41 @@ export function EventLandingClient({ data }: EventLandingClientProps) {
   // Get total attendee count
   const totalAttendees =
     attendees.confirmed.length + attendees.maybe.length + attendees.invited.length;
+
+  // Calculate dynamic section numbers based on which sections are visible
+  const sectionNumbers = useMemo(() => {
+    let currentNumber = 0;
+    const numbers: Record<string, string | null> = {
+      venue: null,
+      attendees: null,
+      whatToExpect: null,
+      schedule: null,
+      host: null,
+    };
+
+    if (event.landingPageSettings.showVenue) {
+      currentNumber++;
+      numbers.venue = formatSectionNumber(currentNumber);
+    }
+    if (event.landingPageSettings.showAttendees) {
+      currentNumber++;
+      numbers.attendees = formatSectionNumber(currentNumber);
+    }
+    if (event.landingPageSettings.showWhatToExpect && event.whatToExpect && event.whatToExpect.length > 0) {
+      currentNumber++;
+      numbers.whatToExpect = formatSectionNumber(currentNumber);
+    }
+    if (event.landingPageSettings.showSchedule && event.schedule && event.schedule.length > 0) {
+      currentNumber++;
+      numbers.schedule = formatSectionNumber(currentNumber);
+    }
+    if (event.landingPageSettings.showHost && hosts.length > 0) {
+      currentNumber++;
+      numbers.host = formatSectionNumber(currentNumber);
+    }
+
+    return numbers;
+  }, [event.landingPageSettings, event.whatToExpect, event.schedule, hosts.length]);
 
   // Handle attendee selection from either carousel or full list modal
   const handleSelectAttendee = (attendee: PublicAttendee) => {
@@ -74,7 +114,9 @@ export function EventLandingClient({ data }: EventLandingClientProps) {
             venueAddress={event.venueAddress}
             parkingNotes={event.parkingNotes}
             dressCode={event.dressCode}
+            foodInfo={event.foodInfo}
             googlePlaceId={event.googlePlaceId}
+            sectionNumber={sectionNumbers.venue}
           />
         )}
 
@@ -82,12 +124,11 @@ export function EventLandingClient({ data }: EventLandingClientProps) {
         {event.landingPageSettings.showAttendees && (
           <section className="py-24 px-4">
             <div className="max-w-6xl mx-auto">
-              <p className="text-amber-500 text-sm font-medium tracking-widest uppercase mb-4 text-center">
-                THE ROOM
+              <p className="font-mono text-amber-500 text-sm font-medium tracking-widest uppercase mb-4 text-center">
+                {sectionNumbers.attendees} — THE ROOM
               </p>
               <h2
-                className="text-3xl md:text-4xl text-center mb-12"
-                style={{ fontFamily: 'Georgia, serif' }}
+                className="font-display text-3xl md:text-4xl text-center mb-12"
               >
                 Who&apos;s Coming
               </h2>
@@ -140,17 +181,17 @@ export function EventLandingClient({ data }: EventLandingClientProps) {
 
         {/* What to Expect Section */}
         {event.landingPageSettings.showWhatToExpect && event.whatToExpect && event.whatToExpect.length > 0 && (
-          <WhatToExpectSection items={event.whatToExpect} />
+          <WhatToExpectSection items={event.whatToExpect} sectionNumber={sectionNumbers.whatToExpect} />
         )}
 
         {/* Schedule Section */}
         {event.landingPageSettings.showSchedule && event.schedule && event.schedule.length > 0 && (
-          <ScheduleSection schedule={event.schedule} />
+          <ScheduleSection schedule={event.schedule} sectionNumber={sectionNumbers.schedule} />
         )}
 
         {/* Host Section */}
-        {event.landingPageSettings.showHost && (
-          <HostSection host={host} />
+        {event.landingPageSettings.showHost && hosts.length > 0 && (
+          <HostSection hosts={hosts} sectionNumber={sectionNumbers.host} />
         )}
 
         {/* Footer CTA */}

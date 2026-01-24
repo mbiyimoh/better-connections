@@ -341,7 +341,7 @@ export default function ImportPage() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="p-6 max-w-4xl mx-auto pb-12">
+      <div className="p-6 pl-16 md:pl-6 max-w-4xl mx-auto pb-12">
         {/* Header */}
         <div className="mb-6">
           {source === 'select' ? (

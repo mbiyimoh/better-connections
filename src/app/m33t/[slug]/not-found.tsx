@@ -5,12 +5,11 @@ export default function EventNotFound() {
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
       <div className="text-center px-4">
         <h1
-          className="text-4xl text-white font-medium mb-4"
-          style={{ fontFamily: 'Georgia, serif' }}
+          className="font-display text-4xl text-white font-medium mb-4"
         >
           Event Not Found
         </h1>
-        <p className="text-zinc-400 mb-8">
+        <p className="font-body text-zinc-400 mb-8">
           This event doesn&apos;t exist or may have been removed.
         </p>
         <Link

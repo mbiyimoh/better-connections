@@ -1,4 +1,5 @@
 import { formatEventDate } from '@/lib/m33t';
+import { GOLD_FOIL_BUTTON } from '@/lib/design-system';
 
 interface FooterCTAProps {
   tagline?: string | null;
@@ -25,8 +26,7 @@ export function FooterCTA({
         {/* Tagline with highlight */}
         {tagline && (
           <p
-            className="text-2xl md:text-3xl mb-8"
-            style={{ fontFamily: 'Georgia, serif' }}
+            className="font-display text-2xl md:text-3xl mb-8"
           >
             {tagline}
           </p>
@@ -35,7 +35,8 @@ export function FooterCTA({
         {/* CTA Button */}
         <a
           href={rsvpUrl}
-          className="inline-block px-10 py-5 bg-amber-500 text-black font-semibold rounded-xl text-lg hover:bg-amber-400 transition-colors"
+          className="inline-block px-10 py-5 rounded-xl text-lg transition-all hover:scale-105 hover:shadow-lg hover:shadow-amber-500/20"
+          style={{ ...GOLD_FOIL_BUTTON }}
         >
           Request an Invitation
         </a>

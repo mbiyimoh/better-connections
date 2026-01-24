@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { checkM33tAccess, m33tAccessDeniedResponse, checkEventAccess } from '@/lib/m33t';
+import { checkM33tAccess, m33tAccessDeniedResponse, checkEventAccess, calculateProfileRichness } from '@/lib/m33t';
 import { ProfileOverridesSchema } from '@/lib/m33t/schemas';
 import type { Profile, ProfileOverrides } from '@/lib/m33t/schemas';
 import {
@@ -171,10 +171,21 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     // Clean and save
     const cleanedOverrides = cleanOverrides(mergedOverrides);
 
+    // Recalculate profile richness with the merged profile
+    const baseProfile = existingAttendee.profile as Profile | null;
+    const mergedProfile = mergeProfileWithOverrides(baseProfile, cleanedOverrides);
+    const profileRichness = calculateProfileRichness(
+      mergedProfile,
+      existingAttendee.tradingCard as Record<string, unknown> | null,
+      existingAttendee.firstName,
+      existingAttendee.lastName
+    );
+
     const updatedAttendee = await prisma.eventAttendee.update({
       where: { id: attendeeId },
       data: {
         profileOverrides: cleanedOverrides ?? undefined,
+        profileRichness, // Update richness when overrides change
         overridesEditedAt: new Date(),
         overridesEditedById: user.id,  // Track who edited
       },

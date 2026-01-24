@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Check,
   X,
@@ -9,6 +9,9 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Twitter,
+  Github,
+  Instagram,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +20,22 @@ import { cn } from '@/lib/utils';
 import { TAG_CATEGORY_COLORS } from '@/lib/design-system';
 import type { TagCategory } from '@prisma/client';
 import { InlineDiff } from './InlineDiff';
+
+// Runtime URL validation to filter out hallucinated URLs from existing data
+const FORBIDDEN_URL_DOMAINS = ['example.com', 'example.org', 'example.net', 'test.com', 'placeholder.com', 'localhost'];
+
+function isValidSourceUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    // Check protocol
+    if (!['http:', 'https:'].includes(parsed.protocol)) return false;
+    // Check forbidden domains
+    const hostname = parsed.hostname.toLowerCase();
+    return !FORBIDDEN_URL_DOMAINS.some(d => hostname === d || hostname.endsWith(`.${d}`));
+  } catch {
+    return false;
+  }
+}
 
 export interface Recommendation {
   id: string;
@@ -52,6 +71,19 @@ const FIELD_LABELS: Record<string, string> = {
   company: 'Company',
   location: 'Location',
   tags: 'Tag',
+  twitterUrl: 'Twitter/X',
+  githubUrl: 'GitHub',
+  instagramUrl: 'Instagram',
+};
+
+const SOCIAL_FIELD_ICONS: Record<string, React.ReactNode> = {
+  twitterUrl: <Twitter className="h-4 w-4" />,
+  githubUrl: <Github className="h-4 w-4" />,
+  instagramUrl: <Instagram className="h-4 w-4" />,
+};
+
+const isSocialField = (fieldName: string): boolean => {
+  return ['twitterUrl', 'githubUrl', 'instagramUrl'].includes(fieldName);
 };
 
 export function RecommendationCard({
@@ -88,6 +120,12 @@ export function RecommendationCard({
     ? TAG_CATEGORY_COLORS[recommendation.tagCategory as TagCategory]
     : null;
 
+  // Filter source URLs at render time to handle historical data with hallucinated URLs
+  const validSourceUrls = useMemo(
+    () => recommendation.sourceUrls.filter(isValidSourceUrl),
+    [recommendation.sourceUrls]
+  );
+
   return (
     <div
       className={cn(
@@ -105,7 +143,8 @@ export function RecommendationCard({
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="outline">
+            <Badge variant="outline" className="flex items-center gap-1.5">
+              {SOCIAL_FIELD_ICONS[recommendation.fieldName]}
               {FIELD_LABELS[recommendation.fieldName] || recommendation.fieldName}
             </Badge>
             <Badge
@@ -123,6 +162,18 @@ export function RecommendationCard({
             <span className={cn('text-sm font-medium', confidenceColor)}>
               {Math.round(recommendation.confidence * 100)}% confidence
             </span>
+            {/* Verify button for social profile URLs */}
+            {isSocialField(recommendation.fieldName) && (
+              <a
+                href={displayValue}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-blue-500 hover:text-blue-600 hover:underline"
+              >
+                <ExternalLink className="h-3 w-3" />
+                Verify Profile
+              </a>
+            )}
           </div>
 
           {/* Value preview */}
@@ -248,11 +299,11 @@ export function RecommendationCard({
             </p>
           </div>
 
-          {recommendation.sourceUrls.length > 0 && (
+          {validSourceUrls.length > 0 && (
             <div>
               <h4 className="text-sm font-medium mb-1">Sources</h4>
               <ul className="space-y-1">
-                {recommendation.sourceUrls.map((url, i) => {
+                {validSourceUrls.map((url, i) => {
                   let hostname = url;
                   try {
                     hostname = new URL(url).hostname;

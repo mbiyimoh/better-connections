@@ -1,5 +1,5 @@
 // Types
-export type { EventWizardData, ValidationStatus } from './types';
+export type { EventWizardData, EventHost, ValidationStatus } from './types';
 export { DEFAULT_CARD_SETTINGS, DEFAULT_EVENT_DATA } from './types';
 
 // Transforms

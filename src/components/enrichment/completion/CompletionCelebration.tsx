@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, ChevronLeft, Plus } from "lucide-react";
+import { Sparkles, ChevronLeft, Search, ArrowRight, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScoreImprovementBar } from "./ScoreImprovementBar";
 import { RankCelebration } from "./RankCelebration";
@@ -53,6 +53,9 @@ interface CompletionCelebrationProps {
   onMentionProcessed?: (mentionId: string) => void;
   onEnrichNext: () => void;
   onBackToQueue: () => void;
+  onBackToContact: () => void;
+  onResearchContact: () => void;
+  onEnrichMentionedContact?: (contactId: string, contactName: string) => void;
   onContinueEnriching?: () => void;
   saving?: boolean;
 }
@@ -76,9 +79,16 @@ export function CompletionCelebration({
   onMentionProcessed,
   onEnrichNext,
   onBackToQueue,
+  onBackToContact,
+  onResearchContact,
+  onEnrichMentionedContact,
   onContinueEnriching,
   saving = false,
 }: CompletionCelebrationProps) {
+  // Find first mentioned contact that has a matched contact (for the CTA)
+  const firstMentionedWithMatch = mentionedPeople?.find(
+    (m) => m.matchedContact && m.matchType !== "NONE"
+  );
   const [phase, setPhase] = useState<AnimationPhase>("initial");
   const { playScoreComplete, playRankReveal } = useCelebrationSounds();
 
@@ -266,34 +276,44 @@ export function CompletionCelebration({
                 animate={{ opacity: 1, y: 0 }}
                 className="space-y-3"
               >
+                {/* If a contact was mentioned during the session, show option to enrich them */}
+                {firstMentionedWithMatch && onEnrichMentionedContact && (
+                  <Button
+                    size="lg"
+                    className="w-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 border border-blue-500/30 font-semibold"
+                    onClick={() =>
+                      onEnrichMentionedContact(
+                        firstMentionedWithMatch.matchedContact!.id,
+                        firstMentionedWithMatch.matchedContact!.firstName
+                      )
+                    }
+                    disabled={saving}
+                  >
+                    <User size={16} />
+                    Enrich {firstMentionedWithMatch.matchedContact!.firstName}
+                  </Button>
+                )}
+
                 <Button
                   size="lg"
                   className="w-full bg-gold-primary hover:bg-gold-light text-black font-semibold"
-                  onClick={onEnrichNext}
+                  onClick={onResearchContact}
                   disabled={saving}
                 >
-                  {saving ? (
-                    "Saving..."
-                  ) : (
-                    <>
-                      <Sparkles size={16} />
-                      Enrich Next Contact
-                    </>
-                  )}
+                  <Search size={16} />
+                  Enrich: Online Research
                 </Button>
 
-                {onContinueEnriching && (
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="w-full border-zinc-600 text-white hover:bg-zinc-800"
-                    onClick={onContinueEnriching}
-                    disabled={saving}
-                  >
-                    <Plus size={16} />
-                    Continue Enriching {contact.firstName}
-                  </Button>
-                )}
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full border-zinc-600 text-white hover:bg-zinc-800"
+                  onClick={onBackToContact}
+                  disabled={saving}
+                >
+                  <ArrowRight size={16} />
+                  Back to {contact.firstName}&apos;s Contact Page
+                </Button>
 
                 <button
                   onClick={onBackToQueue}

@@ -1,5 +1,6 @@
 import type { EventData } from '../types';
 import { formatEventDate, formatEventTime } from '@/lib/m33t';
+import { GOLD_FOIL_GRADIENT, GOLD_FOIL_BUTTON } from '@/lib/design-system';
 
 interface EventHeroProps {
   event: EventData;
@@ -7,29 +8,28 @@ interface EventHeroProps {
 }
 
 export function EventHero({ event, rsvpUrl }: EventHeroProps) {
-  // Split event name to highlight first word
-  const nameParts = event.name.split(' ');
-  const firstWord = nameParts[0];
-  const restOfName = nameParts.slice(1).join(' ');
+  // Split event name on colon to separate title from subtitle
+  const [rawTitle, subtitle] = event.name.includes(':')
+    ? event.name.split(':').map((s) => s.trim())
+    : [event.name, null];
+
+  // Ensure title ends with a period
+  const mainTitle = rawTitle.endsWith('.') ? rawTitle : `${rawTitle}.`;
 
   return (
     <section className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
       <h1
-        className="text-5xl md:text-7xl lg:text-8xl font-medium mb-4"
-        style={{ fontFamily: 'Georgia, serif' }}
+        className="font-display text-6xl md:text-8xl lg:text-9xl font-medium tracking-wide mb-4 pb-2"
+        style={{ ...GOLD_FOIL_GRADIENT }}
       >
-        <span className="text-amber-500">{firstWord}</span>
-        {restOfName && ` ${restOfName}`}
+        {mainTitle}
       </h1>
 
-      {event.tagline && (
-        <p
-          className="text-xl md:text-2xl text-zinc-300 italic mb-8"
-          style={{ fontFamily: 'Georgia, serif' }}
-        >
-          {event.tagline}
-        </p>
-      )}
+      <p
+        className="font-display text-2xl md:text-3xl lg:text-4xl text-white mb-8"
+      >
+        {subtitle || 'Building at the Speed of Thought'}
+      </p>
 
       <div className="w-20 h-px bg-gradient-to-r from-transparent via-amber-500 to-transparent mb-8" />
 
@@ -43,7 +43,8 @@ export function EventHero({ event, rsvpUrl }: EventHeroProps) {
 
       <a
         href={rsvpUrl}
-        className="px-8 py-4 bg-amber-500 text-black font-semibold rounded-xl hover:bg-amber-400 transition-colors"
+        className="px-8 py-4 rounded-xl transition-all hover:scale-105 hover:shadow-lg hover:shadow-amber-500/20"
+        style={{ ...GOLD_FOIL_BUTTON }}
       >
         Request an Invitation
       </a>

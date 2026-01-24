@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MapPin, Car, Shirt, Image as ImageIcon, ExternalLink } from 'lucide-react';
+import { MapPin, Car, Shirt, UtensilsCrossed, Image as ImageIcon, ExternalLink } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -156,6 +156,20 @@ export function VenueStep({ data, onChange }: VenueStepProps) {
             )}
           </div>
         )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="foodInfo">
+          <UtensilsCrossed className="inline w-4 h-4 mr-1" />
+          Food & Drinks
+        </Label>
+        <Textarea
+          id="foodInfo"
+          placeholder="e.g., Light appetizers and an open bar will be provided..."
+          value={data.foodInfo}
+          onChange={(e) => onChange({ foodInfo: e.target.value })}
+          className="bg-bg-tertiary min-h-[80px]"
+        />
       </div>
     </div>
   );

@@ -44,6 +44,10 @@ export interface Contact {
   updatedAt: string;
   lastEnrichedAt: string | null;
   tags: Tag[];
+  // Social media profiles
+  twitterUrl: string | null;
+  githubUrl: string | null;
+  instagramUrl: string | null;
 }
 
 // Helper function for display name

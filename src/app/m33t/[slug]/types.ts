@@ -23,6 +23,10 @@ export interface PublicAttendee {
     whyInteresting?: string;
     conversationStarters?: string[];
   };
+  // Ordering fields (used for sorting, not displayed)
+  displayOrder: number | null;
+  profileRichness: number;
+  createdAt: Date;
 }
 
 export interface ScheduleItem {
@@ -44,16 +48,19 @@ export interface EventData {
   googlePlaceId?: string | null;
   parkingNotes?: string | null;
   dressCode?: string | null;
+  foodInfo?: string | null;
   schedule?: ScheduleItem[];
   whatToExpect?: WhatToExpectItem[];
   landingPageSettings: LandingPageSettings;
 }
 
 export interface HostData {
+  id?: string;
   name: string;
-  title?: string;
+  title?: string | null;
   bio?: string | null;
   quote?: string | null;
+  photo?: string | null;
 }
 
 export interface PublicEventData {
@@ -63,6 +70,6 @@ export interface PublicEventData {
     maybe: PublicAttendee[];
     invited: PublicAttendee[];
   };
-  host: HostData;
+  hosts: HostData[];
   rsvpUrl: string;
 }

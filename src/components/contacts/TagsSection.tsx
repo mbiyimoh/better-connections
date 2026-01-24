@@ -113,7 +113,7 @@ export function TagsSection({ contact, onTagAdded }: TagsSectionProps) {
             size="sm"
             onClick={fetchSuggestions}
             disabled={isLoadingSuggestions}
-            className="text-xs text-text-secondary hover:text-white"
+            className="text-xs text-gold-primary hover:text-gold-light"
           >
             {isLoadingSuggestions ? (
               <>

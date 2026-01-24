@@ -118,6 +118,9 @@ export async function POST(
           | 'interests'
           | 'whyNow'
           | 'notes'
+          | 'twitterUrl'
+          | 'githubUrl'
+          | 'instagramUrl'
         >
       > = {};
       const newTags: { text: string; category: string }[] = [];

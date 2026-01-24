@@ -7,7 +7,7 @@ import type {
   GeneratedRecommendation,
   SynthesizedReport,
 } from './types';
-import { reportSynthesisSchema, recommendationOutputSchema } from './schemas';
+import { reportSynthesisSchema, recommendationOutputSchema, VALID_RECOMMENDATION_FIELDS } from './schemas';
 import { buildSearchQuery } from './queryBuilder';
 import { searchTavily, extractLinkedInProfile } from './tavilyClient';
 import {
@@ -16,8 +16,23 @@ import {
   SYNTHESIS_SYSTEM_PROMPT,
   RECOMMENDATION_SYSTEM_PROMPT,
 } from './prompts';
+import { discoverSocialProfiles, type SocialProfileMatch } from './socialDiscovery';
+import {
+  MIN_CONFIDENCE_THRESHOLD,
+  filterValidUrls,
+  validateRecommendationUrl,
+} from './constants';
 
-const MIN_CONFIDENCE_THRESHOLD = 0.5;
+function platformToFieldName(platform: 'twitter' | 'github' | 'instagram'): string {
+  switch (platform) {
+    case 'twitter':
+      return 'twitterUrl';
+    case 'github':
+      return 'githubUrl';
+    case 'instagram':
+      return 'instagramUrl';
+  }
+}
 
 export async function executeContactResearch(options: {
   contact: ContactContext;
@@ -55,7 +70,23 @@ export async function executeContactResearch(options: {
       }
     }
 
-    // Step 2b: Execute Tavily web search
+    // Step 2b: If 'social' focus area, discover social profiles
+    let socialProfiles: SocialProfileMatch[] = [];
+    if (focusAreas.includes('social')) {
+      await onProgress?.('Discovering social profiles...');
+      const socialResult = await discoverSocialProfiles(contact, onProgress);
+      socialProfiles = socialResult.matches;
+      console.log(`[Research] Social discovery found ${socialProfiles.length} profiles`);
+      socialProfiles.forEach((p) => {
+        console.log(`[Research] - ${p.platform}: ${p.url} (confidence: ${p.confidence.toFixed(2)})`);
+      });
+    }
+
+    // Step 2c: Execute Tavily web search
+    // Note: General web search passes fullName to filter out irrelevant results about
+    // other people with similar names. This is intentional - social profile discovery
+    // (Step 2b) skips name filtering because social snippets often don't include the
+    // full name, and instead relies on confidence scoring in parseAndScoreProfile().
     await onProgress?.('Searching the web...');
     const fullName = `${contact.firstName} ${contact.lastName}`.trim();
     const findings = await searchTavily(searchQuery, fullName);
@@ -125,7 +156,8 @@ export async function executeContactResearch(options: {
     const recommendationPrompt = buildRecommendationPrompt(
       contact,
       report.fullReport,
-      synthesisResult.object.keyFindings
+      synthesisResult.object.keyFindings,
+      report.sourceUrls // Pass actual source URLs so GPT doesn't hallucinate
     );
 
     let recResult;
@@ -148,8 +180,21 @@ export async function executeContactResearch(options: {
     }
 
     // Step 5: Filter and enrich recommendations
-    const recommendations: GeneratedRecommendation[] =
+    // First filter for valid field names (GPT may return fields like 'certifications' that don't exist)
+    const validFieldSet = new Set(VALID_RECOMMENDATION_FIELDS);
+    // Create set of valid source URLs to validate against hallucinated URLs
+    const validSourceUrls = new Set(report.sourceUrls);
+
+    const gptRecommendations: GeneratedRecommendation[] =
       recResult.object.recommendations
+        // Filter out invalid field names that don't map to Contact model
+        .filter((r) => {
+          if (!validFieldSet.has(r.fieldName as typeof VALID_RECOMMENDATION_FIELDS[number])) {
+            console.log(`[Research] Filtering out recommendation with invalid fieldName: ${r.fieldName}`);
+            return false;
+          }
+          return true;
+        })
         .filter((r) => r.confidence >= MIN_CONFIDENCE_THRESHOLD)
         .map((r) => ({
           fieldName: r.fieldName,
@@ -159,8 +204,17 @@ export async function executeContactResearch(options: {
           tagCategory: r.tagCategory || undefined,
           reasoning: r.reasoning,
           confidence: r.confidence,
-          sourceUrls: r.sourceUrls,
+          // Filter sourceUrls using centralized validation
+          sourceUrls: filterValidUrls(r.sourceUrls, validSourceUrls),
         }))
+        // Filter out recommendations that have NO valid source URLs after filtering
+        .filter((r) => {
+          if (r.sourceUrls.length === 0) {
+            console.log(`[Research] Filtering out recommendation with no valid sources: ${r.fieldName}`);
+            return false;
+          }
+          return true;
+        })
         // Filter out duplicate recommendations (proposed value same as current)
         .filter((r) => {
           if (!r.currentValue) return true; // No current value, keep recommendation
@@ -171,6 +225,41 @@ export async function executeContactResearch(options: {
           if (current.includes(proposed)) return false;
           return true;
         });
+
+    // Step 6: Convert social profile matches to recommendations
+    const socialRecommendations: GeneratedRecommendation[] = [];
+    for (const profile of socialProfiles) {
+      // Validate source URL before creating recommendation
+      const sourceValidation = validateRecommendationUrl(profile.sourceUrl);
+      if (!sourceValidation.valid) {
+        console.log(`[Research] Skipping social profile with invalid source (${sourceValidation.reason}): ${profile.sourceUrl}`);
+        continue;
+      }
+
+      const fieldName = platformToFieldName(profile.platform);
+      const currentValue = getContactFieldValue(contact, fieldName);
+
+      // Skip if contact already has this profile URL
+      if (currentValue) {
+        console.log(`[Research] Skipping ${fieldName} - already set to ${currentValue}`);
+        continue;
+      }
+
+      socialRecommendations.push({
+        fieldName,
+        action: 'ADD',
+        currentValue: null,
+        proposedValue: profile.url,
+        reasoning: `Found ${profile.platform} profile matching ${contact.firstName} ${contact.lastName}${profile.displayName ? ` (${profile.displayName})` : ''}${profile.bio ? `. Bio: "${profile.bio.slice(0, 100)}..."` : ''}`,
+        confidence: profile.confidence,
+        sourceUrls: [profile.sourceUrl],
+      });
+    }
+
+    console.log(`[Research] Generated ${socialRecommendations.length} social profile recommendations`);
+
+    // Merge GPT recommendations with social profile recommendations
+    const recommendations = [...gptRecommendations, ...socialRecommendations];
 
     await onProgress?.('Research complete!');
 
@@ -223,6 +312,12 @@ function getContactFieldValue(
       return contact.company;
     case 'location':
       return contact.location;
+    case 'twitterUrl':
+      return contact.twitterUrl ?? null;
+    case 'githubUrl':
+      return contact.githubUrl ?? null;
+    case 'instagramUrl':
+      return contact.instagramUrl ?? null;
     case 'tags':
       return null; // Tags handled separately
     default:

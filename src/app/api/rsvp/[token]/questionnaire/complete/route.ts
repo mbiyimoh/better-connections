@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyRSVPToken, isTokenExpired } from '@/lib/m33t/tokens';
 import { extractProfileWithTimeout, createFallbackProfile } from '@/lib/m33t/extraction';
+import { calculateProfileRichness } from '@/lib/m33t';
 import type { Question, QuestionnaireResponse } from '@/lib/m33t/schemas';
 
 type RouteContext = {
@@ -84,6 +85,14 @@ export async function POST(
     const goalsResponse = responses.find((r) => r.questionId === 'goals');
     const idealResponse = responses.find((r) => r.questionId === 'ideal_connections');
 
+    // Calculate profile richness for ordering
+    const profileRichness = calculateProfileRichness(
+      profile,
+      attendee.tradingCard as Record<string, unknown> | null,
+      attendee.firstName,
+      attendee.lastName
+    );
+
     // Update attendee with profile
     await prisma.eventAttendee.update({
       where: { id: attendee.id },
@@ -91,6 +100,7 @@ export async function POST(
         profile,
         profileExtractedAt: new Date(),
         questionnaireCompletedAt: new Date(),
+        profileRichness, // Update richness score
         // Index fields for matching
         goalsText: typeof goalsResponse?.value === 'string' ? goalsResponse.value : null,
         idealMatchText: typeof idealResponse?.value === 'string' ? idealResponse.value : null,

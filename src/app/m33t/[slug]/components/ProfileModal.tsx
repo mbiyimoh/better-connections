@@ -3,6 +3,7 @@
 import type { PublicAttendee } from '../types';
 import { getInitialsFromName } from '@/lib/contact-utils';
 import { RSVP_STATUS_COLORS } from '@/lib/design-system';
+import { METALLIC_BADGE_CLASS, POLISHED_AVATAR_CLASS, STATUS_GLOW, TEXT_3D_NAME_STYLE, TEXT_3D_SUBTITLE_STYLE } from './styles';
 
 interface ProfileModalProps {
   attendee: PublicAttendee | null;
@@ -44,28 +45,28 @@ export function ProfileModal({ attendee, onClose }: ProfileModalProps) {
 
         {/* Header: Avatar + Name */}
         <div className="flex items-start gap-4 mb-6">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-zinc-700 to-zinc-800 flex items-center justify-center text-white text-2xl font-medium flex-shrink-0">
+          <div className={`w-20 h-20 rounded-2xl ${POLISHED_AVATAR_CLASS} flex items-center justify-center text-white text-2xl font-medium flex-shrink-0`}>
             {initials}
           </div>
           <div>
             <h3
-              className="text-2xl text-white"
-              style={{ fontFamily: 'Georgia, serif' }}
+              className="font-display text-2xl text-white font-semibold"
+              style={TEXT_3D_NAME_STYLE}
             >
               {attendee.name}
             </h3>
             {attendee.title && (
-              <p className="text-zinc-400">{attendee.title}</p>
+              <p className="font-body text-zinc-400" style={TEXT_3D_SUBTITLE_STYLE}>{attendee.title}</p>
             )}
             {attendee.company && (
-              <p className="text-zinc-500 text-sm">{attendee.company}</p>
+              <p className="font-body text-zinc-500 text-sm" style={TEXT_3D_SUBTITLE_STYLE}>{attendee.company}</p>
             )}
             {attendee.location && (
-              <p className="text-zinc-600 text-sm">{attendee.location}</p>
+              <p className="font-body text-zinc-600 text-sm">{attendee.location}</p>
             )}
             <div className="flex items-center gap-2 mt-2">
               <div
-                className={`w-2 h-2 rounded-full ${RSVP_STATUS_COLORS[attendee.status]}`}
+                className={`w-2.5 h-2.5 rounded-full ${RSVP_STATUS_COLORS[attendee.status]} ${STATUS_GLOW[attendee.status] || STATUS_GLOW.invited}`}
               />
               <span className="text-zinc-400 text-sm capitalize">
                 {attendee.status}
@@ -84,7 +85,7 @@ export function ProfileModal({ attendee, onClose }: ProfileModalProps) {
               {attendee.expertise!.map((tag, idx) => (
                 <span
                   key={idx}
-                  className="text-sm px-3 py-1 rounded-full bg-gold-subtle text-gold-primary border border-gold-primary/30"
+                  className={`text-sm px-3 py-1.5 rounded-lg ${METALLIC_BADGE_CLASS}`}
                 >
                   {tag}
                 </span>

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { ArrowLeft, Plus, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, X, Loader2, FileUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,6 +23,18 @@ import { TAG_CATEGORY_COLORS } from '@/lib/design-system';
 import type { Contact, TagCategory } from '@/types/contact';
 import Link from 'next/link';
 import { HometownSuggestion } from './HometownSuggestion';
+import { useIsMobile } from '@/hooks/useMediaQuery';
+import { parseVcfFile, type ParsedContact } from '@/lib/vcf-parser';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const contactFormSchema = z.object({
   firstName: z.string().min(1, 'First name is required').max(255),
@@ -68,12 +80,21 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
   const [newTagText, setNewTagText] = useState('');
   const [newTagCategory, setNewTagCategory] = useState<TagCategory>('RELATIONSHIP');
 
+  // Mobile VCF import state
+  const isMobile = useIsMobile();
+  const [isImporting, setIsImporting] = useState(false);
+  const [showOverwriteDialog, setShowOverwriteDialog] = useState(false);
+  const [showMultiContactDialog, setShowMultiContactDialog] = useState(false);
+  const [pendingVcfData, setPendingVcfData] = useState<ParsedContact | null>(null);
+
   const {
     register,
     handleSubmit,
     formState: { errors },
     setValue,
     watch,
+    getValues,
+    reset,
   } = useForm<ContactFormData>({
     resolver: zodResolver(contactFormSchema),
     defaultValues: {
@@ -148,6 +169,141 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
     setTags(tags.filter((_, i) => i !== index));
   };
 
+  // ========================================
+  // Mobile VCF Import Functions
+  // ========================================
+
+  // Map VCF parsed contact to form data structure
+  const mapVcfToFormData = (contact: ParsedContact): Partial<ContactFormData> => ({
+    firstName: contact.firstName,
+    lastName: contact.lastName || '',
+    primaryEmail: contact.primaryEmail || '',
+    secondaryEmail: contact.secondaryEmail || '',
+    primaryPhone: contact.primaryPhone || '',
+    secondaryPhone: contact.secondaryPhone || '',
+    title: contact.title || '',
+    company: contact.company || '',
+    location: [contact.city, contact.state].filter(Boolean).join(', ') || '',
+    linkedinUrl: contact.linkedinUrl || '',
+    notes: contact.notes || '',
+    // Fields not in VCF - keep defaults
+    organizationalTitle: '',
+    howWeMet: '',
+    relationshipStrength: 1,
+    whyNow: '',
+    expertise: '',
+    interests: '',
+  });
+
+  // Check if user has entered any data in the form
+  const formHasData = (): boolean => {
+    const values = getValues();
+    return !!(
+      values.firstName ||
+      values.lastName ||
+      values.primaryEmail ||
+      values.primaryPhone ||
+      values.title ||
+      values.company ||
+      values.location ||
+      values.notes
+    );
+  };
+
+  // Apply VCF data to form and show success toast
+  const applyVcfData = (vcfContact: ParsedContact) => {
+    const formData = mapVcfToFormData(vcfContact);
+    reset({ ...getValues(), ...formData, relationshipStrength: 1 });
+    setTags([]); // Clear tags since VCF doesn't have them
+    toast({
+      title: 'Contact imported',
+      description: 'Review the information and save when ready.',
+    });
+  };
+
+  // Handle VCF file selection from native file input
+  const handleVcfFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset input so same file can be re-selected
+    e.target.value = '';
+
+    // Validate extension (iOS Safari ignores accept attribute)
+    const fileName = file.name.toLowerCase();
+    if (!fileName.endsWith('.vcf') && !fileName.endsWith('.vcard')) {
+      toast({
+        title: 'Invalid file type',
+        description: 'Please select a .vcf or .vcard file.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsImporting(true);
+
+    try {
+      const text = await file.text();
+      const { contacts } = parseVcfFile(text);
+
+      if (contacts.length === 0) {
+        toast({
+          title: 'No contact found',
+          description: 'Could not read any contact information from this file.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (contacts.length > 1) {
+        // Multi-contact file - show dialog with link to bulk import
+        setShowMultiContactDialog(true);
+        return;
+      }
+
+      // Single contact - check if form has data
+      const vcfContact = contacts[0];
+      if (!vcfContact) {
+        toast({
+          title: 'No contact found',
+          description: 'Could not read any contact information from this file.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (formHasData()) {
+        setPendingVcfData(vcfContact);
+        setShowOverwriteDialog(true);
+      } else {
+        applyVcfData(vcfContact);
+      }
+    } catch (error) {
+      console.error('VCF parse error:', error);
+      toast({
+        title: 'Import failed',
+        description: 'Could not read the file. It may be corrupted or in an unsupported format.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  // Handle overwrite confirmation
+  const handleOverwriteConfirm = () => {
+    if (pendingVcfData) {
+      applyVcfData(pendingVcfData);
+    }
+    setPendingVcfData(null);
+    setShowOverwriteDialog(false);
+  };
+
+  // Handle overwrite cancel
+  const handleOverwriteCancel = () => {
+    setPendingVcfData(null);
+    setShowOverwriteDialog(false);
+  };
+
   const onSubmit = async (data: ContactFormData) => {
     setIsSubmitting(true);
     try {
@@ -193,7 +349,7 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
   };
 
   return (
-    <div className="mx-auto max-w-2xl p-6">
+    <div className="mx-auto max-w-2xl p-6 pl-16 md:pl-6">
       {/* Header */}
       <div className="mb-8">
         <Link
@@ -207,6 +363,40 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
           {isEditing ? 'Edit Contact' : 'Add Contact'}
         </h1>
       </div>
+
+      {/* Mobile VCF Import Button - only show on mobile for new contacts */}
+      {isMobile && !isEditing && (
+        <div className="mb-6">
+          <label
+            htmlFor="vcf-import-input"
+            className={cn(
+              'flex w-full cursor-pointer items-center justify-center gap-2',
+              'rounded-lg border border-border bg-bg-secondary',
+              'px-4 py-3 text-sm font-medium text-text-secondary',
+              'transition-colors hover:border-gold-primary hover:text-gold-primary',
+              isImporting && 'pointer-events-none opacity-50'
+            )}
+          >
+            {isImporting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileUp className="h-4 w-4" />
+            )}
+            {isImporting ? 'Importing...' : 'Import a vCard'}
+            <input
+              id="vcf-import-input"
+              type="file"
+              accept=".vcf,.vcard,text/vcard,text/x-vcard"
+              onChange={handleVcfFileSelect}
+              className="sr-only"
+              disabled={isImporting}
+            />
+          </label>
+          <p className="mt-2 text-center text-xs text-text-tertiary">
+            Share a contact to Files, then import here
+          </p>
+        </div>
+      )}
 
       <form id="contact-form" onSubmit={handleSubmit(onSubmit)} className="space-y-8">
         {/* Basic Info */}
@@ -504,6 +694,40 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
           </Button>
         </div>
       </div>
+
+      {/* Overwrite Confirmation Dialog */}
+      <AlertDialog open={showOverwriteDialog} onOpenChange={setShowOverwriteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace current entries?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You&apos;ve already entered some information. Importing this vCard will replace your current entries.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleOverwriteCancel}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleOverwriteConfirm}>Import</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Multi-Contact Dialog */}
+      <AlertDialog open={showMultiContactDialog} onOpenChange={setShowMultiContactDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Multiple contacts detected</AlertDialogTitle>
+            <AlertDialogDescription>
+              Looks like this is a multi-contact file. Head over to our bulk upload tool for this one.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Link href="/contacts/import">Go to Import</Link>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

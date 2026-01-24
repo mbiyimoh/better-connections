@@ -10,6 +10,7 @@ import type {
 } from '@/app/m33t/[slug]/types';
 import type { Profile, ProfileOverrides } from '@/lib/m33t/schemas';
 import { mergeProfileWithOverrides } from '@/lib/m33t/profile-utils';
+import { sortAttendeeGroups } from '@/lib/m33t';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -96,6 +97,10 @@ export async function GET(
             profile: true,           // For company/title extraction
             profileOverrides: true,  // Organizer customizations
             tradingCard: true,
+            // Ordering fields
+            displayOrder: true,
+            profileRichness: true,
+            createdAt: true,
             // Privacy: exclude email, phone, questionnaireResponses
           },
         },
@@ -189,6 +194,10 @@ export async function GET(
         expertise,
         currentFocus,
         tradingCard: tradingCardData,
+        // Ordering fields for sorting
+        displayOrder: attendee.displayOrder,
+        profileRichness: attendee.profileRichness,
+        createdAt: attendee.createdAt,
       };
 
       transformedAttendees[status].push(publicAttendee);
@@ -273,16 +282,28 @@ export async function GET(
         googlePlaceId: event.googlePlaceId,
         parkingNotes: event.parkingNotes,
         dressCode: event.dressCode,
+        foodInfo: event.foodInfo,
         schedule,
         whatToExpect,
         landingPageSettings,
       },
-      attendees: transformedAttendees,
-      host: {
-        name: event.user.name || 'Event Host',
-        bio: event.hostBio,
-        quote: event.hostQuote,
-      },
+      attendees: sortAttendeeGroups(transformedAttendees),
+      // Use hosts array if available, fall back to legacy single-host fields
+      hosts: event.hosts && Array.isArray(event.hosts) && (event.hosts as unknown[]).length > 0
+        ? (event.hosts as Array<{ id?: string; name: string; title?: string; bio?: string; quote?: string; photo?: string }>)
+        : event.hostName
+          ? [{
+              id: 'host_legacy',
+              name: event.hostName || event.user.name || 'Event Host',
+              title: event.hostTitle || undefined,
+              bio: event.hostBio || undefined,
+              quote: event.hostQuote || undefined,
+              photo: event.hostPhoto || undefined,
+            }]
+          : [{
+              id: 'host_default',
+              name: event.user.name || 'Event Host',
+            }],
       rsvpUrl: `/rsvp/${event.id}`, // Generic RSVP URL for now
     };
 

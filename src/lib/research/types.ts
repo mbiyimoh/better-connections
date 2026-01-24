@@ -12,9 +12,13 @@ export interface ContactContext {
   interests: string | null;
   whyNow: string | null;
   notes: string | null;
+  // Social media profiles
+  twitterUrl?: string | null;
+  githubUrl?: string | null;
+  instagramUrl?: string | null;
 }
 
-export type FocusArea = 'professional' | 'expertise' | 'interests' | 'news';
+export type FocusArea = 'professional' | 'expertise' | 'interests' | 'news' | 'social';
 
 export interface ResearchOptions {
   contact: ContactContext;
@@ -74,6 +78,9 @@ export const RESEARCH_FIELD_LABELS: Record<string, string> = {
   whyNow: 'why now',
   notes: 'notes',
   tags: 'tag',
+  twitterUrl: 'Twitter/X profile',
+  githubUrl: 'GitHub profile',
+  instagramUrl: 'Instagram profile',
 };
 
 // LinkedIn profile extraction result

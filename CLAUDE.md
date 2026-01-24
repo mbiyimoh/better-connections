@@ -706,6 +706,64 @@ const uniqueSlug = await generateUniqueSlug(name, async (slug) => {
 
 ---
 
+### M33T Scrollytelling Animation Patterns
+
+**Purpose:** Advanced animation techniques for the "If Statement Sequence" scrollytelling component on NO EDGES event landing pages.
+
+**Comprehensive Guide:** See `developer-guides/10-m33t-scrollytelling-animations-guide.md` for full documentation.
+
+**Key File:** `src/app/m33t/[slug]/components/IfStatementSequence.tsx`
+
+**Core Patterns:**
+
+1. **Coordinate System Architecture**
+   - Main container establishes coordinate origin (center)
+   - OrbControl ref API for imperative child→parent communication
+   - `getBoundingClientRect()` for relative positioning calculations
+
+2. **lagFactor for Erase Alignment**
+   - Erase effect trails orb by `lagFactor` segments (tuned to 1.2)
+   - Per-frame position updates synced to animation progress
+   - CSS mask for progressive text erasing effect
+
+3. **Volatile Isotope Vibration**
+   - Programmatic keyframe generation: 24 rapid micro-oscillations
+   - Random variation (75-125% intensity) for organic instability
+   - Linear easing for mechanical vibration feel
+
+4. **Magnetic Collapse Animation**
+   - Extreme ease-in curve: `[0.99, 0, 1, 1]` (frozen then instant snap)
+   - Short duration (0.35s) for magnetic pull effect
+   - Scale to 0.1 for complete collapse
+
+5. **Particle Explosion with Organic Falling**
+   - Per-particle properties: fallDelay, fallDuration, driftX
+   - Semicircle explosion (upward only) prevents floor penetration
+   - Three phases: explode (0.4s) → linger (2.4s) → fall (staggered 1.5-3.5s)
+
+**Key Techniques:**
+- Relative positioning with shared coordinate systems
+- Phase-based state management (AnimationPhase enum)
+- Race condition prevention (phaseRef checks)
+- GPU acceleration (`willChange: 'transform, opacity'`)
+- Spring physics for organic orb migrations
+
+**Easing Curves:**
+- Smooth drift: `[0.25, 0.46, 0.45, 0.94]`
+- Magnetic resistance: `[0.99, 0, 1, 1]`
+- Fast emergence: `[0.16, 1, 0.3, 1]`
+- Particle falling: `[0.4, 0.0, 0.2, 1]`
+
+**Common Gotchas:**
+- Orb glow extends ~15-20px beyond core center (account for in positioning)
+- Always convert viewport coords to component-relative coords
+- Use refs for timers that persist across phase changes
+- Phase check before executing delayed animations (prevent race conditions)
+
+**Location:** `src/app/m33t/[slug]/components/IfStatementSequence.tsx`, see guide for full patterns
+
+---
+
 ### M33T Multi-Organizer Collaboration Pattern
 
 **Purpose:** Allow event owners to add co-organizers with granular permission levels for collaborative event management.

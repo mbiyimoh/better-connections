@@ -1,6 +1,6 @@
 'use client';
 
-import { Calendar, Clock } from 'lucide-react';
+import { Calendar, Clock, ExternalLink } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -42,6 +42,15 @@ export function BasicsStep({ data, onChange }: BasicsStepProps) {
       <div>
         <h2 className="text-2xl font-semibold text-white mb-1">Event Basics</h2>
         <p className="text-text-secondary">Let&apos;s start with the essential details</p>
+        <a
+          href="https://www.markdownguide.org/cheat-sheet/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-xs text-text-tertiary hover:text-gold-primary transition-colors mt-2"
+        >
+          <ExternalLink className="w-3 h-3" />
+          Use this markdown guide for styling text fields
+        </a>
       </div>
 
       <div className="space-y-2">
@@ -56,6 +65,20 @@ export function BasicsStep({ data, onChange }: BasicsStepProps) {
         {!data.name && (
           <p className="text-xs text-error">Event name is required</p>
         )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="tagline">Tagline</Label>
+        <Input
+          id="tagline"
+          placeholder="e.g., Some rooms just matter. This is one."
+          value={data.tagline || ''}
+          onChange={(e) => onChange({ tagline: e.target.value })}
+          className="bg-bg-tertiary"
+        />
+        <p className="text-xs text-text-tertiary">
+          Shown at the bottom of the landing page above the RSVP button
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -55,12 +55,11 @@ export function FullGuestListModal({
 
         {/* Header */}
         <div className="p-8 pb-0">
-          <p className="text-amber-500 text-sm font-medium tracking-widest uppercase mb-2">
+          <p className="font-mono text-amber-500 text-sm font-medium tracking-widest uppercase mb-2">
             THE ROOM
           </p>
           <h3
-            className="text-2xl text-white mb-6"
-            style={{ fontFamily: 'Georgia, serif' }}
+            className="font-display text-2xl text-white mb-6"
           >
             Full Guest List
           </h3>

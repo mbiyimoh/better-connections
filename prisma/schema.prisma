@@ -35,6 +35,7 @@ model User {
   // M33T audit relations
   attendeesAdded           EventAttendee[] @relation("AttendeeAddedBy")
   attendeeOverridesEdited  EventAttendee[] @relation("AttendeeOverridesEditedBy")
+  attendeeOrderUpdated     EventAttendee[] @relation("AttendeeOrderUpdatedBy")
 }
 
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -72,6 +73,10 @@ model Contact {
   streetAddress        String?
   websiteUrl           String?
   zipCode              String?
+  // Social media profiles
+  twitterUrl           String?
+  githubUrl            String?
+  instagramUrl         String?
   user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   mentionsAsTarget     ContactMention[]      @relation("MentionTarget")
   mentionsAsSource     ContactMention[]      @relation("MentionSource")
@@ -448,6 +453,7 @@ model Event {
   eventGoals        String[]         // fundraising, hiring, partnerships, learning, community
   parkingNotes      String?
   dressCode         String?          // casual, business-casual, formal, creative
+  foodInfo          String?          // Food and drinks info for attendees
 
   // Settings
   capacity          Int      @default(50)
@@ -469,8 +475,12 @@ model Event {
   // Public Landing Page
   slug              String?   @unique  // URL-safe identifier for /events/[slug]
   schedule          Json?              // Array of { time, title, description }
-  hostBio           String?            // Bio text for host section
-  hostQuote         String?            // Quote text for host section
+  hostName          String?            // Override account name for host section (legacy single host)
+  hostTitle         String?            // Host title (legacy single host)
+  hostBio           String?            // Bio text (legacy single host)
+  hostQuote         String?            // Quote text (legacy single host)
+  hostPhoto         String?            // URL to host photo (legacy single host)
+  hosts             Json?              // Array of { id, name, title, bio, quote, photo } for multiple hosts
   whatToExpect      Json?              // Array of { id, icon, title, description }
   landingPageSettings Json   @default("{}")  // { showVenue, showSchedule, showHost, showWhatToExpect, showAttendees }
 
@@ -529,6 +539,15 @@ model EventAttendee {
   overridesEditedById   String?
   overridesEditedBy     User?     @relation("AttendeeOverridesEditedBy", fields: [overridesEditedById], references: [id])
 
+  // Attendee Ordering (for custom display order on landing page)
+  displayOrder          Int?                      // null = auto-sort, number = pinned position
+  profileRichness       Int       @default(0)     // 0-100 computed score for auto-sorting
+
+  // Audit: Who last updated the display order
+  orderUpdatedById      String?
+  orderUpdatedBy        User?     @relation("AttendeeOrderUpdatedBy", fields: [orderUpdatedById], references: [id])
+  orderUpdatedAt        DateTime?
+
   // Matching Fields (extracted and indexed for queries)
   goalsText       String?  // Raw text for future embedding
   idealMatchText  String?  // Raw text for future embedding
@@ -558,6 +577,7 @@ model EventAttendee {
   @@index([eventId])
   @@index([rsvpStatus])
   @@index([experienceLevel])
+  @@index([eventId, displayOrder])  // Composite index for efficient ordering queries
 }
 
 // ========== M33T EVENT ORGANIZER MODEL ==========

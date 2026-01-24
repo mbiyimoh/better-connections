@@ -110,7 +110,7 @@ export function ScoreImprovementBar({
         <div className="text-2xl font-bold text-white tabular-nums">
           <NumberTicker
             from={previousScore}
-            to={isAnimating ? newScore : previousScore}
+            to={newScore}
             duration={1500}
           />
           <span className="text-zinc-500 font-normal"> / 100</span>

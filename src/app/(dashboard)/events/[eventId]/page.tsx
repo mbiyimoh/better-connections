@@ -22,11 +22,13 @@ import {
   HelpCircle,
   Send,
   Trash2,
+  ArrowUpDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import type { Profile } from '@/lib/m33t/schemas';
 import { AttendeeProfileEditModal } from '@/components/m33t/AttendeeProfileEditModal';
+import { AttendeeOrderModal } from '@/components/m33t/AttendeeOrderModal';
 
 interface AttendeeContact {
   id: string;
@@ -122,6 +124,7 @@ export default function EventOverviewPage() {
   const [sendingNotifications, setSendingNotifications] = useState(false);
   const [editingAttendeeId, setEditingAttendeeId] = useState<string | null>(null);
   const [deletingAttendeeId, setDeletingAttendeeId] = useState<string | null>(null);
+  const [showOrderModal, setShowOrderModal] = useState(false);
 
   const fetchEvent = useCallback(async () => {
     try {
@@ -338,6 +341,14 @@ export default function EventOverviewPage() {
           </Button>
 
           <Button
+            variant="outline"
+            onClick={() => setShowOrderModal(true)}
+          >
+            <ArrowUpDown className="w-4 h-4 mr-2" />
+            Reorder Attendees
+          </Button>
+
+          <Button
             className="bg-gold-primary hover:bg-gold-light text-bg-primary"
             onClick={() => router.push(`/events/${eventId}/matches`)}
           >
@@ -487,6 +498,16 @@ export default function EventOverviewPage() {
           }}
         />
       )}
+
+      {/* Attendee Order Modal */}
+      <AttendeeOrderModal
+        eventId={eventId}
+        isOpen={showOrderModal}
+        onClose={() => setShowOrderModal(false)}
+        onSave={() => {
+          fetchEvent(); // Refresh to show updated order
+        }}
+      />
     </div>
   );
 }

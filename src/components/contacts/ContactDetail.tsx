@@ -16,6 +16,9 @@ import {
   Sparkles,
   Calendar,
   MoreHorizontal,
+  Twitter,
+  Github,
+  Instagram,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -91,9 +94,10 @@ interface ContactDetailProps {
   contact: Contact;
   researchRuns?: SerializedResearchRun[];
   totalContacts?: number;
+  autoOpenResearch?: boolean;
 }
 
-export function ContactDetail({ contact, researchRuns = [], totalContacts = 1 }: ContactDetailProps) {
+export function ContactDetail({ contact, researchRuns = [], totalContacts = 1, autoOpenResearch = false }: ContactDetailProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -206,7 +210,7 @@ export function ContactDetail({ contact, researchRuns = [], totalContacts = 1 }:
   };
 
   return (
-    <div className="h-full overflow-auto p-6">
+    <div className="h-full overflow-auto p-6 pl-16 md:pl-6">
       <div className="mx-auto max-w-3xl">
         {/* Header */}
         <div className="mb-6">
@@ -233,7 +237,7 @@ export function ContactDetail({ contact, researchRuns = [], totalContacts = 1 }:
             <div>
               <h1 className="text-2xl font-bold text-white">{getDisplayName(contact)}</h1>
               {(contact.title || contact.organizationalTitle || contact.company) && (
-                <p className="mt-1 text-text-secondary">
+                <p className="mt-1 text-sm text-text-secondary">
                   {contact.organizationalTitle}
                   {contact.organizationalTitle && (contact.title || contact.company) && ', '}
                   {contact.title}
@@ -243,55 +247,60 @@ export function ContactDetail({ contact, researchRuns = [], totalContacts = 1 }:
               )}
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" asChild>
-              <Link href={`/contacts/${contact.id}/edit`}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit
-              </Link>
-            </Button>
-            <ResearchButton
-              contactId={contact.id}
-              contactName={`${contact.firstName} ${contact.lastName || ''}`.trim()}
-              disabled={!contact.firstName || !contact.lastName}
-            />
-            <Button
-              className="bg-gold-primary hover:bg-gold-light text-bg-primary font-semibold"
-              asChild
-            >
-              <Link href={`/enrichment/session?contact=${contact.id}`}>
-                <Sparkles className="mr-2 h-4 w-4" />
-                Enrich
-              </Link>
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                  <Mail className="mr-2 h-4 w-4" />
-                  Draft Intro
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  className="text-destructive"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href={`/contacts/${contact.id}/edit`}>
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Mail className="mr-2 h-4 w-4" />
+                Draft Intro
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Enrichment Score Card */}
         <div className="mb-6">
           <EnrichmentScoreCard contact={contact} />
+        </div>
+
+        {/* Action Buttons: Enrich & Research */}
+        <div className="mb-6 flex flex-col gap-3 md:flex-row">
+          <Button
+            className="flex-1 bg-gold-primary hover:bg-gold-light text-bg-primary font-semibold"
+            asChild
+          >
+            <Link href={`/enrichment/session?contact=${contact.id}`}>
+              <Sparkles className="mr-2 h-4 w-4" />
+              Enrich: Personal Context
+            </Link>
+          </Button>
+          <ResearchButton
+            contactId={contact.id}
+            contactName={`${contact.firstName} ${contact.lastName || ''}`.trim()}
+            disabled={!contact.firstName || !contact.lastName}
+            className="flex-1"
+            label="Enrich: Online Research"
+            autoOpen={autoOpenResearch}
+          />
         </div>
 
         {/* Tags Section */}
@@ -400,6 +409,45 @@ export function ContactDetail({ contact, researchRuns = [], totalContacts = 1 }:
                     className="text-white hover:text-gold-primary"
                   >
                     LinkedIn Profile
+                  </a>
+                </div>
+              )}
+              {contact.twitterUrl && (
+                <div className="flex items-center gap-3">
+                  <Twitter className="h-4 w-4 text-text-tertiary" />
+                  <a
+                    href={contact.twitterUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white hover:text-gold-primary"
+                  >
+                    Twitter/X Profile
+                  </a>
+                </div>
+              )}
+              {contact.githubUrl && (
+                <div className="flex items-center gap-3">
+                  <Github className="h-4 w-4 text-text-tertiary" />
+                  <a
+                    href={contact.githubUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white hover:text-gold-primary"
+                  >
+                    GitHub Profile
+                  </a>
+                </div>
+              )}
+              {contact.instagramUrl && (
+                <div className="flex items-center gap-3">
+                  <Instagram className="h-4 w-4 text-text-tertiary" />
+                  <a
+                    href={contact.instagramUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white hover:text-gold-primary"
+                  >
+                    Instagram Profile
                   </a>
                 </div>
               )}

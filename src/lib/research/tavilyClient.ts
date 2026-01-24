@@ -68,25 +68,50 @@ async function tavilyFetch<T>(
   return response.json();
 }
 
+export interface SearchOptions {
+  includeDomains?: string[];
+  maxResults?: number;
+  /**
+   * Override the default search depth.
+   * IMPORTANT: Use 'basic' for domain-filtered searches (like social profiles)
+   * because 'advanced' + include_domains often returns empty results.
+   * See: https://github.com/langchain-ai/langchain/issues/17447
+   */
+  searchDepth?: 'basic' | 'advanced';
+}
+
 export async function searchTavily(
   query: string,
-  personName?: string
+  personName?: string,
+  options?: SearchOptions
 ): Promise<ResearchFindings> {
-  // DEBUG: Log the query being sent to Tavily
-  console.log(`[Tavily Search] Query: "${query}"`);
-  console.log(`[Tavily Search] Person name filter: "${personName || 'none'}"`);
-  console.log(`[Tavily Search] Config: depth=${SEARCH_CONFIG.searchDepth}, maxResults=${SEARCH_CONFIG.maxResults}`);
+  const maxResults = options?.maxResults ?? SEARCH_CONFIG.maxResults;
+  // Check for valid (non-empty) domain filter
+  const hasValidDomains = options?.includeDomains && options.includeDomains.length > 0;
+  // Use 'basic' depth when domain filtering is active (social profile searches)
+  // because 'advanced' + include_domains often returns empty results
+  // See: https://github.com/langchain-ai/langchain/issues/17447
+  const searchDepth = options?.searchDepth ??
+    (hasValidDomains ? 'basic' : SEARCH_CONFIG.searchDepth);
 
-  const data = await tavilyFetch<TavilyResponse>('search', {
+  // Log search configuration (single summary line for production)
+  const domainInfo = hasValidDomains ? ` domains=[${options!.includeDomains!.join(',')}]` : '';
+  console.log(`[Tavily] Searching: "${query.slice(0, 60)}..." depth=${searchDepth} max=${maxResults}${domainInfo}`);
+
+  const body: Record<string, unknown> = {
     query,
-    search_depth: SEARCH_CONFIG.searchDepth,
-    max_results: SEARCH_CONFIG.maxResults,
+    search_depth: searchDepth,
+    max_results: maxResults,
     include_raw_content: SEARCH_CONFIG.includeRawContent,
     include_answer: false,
-  });
+  };
 
-  // DEBUG: Log raw Tavily response
-  console.log(`[Tavily Search] Raw results count: ${data.results?.length || 0}`);
+  // Add domain filter if valid
+  if (hasValidDomains) {
+    body.include_domains = options!.includeDomains;
+  }
+
+  const data = await tavilyFetch<TavilyResponse>('search', body);
 
   // Map all results first
   const allSources: TavilySearchResult[] = (data.results || []).map(
@@ -99,18 +124,9 @@ export async function searchTavily(
     })
   );
 
-  // DEBUG: Log all sources before filtering
-  console.log(`[Tavily Search] Sources before filtering:`);
-  allSources.forEach((s, i) => {
-    console.log(`  [${i + 1}] score=${s.score.toFixed(2)} url=${s.url}`);
-    console.log(`      title: ${s.title.slice(0, 80)}...`);
-    console.log(`      content length: ${s.content.length} chars`);
-  });
-
   // Filter sources by relevance score
   let filteredSources = allSources.filter((s) => s.score >= MIN_RELEVANCE_SCORE);
   const afterScoreFilter = filteredSources.length;
-  console.log(`[Tavily Search] After score filter (>=${MIN_RELEVANCE_SCORE}): ${afterScoreFilter}/${allSources.length}`);
 
   // If person name provided, apply name filter but with fallback
   // Only filter by name if we have enough results to be selective
@@ -119,35 +135,26 @@ export async function searchTavily(
     const nameParts = personName.toLowerCase().split(' ').filter(Boolean);
     const lastName = nameParts[nameParts.length - 1];
     const firstName = nameParts[0];
-    console.log(`[Tavily Search] Filtering for name: first="${firstName}", last="${lastName}"`);
 
     const nameFilteredSources = filteredSources.filter((s) => {
       const contentLower = ((s.content || '') + ' ' + (s.title || '')).toLowerCase();
       // Check for either first name or last name (more lenient)
       const hasLastName = lastName ? contentLower.includes(lastName) : false;
       const hasFirstName = firstName ? contentLower.includes(firstName) : false;
-      const hasName = hasLastName || hasFirstName;
-      if (!hasName) {
-        console.log(`[Tavily Search] Would filter (no name): ${s.url}`);
-      }
-      return hasName;
+      return hasLastName || hasFirstName;
     });
 
     // Only apply name filter if it doesn't remove ALL sources
     if (nameFilteredSources.length > 0) {
       filteredSources = nameFilteredSources;
-      console.log(`[Tavily Search] After name filter: ${filteredSources.length}/${afterScoreFilter}`);
-    } else {
-      console.log(`[Tavily Search] Skipping name filter - would remove all ${afterScoreFilter} sources`);
     }
-  } else if (personName) {
-    console.log(`[Tavily Search] Skipping name filter - only ${filteredSources.length} sources (need >3 to filter)`);
   }
 
-  // Log final results
-  console.log(`[Tavily Search] FINAL: ${filteredSources.length} sources passed all filters`);
+  // Log summary result (single line for production)
+  const filterSummary = personName ? ` name-filtered=${filteredSources.length}/${afterScoreFilter}` : '';
+  console.log(`[Tavily] Results: ${allSources.length} raw → ${filteredSources.length} final${filterSummary}`);
   if (filteredSources.length === 0 && allSources.length > 0) {
-    console.warn(`[Tavily Search] WARNING: All ${allSources.length} sources were filtered out!`);
+    console.warn(`[Tavily] WARNING: All ${allSources.length} sources filtered out`);
   }
 
   return {
@@ -164,6 +171,45 @@ export async function searchTavily(
 interface TavilyExtractResponse {
   results?: Array<{ raw_content?: string }>;
   failed_results?: string[];
+}
+
+/**
+ * Extract content from any URL using Tavily Extract API.
+ * Generic version for use with social profiles and other pages.
+ */
+export async function extractUrl(
+  url: string
+): Promise<{ success: boolean; content: string | null; error?: string }> {
+  try {
+    const data = await tavilyFetch<TavilyExtractResponse>('extract', {
+      urls: [url],
+      extract_depth: 'basic',
+      include_images: false,
+      timeout: 15,
+    });
+
+    const firstResult = data.results?.[0];
+    const content = firstResult?.raw_content;
+
+    if (content) {
+      console.log(`[Tavily Extract] Successfully extracted ${url} (${content.length} chars)`);
+      return { success: true, content };
+    }
+
+    if (data.failed_results && data.failed_results.length > 0) {
+      console.warn(`[Tavily Extract] Failed to extract ${url}: ${data.failed_results[0]}`);
+      return { success: false, content: null, error: 'Extraction failed' };
+    }
+
+    return { success: false, content: null, error: 'No content returned' };
+  } catch (error) {
+    console.error('[Tavily Extract] Exception:', error);
+    return {
+      success: false,
+      content: null,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
 }
 
 export async function extractLinkedInProfile(

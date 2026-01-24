@@ -2,7 +2,8 @@
 
 import { useRef, useEffect, useState, useMemo } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
-import { BRAND_GOLD } from '@/lib/design-system';
+import { BRAND_GOLD, GOLD_FOIL_GRADIENT } from '@/lib/design-system';
+import { IfStatementSequence } from './IfStatementSequence';
 
 // ============================================================================
 // CONSTANTS
@@ -10,7 +11,7 @@ import { BRAND_GOLD } from '@/lib/design-system';
 const GOLD = BRAND_GOLD.primary;
 const BG_PRIMARY = '#0a0a0f';
 
-const PARTICLE_COUNT = 35;
+const PARTICLE_COUNT = 200;
 const TRIGGER_DELAY_MS = 1000; // 1 second delay before dissolve
 
 // Container dimensions (matches w-64 h-48)
@@ -174,16 +175,38 @@ function DissolvingBoundary({ isActive }: { isActive: boolean }) {
           }}
         />
 
-        {/* Glowing center point - persists */}
-        <circle
+        {/* Glowing center point - persists with breathing effect */}
+        <motion.circle
           cx="100"
           cy="75"
-          r="4"
+          r="16"
           fill={GOLD}
-          className="animate-pulse"
-          style={{ filter: 'blur(2px)' }}
+          style={{ filter: 'blur(4px)', transformOrigin: '100px 75px' }}
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.6, 0.9, 0.6],
+          }}
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
         />
-        <circle cx="100" cy="75" r="2" fill="#fff" />
+        <motion.circle
+          cx="100"
+          cy="75"
+          r="8"
+          fill="#fff"
+          style={{ transformOrigin: '100px 75px' }}
+          animate={{
+            scale: [1, 1.15, 1],
+          }}
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+        />
       </svg>
 
       {/* Particle Layer - Absolute positioned divs */}
@@ -262,7 +285,21 @@ function ConvergingVenn({ isConverged }: { isConverged: boolean }) {
           opacity="0.3"
         />
 
-        {/* Animated circles - start separated, then converge */}
+        {/* Gold backglow - appears when converged */}
+        <circle
+          cx="150"
+          cy="110"
+          r="70"
+          fill={GOLD}
+          style={{
+            filter: 'blur(30px)',
+            opacity: isConverged ? 0.3 : 0,
+            transition: 'opacity 1.5s ease-out',
+            transitionDelay: isConverged ? '1.5s' : '0s',
+          }}
+        />
+
+        {/* Animated circles - start separated, then converge together */}
         <circle
           cx={isConverged ? '150' : '100'}
           cy={isConverged ? '110' : '90'}
@@ -270,27 +307,25 @@ function ConvergingVenn({ isConverged }: { isConverged: boolean }) {
           fill="rgba(212, 168, 75, 0.12)"
           stroke={GOLD}
           strokeWidth="2"
-          className="transition-all duration-1000 ease-out"
+          style={{ transition: 'all 2s ease-out' }}
         />
         <circle
           cx={isConverged ? '150' : '200'}
           cy={isConverged ? '110' : '90'}
           r="55"
-          fill="rgba(74, 222, 128, 0.08)"
-          stroke="#4ade80"
+          fill="rgba(212, 168, 75, 0.08)"
+          stroke={GOLD}
           strokeWidth="2"
-          className="transition-all duration-1000 ease-out"
-          style={{ transitionDelay: '100ms' }}
+          style={{ transition: 'all 2s ease-out' }}
         />
         <circle
           cx="150"
           cy={isConverged ? '110' : '165'}
           r="55"
-          fill="rgba(96, 165, 250, 0.08)"
-          stroke="#60a5fa"
+          fill="rgba(212, 168, 75, 0.08)"
+          stroke={GOLD}
           strokeWidth="2"
-          className="transition-all duration-1000 ease-out"
-          style={{ transitionDelay: '200ms' }}
+          style={{ transition: 'all 2s ease-out' }}
         />
 
         {/* Labels */}
@@ -302,7 +337,7 @@ function ConvergingVenn({ isConverged }: { isConverged: boolean }) {
           fontSize="12"
           fontWeight="600"
           letterSpacing="0.05em"
-          className="transition-all duration-1000"
+          style={{ transition: 'all 2s ease-out' }}
         >
           SPEED
         </text>
@@ -310,12 +345,11 @@ function ConvergingVenn({ isConverged }: { isConverged: boolean }) {
           x={isConverged ? '150' : '200'}
           y={isConverged ? '112' : '85'}
           textAnchor="middle"
-          fill="#4ade80"
+          fill={GOLD}
           fontSize="12"
           fontWeight="600"
           letterSpacing="0.05em"
-          className="transition-all duration-1000"
-          style={{ transitionDelay: '100ms' }}
+          style={{ transition: 'all 2s ease-out' }}
         >
           COST
         </text>
@@ -323,32 +357,31 @@ function ConvergingVenn({ isConverged }: { isConverged: boolean }) {
           x="150"
           y={isConverged ? '134' : '170'}
           textAnchor="middle"
-          fill="#60a5fa"
+          fill={GOLD}
           fontSize="12"
           fontWeight="600"
           letterSpacing="0.05em"
-          className="transition-all duration-1000"
-          style={{ transitionDelay: '200ms' }}
+          style={{ transition: 'all 2s ease-out' }}
         >
           QUALITY
         </text>
 
-        {/* "All three" indicator - fades in after convergence */}
+        {/* "Why Choose?" indicator - fades in after convergence, below circles */}
         <text
           x="150"
-          y="160"
+          y="205"
           textAnchor="middle"
-          fill="#fff"
-          fontSize="11"
-          fontWeight="500"
-          letterSpacing="0.1em"
+          fill={GOLD}
+          fontSize="18"
+          fontWeight="600"
+          letterSpacing="0.15em"
           className="transition-all duration-500"
           style={{
-            opacity: isConverged ? 0.8 : 0,
+            opacity: isConverged ? 1 : 0,
             transitionDelay: isConverged ? '800ms' : '0ms',
           }}
         >
-          ALL THREE
+          WHY CHOOSE?
         </text>
       </svg>
     </div>
@@ -378,6 +411,7 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
   const convergenceThreshold = slideStart + vh * 0.25;
   const isVennConverged = scrollY > convergenceThreshold;
 
+
   // Check if scrollytelling is complete
   useEffect(() => {
     if (scrollY > vh * 4.5) {
@@ -402,24 +436,22 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
         }`}
       >
         <div className="text-center max-w-4xl">
-          <p className="text-zinc-500 text-lg md:text-xl mb-6">
+          <p className="font-body text-zinc-500 text-lg md:text-xl mb-6">
             Everyone keeps asking the same question:
           </p>
           <h1
-            className="text-3xl md:text-4xl lg:text-5xl font-medium leading-tight mb-8"
-            style={{ fontFamily: 'Georgia, serif' }}
+            className="font-display text-3xl md:text-4xl lg:text-5xl font-medium leading-tight mb-8"
           >
-            &ldquo;How do we adopt AI into our organization?&rdquo;
+            &ldquo;How do we adopt <span style={{ ...GOLD_FOIL_GRADIENT }}>AI</span> into our organization?&rdquo;
           </h1>
-          <p className="text-zinc-400 text-lg md:text-xl mb-4">
-            But that question assumes your current way of working is the
+          <p className="font-body text-zinc-400 text-lg md:text-xl mb-4">
+            But that question assumes your current way of working is a
             foundation worth preserving.
           </p>
           <p
-            className="text-2xl md:text-3xl font-medium"
-            style={{ fontFamily: 'Georgia, serif' }}
+            className="font-display text-2xl md:text-3xl font-medium"
           >
-            It&apos;s not. <span style={{ color: GOLD }}>It&apos;s obsolete.</span>
+            It&apos;s not. <span className="text-white font-semibold">It&apos;s obsolete.</span>
           </p>
         </div>
       </div>
@@ -435,20 +467,20 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
         <div className="text-center max-w-4xl">
           <DissolvingBoundary isActive={activeSlide === 1} />
 
-          <h1
-            className="text-4xl md:text-5xl lg:text-6xl font-medium leading-tight mb-6"
-            style={{ fontFamily: 'Georgia, serif' }}
-          >
-            The constraints you&apos;re operating under{' '}
-            <span style={{ color: GOLD }}>no longer exist.</span>
-          </h1>
           <p
-            className="text-2xl md:text-3xl lg:text-4xl font-medium leading-tight text-zinc-300"
-            style={{ fontFamily: 'Georgia, serif' }}
+            className="font-display text-2xl md:text-3xl lg:text-4xl font-medium leading-tight text-zinc-300 mb-6"
           >
-            Where you think there are edges,{' '}
-            <span style={{ color: GOLD }}>there aren&apos;t.</span>
+            The constraints you&apos;re operating under
+            <br />
+            <span className="font-medium pb-1 inline-block" style={{ ...GOLD_FOIL_GRADIENT }}>no longer exist.</span>
           </p>
+          <h1
+            className="font-display text-4xl md:text-5xl lg:text-6xl font-medium leading-tight"
+          >
+            Where you think there are edges,
+            <br />
+            <span className="font-medium" style={{ ...GOLD_FOIL_GRADIENT }}>there are not.</span>
+          </h1>
         </div>
       </div>
 
@@ -461,23 +493,26 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
         }`}
       >
         <div className="text-center max-w-4xl">
-          <p className="text-zinc-500 text-lg mb-6">
-            Speed vs cost vs quality. What requires a developer. What&apos;s
-            &ldquo;feasible&rdquo; for a small team.
+          <p className="font-body text-zinc-500 text-lg mb-6">
+            Speed vs cost vs quality.
+            <br />
+            What requires a developer.
+            <br />
+            What&apos;s &ldquo;feasible&rdquo; for a small team.
           </p>
           <h2
-            className="text-3xl md:text-4xl lg:text-5xl font-medium leading-tight mb-8"
-            style={{ fontFamily: 'Georgia, serif' }}
+            className="font-display text-3xl md:text-4xl lg:text-5xl font-medium leading-tight mb-8"
           >
-            Those lines have{' '}
-            <span style={{ color: GOLD }}>moved dramatically.</span>
+            Those lines have
+            <br />
+            <span className="font-medium pb-1 inline-block" style={{ ...GOLD_FOIL_GRADIENT }}>moved dramatically.</span>
           </h2>
           <p
-            className="text-xl md:text-2xl text-zinc-400 mb-12"
-            style={{ fontFamily: 'Georgia, serif' }}
+            className="font-display text-xl md:text-2xl text-zinc-400 mb-12"
           >
-            Most people are still making decisions based on a world that no
-            longer exists.
+            But most people are still making decisions
+            <br />
+            based on a world that no longer exists.
           </p>
 
           <ConvergingVenn isConverged={isVennConverged} />
@@ -493,19 +528,20 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
         }`}
       >
         <div className="text-center max-w-4xl">
-          <p className="text-zinc-400 text-lg md:text-xl mb-8">
+          <p className="font-body text-zinc-400 text-lg md:text-xl mb-6">
             The question isn&apos;t how to fit AI into what you&apos;re doing.
           </p>
+          <p className="font-body text-zinc-400 text-lg md:text-xl mb-4">
+            The question is:
+          </p>
           <h2
-            className="text-3xl md:text-4xl lg:text-5xl font-medium leading-tight"
-            style={{ fontFamily: 'Georgia, serif' }}
+            className="font-display text-3xl md:text-4xl lg:text-5xl font-semibold leading-tight mb-12 pb-1 text-white"
           >
-            The question is:{' '}
-            <span style={{ color: GOLD }}>
-              what would you build if you started from scratch,
-            </span>{' '}
-            knowing what&apos;s now possible?
+            How would you design and run your business...
           </h2>
+
+          {/* Sequential If-Statement Animations */}
+          <IfStatementSequence isActive={activeSlide === 3} />
         </div>
       </div>
 
@@ -524,13 +560,12 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
         <div className="text-center max-w-3xl">
           <p
             className="text-sm font-medium tracking-widest uppercase mb-8"
-            style={{ color: GOLD }}
+            style={{ ...GOLD_FOIL_GRADIENT }}
           >
-            March 30, 2025 &bull; Austin, TX
+            March 12, 2026 &bull; Austin, TX
           </p>
           <h2
-            className="text-2xl md:text-3xl lg:text-4xl font-medium mb-10"
-            style={{ fontFamily: 'Georgia, serif' }}
+            className="font-display text-2xl md:text-3xl lg:text-4xl font-medium mb-10"
           >
             This evening is about:
           </h2>
@@ -538,63 +573,47 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
           <div className="space-y-4 text-left max-w-lg mx-auto mb-14">
             <div className="flex gap-4 items-baseline">
               <span
-                className="text-white text-xl md:text-2xl font-medium"
-                style={{ fontFamily: 'Georgia, serif' }}
+                className="font-display text-white text-xl md:text-2xl font-medium"
               >
                 1.
               </span>
               <p
-                className="text-xl md:text-2xl lg:text-3xl text-zinc-300"
-                style={{ fontFamily: 'Georgia, serif' }}
+                className="font-display text-xl md:text-2xl lg:text-3xl text-zinc-300"
               >
-                Breaking down that old mental model;
+                Breaking down and discarding your old mental model of the world;
               </p>
             </div>
             <div className="flex gap-4 items-baseline">
               <span
-                className="text-white text-xl md:text-2xl font-medium"
-                style={{ fontFamily: 'Georgia, serif' }}
+                className="font-display text-white text-xl md:text-2xl font-medium"
               >
                 2.
               </span>
               <p
-                className="text-xl md:text-2xl lg:text-3xl text-zinc-300"
-                style={{ fontFamily: 'Georgia, serif' }}
+                className="font-display text-xl md:text-2xl lg:text-3xl text-zinc-300"
               >
-                Rebuilding it from first principles; and
+                Rebuilding that mental model from first principles; and
               </p>
             </div>
             <div className="flex gap-4 items-baseline">
               <span
-                className="text-xl md:text-2xl font-medium"
-                style={{ fontFamily: 'Georgia, serif', color: GOLD }}
+                className="font-display text-white text-xl md:text-2xl font-medium"
               >
                 3.
               </span>
               <p
-                className="text-xl md:text-2xl lg:text-3xl text-white"
-                style={{ fontFamily: 'Georgia, serif' }}
+                className="font-display text-xl md:text-2xl lg:text-3xl text-zinc-300"
               >
-                Learning to imagine{' '}
-                <span style={{ color: GOLD }}>what&apos;s now possible.</span>
+                Starting to{' '}
+                <span
+                  className="font-medium pb-1 inline-block"
+                  style={{ ...GOLD_FOIL_GRADIENT }}
+                >
+                  imagine what&apos;s possible
+                </span>{' '}
+                when the edges disappear.
               </p>
             </div>
-          </div>
-
-          {/* Event Name Reveal */}
-          <div className="mb-12">
-            <h1
-              className="text-4xl md:text-5xl lg:text-6xl font-medium tracking-wide mb-3"
-              style={{ fontFamily: 'Georgia, serif', color: GOLD }}
-            >
-              NO EDGES
-            </h1>
-            <p
-              className="text-lg md:text-xl text-zinc-300 italic"
-              style={{ fontFamily: 'Georgia, serif' }}
-            >
-              The lines have moved. Have you?
-            </p>
           </div>
 
           <div className="animate-bounce text-zinc-600">↓</div>

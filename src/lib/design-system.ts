@@ -18,6 +18,33 @@ export const BRAND_GOLD = {
 } as const;
 
 /**
+ * Gold foil gradient effect for text and backgrounds.
+ * Creates a metallic shine effect with multiple color stops.
+ * Use with background-clip: text for text elements.
+ */
+export const GOLD_FOIL_GRADIENT = {
+  // The gradient itself - diagonal for metallic sheen
+  // Uses darker gold (#9a7520) at edges instead of dark brown (#462523) for subtler effect
+  background: "linear-gradient(135deg, #9a7520 0%, #cb9b51 15%, #f6e27a 40%, #f6f2c0 50%, #f6e27a 60%, #cb9b51 85%, #9a7520 100%)",
+  // Required for text effect
+  WebkitBackgroundClip: "text",
+  backgroundClip: "text",
+  WebkitTextFillColor: "transparent",
+  // Subtle text shadow for depth
+  textShadow: "0 1px 2px rgba(0, 0, 0, 0.2)",
+} as const;
+
+/**
+ * Gold foil style for buttons/backgrounds (not text)
+ */
+export const GOLD_FOIL_BUTTON = {
+  background: "linear-gradient(135deg, #8B6914 0%, #cb9b51 22%, #f6e27a 45%, #f6f2c0 50%, #f6e27a 55%, #cb9b51 78%, #8B6914 100%)",
+  color: "#1a1a1f",
+  fontWeight: 600,
+  textShadow: "none",
+} as const;
+
+/**
  * Tag category color definitions.
  * Each category has consistent styling across the entire application.
  */

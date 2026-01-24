@@ -2,11 +2,24 @@ import type { Question, WhatToExpectItem, LandingPageSettings } from '@/lib/m33t
 import { DEFAULT_LANDING_PAGE_SETTINGS } from '@/lib/m33t/schemas';
 
 /**
+ * Host data for event landing pages.
+ */
+export interface EventHost {
+  id: string;
+  name: string;
+  title?: string;
+  bio?: string;
+  quote?: string;
+  photo?: string;
+}
+
+/**
  * Data structure for the event wizard/editor form.
  */
 export interface EventWizardData {
   // Step 1: Basics
   name: string;
+  tagline: string;
   date: string;
   startTime: string;
   endTime: string;
@@ -21,6 +34,7 @@ export interface EventWizardData {
   googlePlaceId: string | null;
   parkingNotes: string;
   dressCode: string;
+  foodInfo: string;
 
   // Step 3: Organizers
   organizers: Array<{
@@ -52,6 +66,9 @@ export interface EventWizardData {
   // Step 7: Landing Page
   whatToExpect: WhatToExpectItem[];
   landingPageSettings: LandingPageSettings;
+
+  // Host Configuration (multiple hosts)
+  hosts: EventHost[];
 }
 
 /**
@@ -72,6 +89,7 @@ export const DEFAULT_CARD_SETTINGS: Record<string, boolean> = {
  */
 export const DEFAULT_EVENT_DATA: EventWizardData = {
   name: '',
+  tagline: '',
   date: '',
   startTime: '',
   endTime: '',
@@ -84,6 +102,7 @@ export const DEFAULT_EVENT_DATA: EventWizardData = {
   googlePlaceId: null,
   parkingNotes: '',
   dressCode: '',
+  foodInfo: '',
   organizers: [],
   capacity: 50,
   rsvpDeadline: '',
@@ -93,6 +112,7 @@ export const DEFAULT_EVENT_DATA: EventWizardData = {
   questions: [],
   whatToExpect: [],
   landingPageSettings: DEFAULT_LANDING_PAGE_SETTINGS,
+  hosts: [],
 };
 
 /**

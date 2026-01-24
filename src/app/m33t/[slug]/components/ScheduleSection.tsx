@@ -1,21 +1,22 @@
 import type { ScheduleItem } from '../types';
+import { MarkdownContent } from '@/components/ui/MarkdownContent';
 
 interface ScheduleSectionProps {
   schedule: ScheduleItem[];
+  sectionNumber?: string | null;
 }
 
-export function ScheduleSection({ schedule }: ScheduleSectionProps) {
+export function ScheduleSection({ schedule, sectionNumber }: ScheduleSectionProps) {
   if (!schedule || schedule.length === 0) return null;
 
   return (
     <section className="py-24 px-4">
       <div className="max-w-3xl mx-auto">
-        <p className="text-amber-500 text-sm font-medium tracking-widest uppercase mb-4 text-center">
-          THE AGENDA
+        <p className="font-mono text-amber-500 text-sm font-medium tracking-widest uppercase mb-4 text-left md:text-center">
+          {sectionNumber ? `${sectionNumber} — ` : ''}THE AGENDA
         </p>
         <h2
-          className="text-3xl md:text-4xl text-center mb-12"
-          style={{ fontFamily: 'Georgia, serif' }}
+          className="font-display text-3xl md:text-4xl text-left md:text-center mb-12"
         >
           How the Evening Unfolds
         </h2>
@@ -31,7 +32,11 @@ export function ScheduleSection({ schedule }: ScheduleSectionProps) {
               </span>
               <div>
                 <p className="text-white font-medium mb-1">{item.title}</p>
-                <p className="text-zinc-500 text-sm">{item.description}</p>
+                {item.description && (
+                  <MarkdownContent className="text-zinc-500 text-sm">
+                    {item.description}
+                  </MarkdownContent>
+                )}
               </div>
             </div>
           ))}

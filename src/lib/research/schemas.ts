@@ -5,10 +5,11 @@ export const focusAreaSchema = z.enum([
   'expertise',
   'interests',
   'news',
+  'social',
 ]);
 
 export const researchRequestSchema = z.object({
-  focusAreas: z.array(focusAreaSchema).min(1).max(4),
+  focusAreas: z.array(focusAreaSchema).min(1).max(5),
 });
 
 export const updateRecommendationSchema = z.object({
@@ -20,22 +21,30 @@ export const applyRecommendationsSchema = z.object({
   recommendationIds: z.array(z.string()).optional(),
 });
 
+// Valid field names that map to Contact model fields
+export const VALID_RECOMMENDATION_FIELDS = [
+  'expertise',
+  'interests',
+  'whyNow',
+  'notes',
+  'title', // Job role (e.g., "Venture Capitalist")
+  'organizationalTitle', // Position within org (e.g., "President")
+  'company',
+  'location',
+  'tags',
+  'twitterUrl',
+  'githubUrl',
+  'instagramUrl',
+] as const;
+
 // Schema for GPT structured output - recommendations
-// CRITICAL: Use .nullable().optional() pattern for OpenAI structured outputs
+// CRITICAL: Use z.string() for fieldName instead of strict enum to prevent GPT validation errors.
+// Invalid fields are filtered out in orchestrator.ts after generation.
 export const recommendationOutputSchema = z.object({
   recommendations: z.array(
     z.object({
-      fieldName: z.enum([
-        'expertise',
-        'interests',
-        'whyNow',
-        'notes',
-        'title', // Job role (e.g., "Venture Capitalist")
-        'organizationalTitle', // Position within org (e.g., "President")
-        'company',
-        'location',
-        'tags',
-      ]),
+      // Use string to allow GPT flexibility - we filter invalid fields in post-processing
+      fieldName: z.string(),
       action: z.enum(['ADD', 'UPDATE']),
       proposedValue: z.string(),
       tagCategory: z
@@ -62,6 +71,14 @@ export const reportSynthesisSchema = z.object({
         'expertise',
         'interests',
         'news',
+        'education',
+        'experience',
+        'social',
+        'certifications',
+        'community',
+        'languages',
+        'achievements',
+        'publications',
         'other',
       ]).describe('Category of the finding'),
       finding: z.string().describe('The key finding'),

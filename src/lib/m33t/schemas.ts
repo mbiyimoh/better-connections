@@ -149,17 +149,32 @@ export const EventFormSchema = z.object({
 
 export type EventFormInput = z.infer<typeof EventFormSchema>;
 
+// Host schema for landing page (defined early for use in form schema)
+export const EventHostSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1),
+  title: z.string().optional(),
+  bio: z.string().optional(),
+  quote: z.string().optional(),
+  photo: z.string().optional(),
+});
+
+export type EventHostInput = z.infer<typeof EventHostSchema>;
+
 // Extended form schema for wizard - includes new fields
 export const EventWizardFormSchema = EventFormSchema.extend({
   eventType: z.string().optional(),
   eventGoals: z.array(z.string()).optional(),
   parkingNotes: z.string().optional(),
   dressCode: z.string().optional(),
+  foodInfo: z.string().optional(),
   questions: z.array(QuestionSchema).optional(),
   cardSettings: z.record(z.string(), z.boolean()).optional(),
   // Landing page configuration
   whatToExpect: z.array(WhatToExpectItemSchema).optional(),
   landingPageSettings: LandingPageSettingsSchema.optional(),
+  // Host configuration (multiple hosts)
+  hosts: z.array(EventHostSchema).optional(),
 });
 
 export type EventWizardFormInput = z.infer<typeof EventWizardFormSchema>;
@@ -188,11 +203,14 @@ export const EventWizardCreateSchema = EventCreateSchema.extend({
   eventGoals: z.array(z.string()).default([]),
   parkingNotes: z.string().optional(),
   dressCode: z.string().optional(),
+  foodInfo: z.string().optional(),
   questions: z.array(QuestionSchema).optional(),
   cardSettings: z.record(z.string(), z.boolean()).optional(),
   // Landing page configuration
   whatToExpect: z.array(WhatToExpectItemSchema).optional(),
   landingPageSettings: LandingPageSettingsSchema.optional(),
+  // Host configuration (multiple hosts)
+  hosts: z.array(EventHostSchema).optional(),
 });
 
 export const EventUpdateSchema = EventWizardCreateSchema.partial();

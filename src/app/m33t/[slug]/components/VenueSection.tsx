@@ -2,14 +2,17 @@
 
 import { useState, useEffect } from 'react';
 import { VenueGallery } from '@/components/maps/VenueGallery';
-import { MapPin, ExternalLink } from 'lucide-react';
+import { MapPin, ExternalLink, Car, Sparkles, UtensilsCrossed } from 'lucide-react';
+import { MarkdownContent } from '@/components/ui/MarkdownContent';
 
 interface VenueSectionProps {
   venueName: string;
   venueAddress: string;
   parkingNotes?: string | null;
   dressCode?: string | null;
+  foodInfo?: string | null;
   googlePlaceId?: string | null;
+  sectionNumber?: string | null;
 }
 
 export function VenueSection({
@@ -17,7 +20,9 @@ export function VenueSection({
   venueAddress,
   parkingNotes,
   dressCode,
+  foodInfo,
   googlePlaceId,
+  sectionNumber,
 }: VenueSectionProps) {
   const hasGooglePlaceId = googlePlaceId !== null && googlePlaceId !== undefined && googlePlaceId !== '';
   const [mapEmbedUrl, setMapEmbedUrl] = useState<string | null>(null);
@@ -48,29 +53,18 @@ export function VenueSection({
   return (
     <section className="py-24 px-4">
       <div className="max-w-4xl mx-auto">
-        <p className="text-amber-500 text-sm font-medium tracking-widest uppercase mb-4 text-center">
-          THE VENUE
+        <p className="font-mono text-amber-500 text-sm font-medium tracking-widest uppercase mb-4 text-left md:text-center">
+          {sectionNumber ? `${sectionNumber} — ` : ''}THE VENUE
         </p>
 
         {/* Venue text info - now directly below header */}
-        <div className="text-center mb-6">
+        <div className="text-left md:text-center mb-8">
           <h3
-            className="text-2xl text-white mb-2"
-            style={{ fontFamily: 'Georgia, serif' }}
+            className="font-display text-2xl text-white mb-2"
           >
             {venueName}
           </h3>
-          <p className="text-zinc-500">{venueAddress}</p>
-
-          {parkingNotes && (
-            <p className="text-zinc-600 text-sm mt-2">{parkingNotes}</p>
-          )}
-
-          {dressCode && (
-            <p className="text-zinc-500 text-sm mt-2">
-              Dress Code: <span className="text-zinc-300">{dressCode}</span>
-            </p>
-          )}
+          <p className="font-body text-zinc-500">{venueAddress}</p>
         </div>
 
         {/* Photo gallery (if Google Place ID available), or fallback to placeholder */}
@@ -123,6 +117,59 @@ export function VenueSection({
               <span>View on Maps</span>
             </div>
           </a>
+        )}
+
+        {/* Info cards with icons - below gallery and map */}
+        {(parkingNotes || dressCode || foodInfo) && (
+          <div className="space-y-4 mt-8 max-w-2xl mx-auto">
+            {parkingNotes && (
+              <div className="flex gap-4 items-start p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
+                <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                  <Car className="w-5 h-5 text-amber-500" />
+                </div>
+                <div>
+                  <p className="text-amber-500 text-xs font-medium tracking-widest uppercase mb-1">
+                    Parking
+                  </p>
+                  <MarkdownContent className="text-zinc-300 text-sm">
+                    {parkingNotes}
+                  </MarkdownContent>
+                </div>
+              </div>
+            )}
+
+            {dressCode && (
+              <div className="flex gap-4 items-start p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
+                <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-amber-500" />
+                </div>
+                <div>
+                  <p className="text-amber-500 text-xs font-medium tracking-widest uppercase mb-1">
+                    Dress Code
+                  </p>
+                  <MarkdownContent className="text-zinc-300 text-sm">
+                    {dressCode}
+                  </MarkdownContent>
+                </div>
+              </div>
+            )}
+
+            {foodInfo && (
+              <div className="flex gap-4 items-start p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
+                <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                  <UtensilsCrossed className="w-5 h-5 text-amber-500" />
+                </div>
+                <div>
+                  <p className="text-amber-500 text-xs font-medium tracking-widest uppercase mb-1">
+                    Food & Drinks
+                  </p>
+                  <MarkdownContent className="text-zinc-300 text-sm">
+                    {foodInfo}
+                  </MarkdownContent>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </section>

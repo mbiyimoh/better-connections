@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { checkM33tAccess, m33tAccessDeniedResponse, checkEventAccess } from '@/lib/m33t';
+import { checkM33tAccess, m33tAccessDeniedResponse, checkEventAccess, calculateProfileRichness } from '@/lib/m33t';
 import { z } from 'zod';
 
 type RouteContext = {
@@ -171,6 +171,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
         completeness: 0.3, // Basic completeness since we have some imported data
       };
 
+      // Calculate profile richness for sorting
+      const richness = calculateProfileRichness(profile, null, contact.firstName || 'Guest', contact.lastName);
+
       return {
         eventId,
         contactId: contact.id,
@@ -180,6 +183,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         lastName: contact.lastName,
         rsvpStatus: 'PENDING' as const,
         profile, // Store profile data for card display
+        profileRichness: richness, // Calculated richness for auto-sorting
         addedById: user.id, // Track who added this attendee
       };
     });

@@ -10,7 +10,7 @@
 
 ## Overview
 
-Add a step-by-step visual progress tracker to the contact research feature. When a user starts research, the options modal transitions to a progress view showing 5 stages with animated indicators.
+Add a step-by-step visual progress tracker to the contact research feature. When a user starts research, the options modal transitions to a progress view showing 6 stages with animated indicators.
 
 ---
 
@@ -21,7 +21,7 @@ Add a step-by-step visual progress tracker to the contact research feature. When
 2. ResearchOptionsModal opens - user selects focus areas
 3. User clicks "Start Research"
 4. Modal transitions to progress view (same modal, different content)
-5. Progress view shows 5 steps, polls for updates every 2s
+5. Progress view shows 6 steps, polls for updates every 2s
 6. Steps animate as research progresses
 7. On completion: success animation (1.5s) → auto-close → router.refresh()
 8. On error: show error message with retry/close options
@@ -51,7 +51,7 @@ interface ResearchProgressViewProps {
 
 **Responsibilities:**
 - Poll `/api/contacts/{contactId}/research/{runId}` every 2 seconds
-- Map `progressStage` to step index (0-4)
+- Map `progressStage` to step index (0-5)
 - Render ResearchStepper with current step
 - Handle completion (1.5s delay then call onComplete)
 - Handle errors (call onError with message)
@@ -119,8 +119,11 @@ No API changes needed - just need to poll this endpoint.
 ## Progress Stage Mapping
 
 ```typescript
+import { Search, Linkedin, Globe, FileText, Sparkles, CheckCircle } from 'lucide-react';
+
 const PROGRESS_STAGES = [
   { stage: 'Building search query...', label: 'Preparing search', icon: Search },
+  { stage: 'Extracting LinkedIn profile...', label: 'Checking LinkedIn', icon: Linkedin },
   { stage: 'Searching the web...', label: 'Searching for sources', icon: Globe },
   { stage: 'Analyzing findings...', label: 'Reading through findings', icon: FileText },
   { stage: 'Generating recommendations...', label: 'Crafting recommendations', icon: Sparkles },

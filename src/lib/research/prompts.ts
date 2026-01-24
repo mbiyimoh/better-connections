@@ -1,4 +1,5 @@
 import type { ContactContext, FocusArea, TavilySearchResult } from './types';
+import { sanitizeUrlForPrompt } from './constants';
 
 export function buildSynthesisPrompt(
   contact: ContactContext,
@@ -16,6 +17,8 @@ export function buildSynthesisPrompt(
           return 'personal interests, hobbies, and passions';
         case 'news':
           return 'recent news, announcements, and updates';
+        case 'social':
+          return 'social media profiles (Twitter/X, GitHub, Instagram)';
       }
     })
     .join(', ');
@@ -75,8 +78,14 @@ interface KeyFinding {
 export function buildRecommendationPrompt(
   contact: ContactContext,
   synthesizedReport: string,
-  keyFindings: KeyFinding[]
+  keyFindings: KeyFinding[],
+  availableSourceUrls?: string[]
 ): string {
+  // Format source URLs list for the prompt with sanitization to prevent prompt injection
+  const sourceUrlsList = availableSourceUrls && availableSourceUrls.length > 0
+    ? `\nAVAILABLE SOURCE URLs (you MUST use these - do NOT invent URLs):\n${availableSourceUrls.map((url, i) => `${i + 1}. ${sanitizeUrlForPrompt(url)}`).join('\n')}\n`
+    : '\nNO SOURCE URLs AVAILABLE - If no sources provided, return zero recommendations.\n';
+
   return `You are generating profile update recommendations based on research findings.
 
 CURRENT CONTACT PROFILE:
@@ -89,22 +98,32 @@ CURRENT CONTACT PROFILE:
 - Interests: ${contact.interests || 'Not documented'}
 - Why Now (reason to reach out): ${contact.whyNow || 'Not documented'}
 - Notes: ${contact.notes || 'None'}
+- Twitter/X: ${contact.twitterUrl || 'Not set'}
+- GitHub: ${contact.githubUrl || 'Not set'}
+- Instagram: ${contact.instagramUrl || 'Not set'}
 
 RESEARCH REPORT:
 ${synthesizedReport}
-
+${sourceUrlsList}
 KEY FINDINGS:
-${keyFindings.map((f) => `- [${f.category}] ${f.finding} (confidence: ${f.confidence})`).join('\n')}
+${keyFindings.map((f) => `- [${f.category}] ${f.finding} (confidence: ${f.confidence})${f.sourceUrl ? ` [Source: ${f.sourceUrl}]` : ''}`).join('\n')}
 
 INSTRUCTIONS:
 Generate recommendations for updating this person's profile. For each recommendation:
-1. fieldName: Which field to update (expertise, interests, whyNow, notes, title, organizationalTitle, company, location, or tags)
+1. fieldName: Which field to update (expertise, interests, whyNow, notes, title, organizationalTitle, company, location, tags, twitterUrl, githubUrl, or instagramUrl)
 2. action: "ADD" if field is empty, "UPDATE" if adding to/replacing existing content
 3. proposedValue: The suggested new content
 4. tagCategory: If fieldName is "tags", specify RELATIONSHIP, OPPORTUNITY, EXPERTISE, or INTEREST
 5. reasoning: Brief explanation of why this update is valuable (1-2 sentences)
 6. confidence: 0.0-1.0 based on source reliability and relevance
-7. sourceUrls: URLs where this information was found
+7. sourceUrls: URLs where this information was found - MUST be from the AVAILABLE SOURCE URLs list above. NEVER invent or fabricate URLs.
+
+SOCIAL PROFILE FIELDS:
+- "twitterUrl" = Full Twitter/X profile URL (e.g., "https://twitter.com/username")
+- "githubUrl" = Full GitHub profile URL (e.g., "https://github.com/username")
+- "instagramUrl" = Full Instagram profile URL (e.g., "https://instagram.com/username")
+- For social profiles, only suggest if you found a profile that clearly belongs to this specific person
+- Social profile URLs should be normalized (twitter.com not x.com)
 
 FIELD DEFINITIONS - IMPORTANT:
 - "title" = Job Role: What type of work they do (e.g., "Venture Capitalist", "Software Engineer", "Investment Banker", "Entrepreneur")

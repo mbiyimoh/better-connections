@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { ResearchOptionsModal } from './ResearchOptionsModal';
 
 interface ResearchButtonProps {
@@ -10,6 +11,9 @@ interface ResearchButtonProps {
   contactName: string;
   disabled?: boolean;
   onResearchComplete?: () => void;
+  className?: string;
+  label?: string;
+  autoOpen?: boolean;
 }
 
 export function ResearchButton({
@@ -17,20 +21,29 @@ export function ResearchButton({
   contactName,
   disabled = false,
   onResearchComplete,
+  className,
+  label = "Research",
+  autoOpen = false,
 }: ResearchButtonProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Auto-open modal if autoOpen prop is true
+  useEffect(() => {
+    if (autoOpen && !disabled) {
+      setIsModalOpen(true);
+    }
+  }, [autoOpen, disabled]);
 
   return (
     <>
       <Button
         variant="outline"
-        size="sm"
         onClick={() => setIsModalOpen(true)}
         disabled={disabled}
-        className="gap-2"
+        className={cn("gap-2", className)}
       >
         <Search className="h-4 w-4" />
-        Research
+        {label}
       </Button>
 
       <ResearchOptionsModal

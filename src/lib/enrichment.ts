@@ -25,6 +25,11 @@ export interface EnrichmentScoreInput {
   notes?: string | null;
   expertise?: string | null;
   interests?: string | null;
+
+  // Social media profiles
+  twitterUrl?: string | null;
+  githubUrl?: string | null;
+  instagramUrl?: string | null;
 }
 
 export function calculateEnrichmentScore(
@@ -50,6 +55,9 @@ export function calculateEnrichmentScore(
   if (contact.company) score += 10;
   if (contact.location) score += 5;
   if (contact.linkedinUrl) score += 5;
+  if (contact.twitterUrl) score += 3;
+  if (contact.githubUrl) score += 3;
+  if (contact.instagramUrl) score += 3;
   if (contact.howWeMet) score += 15;
   if (contact.whyNow) score += 20; // Still most valuable field
   if (contact.notes) score += 5;

@@ -56,3 +56,15 @@ export { generateSlug, generateUniqueSlug } from './slug';
 
 // Formatting Utilities
 export { formatEventDate, formatEventTime, formatEventTimeRange } from './formatting';
+
+// Profile Richness Calculation
+export {
+  calculateProfileRichness,
+  calculateAttendeeRichness,
+} from './profileRichness';
+
+// Attendee Sorting
+export {
+  sortAttendeesByDisplayOrder,
+  sortAttendeeGroups,
+} from './attendeeSort';

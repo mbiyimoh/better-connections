@@ -100,7 +100,7 @@ export function AttendeeCarousel({
         <div
           ref={scrollRef}
           onScroll={updateScrollButtons}
-          className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide"
+          className="flex gap-4 overflow-x-auto py-4 -my-4 px-1 scrollbar-hide"
           style={{ scrollbarWidth: 'none' }}
         >
           {attendees.map((attendee) => (

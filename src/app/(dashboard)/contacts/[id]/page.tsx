@@ -6,10 +6,12 @@ import type { Recommendation } from '@/components/research/RecommendationCard';
 
 interface ContactPageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ research?: string }>;
 }
 
-export default async function ContactPage({ params }: ContactPageProps) {
+export default async function ContactPage({ params, searchParams }: ContactPageProps) {
   const { id } = await params;
+  const { research } = await searchParams;
   const supabase = await createServerSupabaseClient();
 
   const {
@@ -98,6 +100,7 @@ export default async function ContactPage({ params }: ContactPageProps) {
       contact={serializedContact}
       researchRuns={serializedResearchRuns}
       totalContacts={totalContacts}
+      autoOpenResearch={research === 'true'}
     />
   );
 }
