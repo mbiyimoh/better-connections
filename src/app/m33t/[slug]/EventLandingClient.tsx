@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import type { PublicEventData, PublicAttendee } from './types';
 import {
   EventHero,
@@ -33,9 +33,23 @@ export function EventLandingClient({ data }: EventLandingClientProps) {
   // Check if this is a NO EDGES event (for scrollytelling)
   const isNoEdgesEvent = event.name.toUpperCase().includes('NO EDGES');
 
+  // Track if this is the first completion (not a replay)
+  const hasCompletedOnce = useRef(false);
+
+  // Scroll to top when scrollytelling completes (mobile fix)
+  useEffect(() => {
+    if (scrollytellingComplete && isNoEdgesEvent && !hasCompletedOnce.current) {
+      hasCompletedOnce.current = true;
+      // Instant scroll to top - no animation to avoid disorientation
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }, [scrollytellingComplete, isNoEdgesEvent]);
+
   // Replay intro handler - scrolls to top and resets scrollytelling
   const handleReplayIntro = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Reset the ref so the next completion will scroll to top again
+    hasCompletedOnce.current = false;
     // Small delay to let scroll start before showing scrollytelling
     setTimeout(() => setScrollytellingComplete(false), 100);
   };

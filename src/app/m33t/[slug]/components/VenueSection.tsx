@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { VenueGallery } from '@/components/maps/VenueGallery';
-import { MapPin, ExternalLink, Car, Sparkles, UtensilsCrossed } from 'lucide-react';
+import { MapPin, ExternalLink, Car, Shirt, UtensilsCrossed } from 'lucide-react';
 import { MarkdownContent } from '@/components/ui/MarkdownContent';
 
 interface VenueSectionProps {
@@ -141,7 +141,7 @@ export function VenueSection({
             {dressCode && (
               <div className="flex gap-4 items-start p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
                 <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-amber-500" />
+                  <Shirt className="w-5 h-5 text-amber-500" />
                 </div>
                 <div>
                   <p className="text-amber-500 text-xs font-medium tracking-widest uppercase mb-1">
