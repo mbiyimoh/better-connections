@@ -764,6 +764,53 @@ const uniqueSlug = await generateUniqueSlug(name, async (slug) => {
 
 ---
 
+### OG Images for Link Sharing Pattern
+
+**Purpose:** Dynamic Open Graph images for rich link previews when sharing M33T event URLs on social media.
+
+**Comprehensive Guide:** See `developer-guides/11-og-images-link-sharing-guide.md` for full documentation.
+
+**Key Files:**
+- `src/app/api/og/m33t/route.tsx` - OG image API endpoint (nodejs runtime for potential Prisma access)
+- `src/app/m33t/[slug]/page.tsx` - Event page with `generateMetadata()` for OG tags
+
+**Design Specifications (NO EDGES Event):**
+- **Main headline:** "No Edges." (gold #d4a54a, Georgia serif 130px)
+- **Tagline:** "Building at the speed of thought." (white #f5f5f5, Georgia 38px)
+- **Date/Location:** "3.12.26 • Austin, TX" (muted #71717a, system-ui 28px)
+- **Background:** Dark #0a0a0f with radial gold glows
+- **Bottom border:** 4px gold gradient fade
+
+**Implementation Pattern:**
+```typescript
+// API Route (src/app/api/og/m33t/route.tsx)
+export const runtime = 'nodejs';  // Required for Prisma
+
+export async function GET(req: NextRequest) {
+  const slug = req.nextUrl.searchParams.get('slug');
+  return new ImageResponse(<OGContent slug={slug} />, { width: 1200, height: 630 });
+}
+
+// Page metadata (src/app/m33t/[slug]/page.tsx)
+export async function generateMetadata({ params }): Promise<Metadata> {
+  const ogImageUrl = `${baseUrl}/api/og/m33t?slug=${slug}`;
+  return {
+    openGraph: { images: [{ url: ogImageUrl, width: 1200, height: 630 }] },
+    twitter: { card: 'summary_large_image', images: [ogImageUrl] },
+  };
+}
+```
+
+**Gotchas:**
+- Use `runtime = 'nodejs'` for API routes that might use Prisma (Edge incompatible)
+- Use system fonts only (Georgia, monospace, system-ui) - custom fonts unreliable in ImageResponse
+- Test locally at: `http://localhost:3333/api/og/m33t?slug=event-slug`
+- Clear social platform caches after updates using their debug tools
+
+**Location:** `src/app/api/og/m33t/`, `src/app/m33t/[slug]/page.tsx`
+
+---
+
 ### M33T Multi-Organizer Collaboration Pattern
 
 **Purpose:** Allow event owners to add co-organizers with granular permission levels for collaborative event management.

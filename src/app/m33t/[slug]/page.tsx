@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 import { EventLandingClient } from './EventLandingClient';
 import type { PublicEventData } from './types';
 
@@ -20,8 +21,57 @@ async function getEventData(slug: string): Promise<PublicEventData | null> {
   }
 }
 
+// Event-specific metadata configurations
+function getEventMetadata(slug: string) {
+  // NO EDGES event
+  if (slug === 'no-edges-33-strategies-launch' || slug.includes('no-edges')) {
+    return {
+      title: 'No Edges - 3.12.26 - Austin, TX',
+      description: 'Building at the speed of thought. Join us for NO EDGES, a 33 Strategies event.',
+    };
+  }
+
+  // Default for other events
+  return {
+    title: 'M33T Event',
+    description: 'Better networking. The right people. The right context. BEFORE you arrive.',
+  };
+}
+
 interface EventPageProps {
   params: Promise<{ slug: string }>;
+}
+
+export async function generateMetadata({ params }: EventPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://bettercontacts.ai';
+  const ogImageUrl = `${baseUrl}/api/og/m33t?slug=${encodeURIComponent(slug)}`;
+  const eventMeta = getEventMetadata(slug);
+
+  return {
+    title: eventMeta.title,
+    description: eventMeta.description,
+    openGraph: {
+      title: eventMeta.title,
+      description: eventMeta.description,
+      type: 'website',
+      url: `${baseUrl}/m33t/${slug}`,
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: eventMeta.title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: eventMeta.title,
+      description: eventMeta.description,
+      images: [ogImageUrl],
+    },
+  };
 }
 
 export default async function EventPage({ params }: EventPageProps) {
