@@ -51,7 +51,7 @@ function getEventConfig(slug: string | null): EventConfig {
       headline: 'No Edges.',
       tagline: 'Building at the speed of thought.',
       dateLocation: '03.12.26  •  Austin, TX',
-      title: 'No Edges - 3.12.26 - Austin, TX',
+      title: 'No Edges - 03.12.26 - Austin, TX',
     };
   }
 
