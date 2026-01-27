@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 import { motion, useAnimate, AnimatePresence } from 'framer-motion';
-import { BRAND_GOLD, GOLD_FOIL_GRADIENT } from '@/lib/design-system';
+import { BRAND_GOLD, GOLD_FOIL_GRADIENT, GOLD_FOIL_GRADIENT_MOBILE } from '@/lib/design-system';
 
 // ============================================================================
 // TYPES
@@ -89,9 +90,10 @@ interface Statement1Props {
   phase: AnimationPhase;
   onExitComplete: () => void;
   orbRef: React.RefObject<OrbControl | null>;
+  goldFoilStyle: React.CSSProperties;
 }
 
-function Statement1({ phase, onExitComplete, orbRef }: Statement1Props) {
+function Statement1({ phase, onExitComplete, orbRef, goldFoilStyle }: Statement1Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const word1Ref = useRef<HTMLSpanElement>(null);
   const word2Ref = useRef<HTMLSpanElement>(null);
@@ -107,14 +109,21 @@ function Statement1({ phase, onExitComplete, orbRef }: Statement1Props) {
       const prefixWords = STATEMENT_1.prefix.split(' ');
       const allFadeWords = [...prefixWords, STATEMENT_1.connector]; // suffix excluded
 
+      // Mobile-responsive animation values
+      // On mobile (<768px), reduce drift distance and scale to keep words aligned
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+      const driftDistance = isMobile ? 80 : 140; // 80px on mobile, 140px on desktop
+      const driftScale = isMobile ? 1.25 : 1.5; // 1.25x on mobile, 1.5x on desktop
+      const tensionScale = isMobile ? 1.4 : 1.75; // 1.4x on mobile, 1.75x on desktop
+
       // Calculate center positions for "idea", "execution", and "collapsed?" BEFORE animations start
       const ideaRect = word1Ref.current?.getBoundingClientRect();
       const execRect = word2Ref.current?.getBoundingClientRect();
       const suffixRect = suffixRef.current?.getBoundingClientRect();
       const containerRect = containerRef.current?.getBoundingClientRect();
 
-      let ideaDriftX = -140;
-      let execDriftX = 140;
+      let ideaDriftX = -driftDistance;
+      let execDriftX = driftDistance;
       let ideaSnapX = 0;
       let execSnapX = 0;
       let suffixDriftX = 0;
@@ -144,9 +153,9 @@ function Statement1({ phase, onExitComplete, orbRef }: Statement1Props) {
         const execFromCenter = execCenter - containerCenter;
         const suffixFromCenter = suffixCenter - containerCenter;
 
-        // Drift away from center by equal amounts (140px each direction for dramatic separation)
-        ideaDriftX = -140 - ideaFromCenter;
-        execDriftX = 140 - execFromCenter;
+        // Drift away from center by equal amounts (responsive based on viewport)
+        ideaDriftX = -driftDistance - ideaFromCenter;
+        execDriftX = driftDistance - execFromCenter;
 
         // Suffix moves to center horizontally and down below the orb
         suffixDriftX = -suffixFromCenter; // Center horizontally
@@ -179,16 +188,16 @@ function Statement1({ phase, onExitComplete, orbRef }: Statement1Props) {
       }
 
       // Step 2: "idea" and "execution" drift apart, "collapsed?" moves below orb
-      // Words grow 50% as they separate for dramatic effect
+      // Words grow as they separate (responsive scale for mobile alignment)
       await Promise.all([
         animate(
           '.word-idea',
-          { x: ideaDriftX, scale: 1.5 },
+          { x: ideaDriftX, scale: driftScale },
           { duration: 1.5, ease: [0.25, 0.46, 0.45, 0.94] }
         ),
         animate(
           '.word-execution',
-          { x: execDriftX, scale: 1.5 },
+          { x: execDriftX, scale: driftScale },
           { duration: 1.5, ease: [0.25, 0.46, 0.45, 0.94] }
         ),
         animate(
@@ -213,11 +222,11 @@ function Statement1({ phase, onExitComplete, orbRef }: Statement1Props) {
 
       const shakeKeyframes = {
         x: generateVibration(ideaDriftX),
-        scale: [1.5, ...Array(24).fill(1.75), 1.75],
+        scale: [driftScale, ...Array(24).fill(tensionScale), tensionScale],
       };
       const shakeKeyframesExec = {
         x: generateVibration(execDriftX),
-        scale: [1.5, ...Array(24).fill(1.75), 1.75],
+        scale: [driftScale, ...Array(24).fill(tensionScale), tensionScale],
       };
 
       await Promise.all([
@@ -230,20 +239,22 @@ function Statement1({ phase, onExitComplete, orbRef }: Statement1Props) {
       // Near-instant snap after prolonged resistance
       const magneticEase = [0.99, 0, 1, 1] as const; // frozen, then INSTANT snap
 
+      // Magnetic collapse - keep words at full opacity since scale shrinks them to nothing
+      // This maintains the visual metaphor of collapsing INTO the orb rather than fading away
       await Promise.all([
         animate(
           '.word-idea',
-          { x: ideaSnapX, scale: 0.1, opacity: 0 },
+          { x: ideaSnapX, scale: 0.1 },
           { duration: 0.35, ease: magneticEase }
         ),
         animate(
           '.word-execution',
-          { x: execSnapX, scale: 0.1, opacity: 0 },
+          { x: execSnapX, scale: 0.1 },
           { duration: 0.35, ease: magneticEase }
         ),
         animate(
           '.word-collapsed',
-          { x: suffixSnapX, y: suffixSnapY, scale: 0.1, opacity: 0 },
+          { x: suffixSnapX, y: suffixSnapY, scale: 0.1 },
           { duration: 0.35, ease: magneticEase }
         ),
       ]);
@@ -290,7 +301,7 @@ function Statement1({ phase, onExitComplete, orbRef }: Statement1Props) {
         <motion.span
           ref={word1Ref}
           className="word-idea inline-block mr-2 font-semibold"
-          style={{ ...GOLD_FOIL_GRADIENT }}
+          style={{ ...goldFoilStyle }}
         >
           {STATEMENT_1.word1}
         </motion.span>
@@ -306,7 +317,7 @@ function Statement1({ phase, onExitComplete, orbRef }: Statement1Props) {
         <motion.span
           ref={word2Ref}
           className="word-execution inline-block mr-2 font-semibold"
-          style={{ ...GOLD_FOIL_GRADIENT }}
+          style={{ ...goldFoilStyle }}
         >
           {STATEMENT_1.word2}
         </motion.span>
@@ -507,9 +518,10 @@ interface Statement3Props {
   phase: AnimationPhase;
   onExitComplete: () => void;
   orbRef: React.RefObject<OrbControl | null>;
+  goldFoilStyle: React.CSSProperties;
 }
 
-function Statement3({ phase, onExitComplete, orbRef }: Statement3Props) {
+function Statement3({ phase, onExitComplete, orbRef, goldFoilStyle }: Statement3Props) {
   const [scope, animate] = useAnimate();
   const highlightRef = useRef<HTMLSpanElement>(null);
   const hasMigrated = useRef(false);
@@ -640,7 +652,7 @@ function Statement3({ phase, onExitComplete, orbRef }: Statement3Props) {
       <span
         ref={highlightRef}
         className="relative inline-block font-semibold"
-        style={{ ...GOLD_FOIL_GRADIENT }}
+        style={{ ...goldFoilStyle }}
       >
         {STATEMENT_3.highlight}
       </span>
@@ -656,9 +668,10 @@ interface RevelationProps {
   visible: boolean;
   textPhase: 'idle' | 'reveal' | 'complete';
   containerRef: React.RefObject<HTMLDivElement | null>;
+  goldFoilStyle: React.CSSProperties;
 }
 
-function Revelation({ visible, textPhase, containerRef }: RevelationProps) {
+function Revelation({ visible, textPhase, containerRef, goldFoilStyle }: RevelationProps) {
   return (
     <div ref={containerRef} className="relative min-h-[100px] w-full flex items-center justify-center">
       {/* Final text - single string that expands from a point and dissolves into view */}
@@ -684,7 +697,8 @@ function Revelation({ visible, textPhase, containerRef }: RevelationProps) {
         className="font-display text-2xl md:text-3xl text-center text-white"
       >
         {REVELATION.prefix}
-        <span className="font-semibold" style={{ ...GOLD_FOIL_GRADIENT }}>
+        <br className="md:hidden" />
+        <span className="font-semibold" style={{ ...goldFoilStyle }}>
           {REVELATION.highlight}
         </span>
         {REVELATION.suffix}
@@ -704,6 +718,13 @@ export function IfStatementSequence({ isActive, onComplete }: IfStatementSequenc
   const [orbScale, setOrbScale] = useState(1);
   const [orbDimmed, setOrbDimmed] = useState(false);
   const [orbShaking, setOrbShaking] = useState(false);
+
+  // Use SSR-safe mobile detection hook
+  const isMobile = useIsMobile();
+
+  // Use brighter gold foil gradient on mobile for better visibility
+  // Defaults to desktop gradient during SSR (isMobile === undefined)
+  const goldFoilStyle = isMobile ? GOLD_FOIL_GRADIENT_MOBILE : GOLD_FOIL_GRADIENT;
 
   // Particle explosion state - rendered in main component to share orb's coordinate system
   const [particles, setParticles] = useState<Particle[]>([]);
@@ -946,9 +967,14 @@ export function IfStatementSequence({ isActive, onComplete }: IfStatementSequenc
       <div ref={mainContainerRef} className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-visible">
         {/* Explosion particles - rendered at orbPosition, same coordinate system as orb */}
         {particlePhase !== 'idle' && particlePhase !== 'complete' && particles.map((particle) => {
-          // Calculate fall Y: particles fall back toward the floor (orbPosition.y) but NEVER below it
-          // They stop at orbPosition.y (the floor line where the revelation text is)
-          const fallY = Math.min(orbPosition.y, orbPosition.y + particle.explosionY * 0.3);
+          // Calculate fall target: particles flow DOWN the page toward where EventHero date will appear
+          // This draws user attention downward into the next section
+          const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
+          // Target Y: flow down toward bottom of viewport (positive Y = down in this coordinate system)
+          // The particles should travel down ~60-80% of the viewport height
+          const fallTargetY = orbPosition.y + vh * 0.7 + (particle.fallDelay * 100);
+          // Target X: drift toward center (x=0 in the coordinate system) with some randomness
+          const fallTargetX = particle.driftX * 0.3; // Converge toward center
 
           return (
             <motion.div
@@ -977,12 +1003,12 @@ export function IfStatementSequence({ isActive, onComplete }: IfStatementSequenc
                         opacity: 0.8,
                       }
                     : {
-                        // Fall back toward floor with organic ash-like drift
-                        // X: drift laterally (some left, some right) like ash floating
-                        x: orbPosition.x + particle.explosionX * 0.5 + particle.driftX,
-                        // Y: fall toward floor but NEVER below it
-                        y: fallY,
-                        scale: 0.15,
+                        // Flow DOWN the page toward event date/location
+                        // X: converge toward center where the gold date text will appear
+                        x: fallTargetX,
+                        // Y: flow DOWN (positive Y) toward bottom of scrollytelling section
+                        y: fallTargetY,
+                        scale: 0.1,
                         opacity: 0,
                       }
               }
@@ -992,10 +1018,10 @@ export function IfStatementSequence({ isActive, onComplete }: IfStatementSequenc
                   : particlePhase === 'linger'
                     ? { duration: 2.4, ease: 'easeOut' }
                     : {
-                        // Staggered fall with per-particle timing for organic movement
-                        duration: particle.fallDuration,
+                        // Staggered fall with per-particle timing for organic cascading effect
+                        duration: particle.fallDuration * 1.2, // Slightly longer for longer travel
                         delay: particle.fallDelay,
-                        ease: [0.4, 0.0, 0.2, 1], // Smooth deceleration like real gravity + air resistance
+                        ease: [0.25, 0.1, 0.25, 1], // Smooth acceleration then deceleration
                       }
               }
               className="absolute"
@@ -1062,11 +1088,11 @@ export function IfStatementSequence({ isActive, onComplete }: IfStatementSequenc
               filter: orbDimmed ? 'blur(8px)' : 'blur(4px)',
             }}
           />
-          {/* Inner white core - matches DissolvingBoundary */}
+          {/* Inner white core - larger and more visible on mobile */}
           <motion.div
             animate={{
               scale: orbShaking ? [1, 0.8, 1.2, 0.9, 1.3, 1] : [1, 1.15, 1],
-              opacity: orbDimmed ? 0.6 : 1,
+              opacity: orbDimmed ? 0.7 : 1,
             }}
             transition={{
               duration: orbShaking ? 1.5 : 2,
@@ -1075,12 +1101,13 @@ export function IfStatementSequence({ isActive, onComplete }: IfStatementSequenc
             }}
             style={{
               position: 'absolute',
-              top: '25%',
-              left: '25%',
-              width: '50%',
-              height: '50%',
+              top: '20%',
+              left: '20%',
+              width: '60%',
+              height: '60%',
               borderRadius: '50%',
               backgroundColor: '#fff',
+              boxShadow: '0 0 6px rgba(255, 255, 255, 0.8), 0 0 12px rgba(255, 255, 255, 0.4)',
             }}
           />
         </motion.div>
@@ -1094,6 +1121,7 @@ export function IfStatementSequence({ isActive, onComplete }: IfStatementSequenc
             phase={phase}
             onExitComplete={handleExit1Complete}
             orbRef={orbRef}
+            goldFoilStyle={goldFoilStyle}
           />
         )}
 
@@ -1112,12 +1140,13 @@ export function IfStatementSequence({ isActive, onComplete }: IfStatementSequenc
             phase={phase}
             onExitComplete={handleExit3Complete}
             orbRef={orbRef}
+            goldFoilStyle={goldFoilStyle}
           />
         )}
       </AnimatePresence>
 
       {/* Revelation Text - persists */}
-      <Revelation visible={showRevelation} textPhase={textPhase} containerRef={revelationContainerRef} />
+      <Revelation visible={showRevelation} textPhase={textPhase} containerRef={revelationContainerRef} goldFoilStyle={goldFoilStyle} />
     </div>
   );
 }

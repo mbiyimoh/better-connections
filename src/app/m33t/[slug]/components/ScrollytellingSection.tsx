@@ -1,8 +1,9 @@
 'use client';
 
 import { useRef, useEffect, useState, useMemo } from 'react';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
-import { BRAND_GOLD, GOLD_FOIL_GRADIENT } from '@/lib/design-system';
+import { BRAND_GOLD, GOLD_FOIL_GRADIENT, GOLD_FOIL_GRADIENT_MOBILE } from '@/lib/design-system';
 import { IfStatementSequence } from './IfStatementSequence';
 
 // ============================================================================
@@ -151,7 +152,7 @@ function DissolvingBoundary({ isActive }: { isActive: boolean }) {
 
   return (
     <div className="relative w-64 h-48 mx-auto mb-12">
-      {/* SVG Layer - Rectangle and center glow */}
+      {/* SVG Layer - Rectangle only */}
       <svg
         viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
         className="absolute inset-0 w-full h-full"
@@ -174,14 +175,12 @@ function DissolvingBoundary({ isActive }: { isActive: boolean }) {
             ease: 'easeOut',
           }}
         />
+      </svg>
 
-        {/* Glowing center point - persists with breathing effect */}
-        <motion.circle
-          cx="100"
-          cy="75"
-          r="16"
-          fill={GOLD}
-          style={{ filter: 'blur(4px)', transformOrigin: '100px 75px' }}
+      {/* CSS-based center glow - renders consistently on mobile */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        {/* Outer gold glow */}
+        <motion.div
           animate={{
             scale: [1, 1.2, 1],
             opacity: [0.6, 0.9, 0.6],
@@ -191,13 +190,17 @@ function DissolvingBoundary({ isActive }: { isActive: boolean }) {
             repeat: Infinity,
             ease: 'easeInOut',
           }}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: '50%',
+            backgroundColor: GOLD,
+            boxShadow: `0 0 20px ${GOLD}, 0 0 40px ${GOLD}, 0 0 60px rgba(212, 165, 74, 0.5)`,
+          }}
         />
-        <motion.circle
-          cx="100"
-          cy="75"
-          r="8"
-          fill="#fff"
-          style={{ transformOrigin: '100px 75px' }}
+        {/* Inner white core */}
+        <motion.div
+          className="absolute"
           animate={{
             scale: [1, 1.15, 1],
           }}
@@ -206,8 +209,15 @@ function DissolvingBoundary({ isActive }: { isActive: boolean }) {
             repeat: Infinity,
             ease: 'easeInOut',
           }}
+          style={{
+            width: 16,
+            height: 16,
+            borderRadius: '50%',
+            backgroundColor: '#fff',
+            boxShadow: '0 0 6px rgba(255, 255, 255, 0.8), 0 0 12px rgba(255, 255, 255, 0.4)',
+          }}
         />
-      </svg>
+      </div>
 
       {/* Particle Layer - Absolute positioned divs */}
       <AnimatePresence>
@@ -395,12 +405,19 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
   const [scrollY, setScrollY] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Use SSR-safe mobile detection hook
+  const isMobile = useIsMobile();
+
   // Track scroll position
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Use brighter gold foil gradient on mobile for better visibility
+  // Defaults to desktop gradient during SSR (isMobile === undefined)
+  const goldFoilStyle = isMobile ? GOLD_FOIL_GRADIENT_MOBILE : GOLD_FOIL_GRADIENT;
 
   // Calculate which slide is active based on scroll
   const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
@@ -440,9 +457,9 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
             Everyone keeps asking the same question:
           </p>
           <h1
-            className="font-display text-3xl md:text-4xl lg:text-5xl font-medium leading-tight mb-8"
+            className="font-display text-3xl md:text-4xl lg:text-5xl font-medium leading-tight mb-12 md:mb-8"
           >
-            &ldquo;How do we adopt <span style={{ ...GOLD_FOIL_GRADIENT }}>AI</span> into our organization?&rdquo;
+            &ldquo;How do we adopt <span style={{ ...goldFoilStyle }}>AI</span> into our organization?&rdquo;
           </h1>
           <p className="font-body text-zinc-400 text-lg md:text-xl mb-4">
             But that question assumes your current way of working is a
@@ -472,14 +489,15 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
           >
             The constraints you&apos;re operating under
             <br />
-            <span className="font-medium pb-1 inline-block" style={{ ...GOLD_FOIL_GRADIENT }}>no longer exist.</span>
+            <span className="font-medium pb-1 inline-block" style={{ ...goldFoilStyle }}>no longer exist.</span>
           </p>
           <h1
             className="font-display text-4xl md:text-5xl lg:text-6xl font-medium leading-tight"
           >
-            Where you think there are edges,
+            Where you think there{' '}
+            <span className="whitespace-nowrap">are edges,</span>
             <br />
-            <span className="font-medium" style={{ ...GOLD_FOIL_GRADIENT }}>there are not.</span>
+            <span className="font-medium" style={{ ...goldFoilStyle }}>there are not.</span>
           </h1>
         </div>
       </div>
@@ -505,7 +523,7 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
           >
             Those lines have
             <br />
-            <span className="font-medium pb-1 inline-block" style={{ ...GOLD_FOIL_GRADIENT }}>moved dramatically.</span>
+            <span className="font-medium pb-1 inline-block" style={{ ...goldFoilStyle }}>moved dramatically.</span>
           </h2>
           <p
             className="font-display text-xl md:text-2xl text-zinc-400 mb-12"
@@ -560,7 +578,7 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
         <div className="text-center max-w-3xl">
           <p
             className="text-sm font-medium tracking-widest uppercase mb-8"
-            style={{ ...GOLD_FOIL_GRADIENT }}
+            style={{ ...goldFoilStyle }}
           >
             March 12, 2026 &bull; Austin, TX
           </p>
@@ -607,7 +625,7 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
                 Starting to{' '}
                 <span
                   className="font-medium pb-1 inline-block"
-                  style={{ ...GOLD_FOIL_GRADIENT }}
+                  style={{ ...goldFoilStyle }}
                 >
                   imagine what&apos;s possible
                 </span>{' '}

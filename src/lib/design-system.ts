@@ -35,6 +35,20 @@ export const GOLD_FOIL_GRADIENT = {
 } as const;
 
 /**
+ * Mobile-optimized gold foil gradient - brighter for better visibility on small screens.
+ * The standard gradient's dark edges dominate on smaller text, making it appear muddy.
+ * This version uses brighter edge colors and a higher midpoint for consistent gold appearance.
+ */
+export const GOLD_FOIL_GRADIENT_MOBILE = {
+  // Brighter gradient with lighter edge colors for mobile visibility
+  background: "linear-gradient(135deg, #cb9b51 0%, #d4a84a 15%, #f6e27a 35%, #f6f2c0 50%, #f6e27a 65%, #d4a84a 85%, #cb9b51 100%)",
+  WebkitBackgroundClip: "text",
+  backgroundClip: "text",
+  WebkitTextFillColor: "transparent",
+  textShadow: "0 1px 2px rgba(0, 0, 0, 0.15)",
+} as const;
+
+/**
  * Gold foil style for buttons/backgrounds (not text)
  */
 export const GOLD_FOIL_BUTTON = {
