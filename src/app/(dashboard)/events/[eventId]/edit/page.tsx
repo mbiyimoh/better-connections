@@ -2,6 +2,7 @@ import { redirect, notFound } from 'next/navigation';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
 import { EventEditor } from '@/components/events/editor';
+import { checkEventAccess } from '@/lib/m33t/auth';
 
 interface EditEventPageProps {
   params: Promise<{ eventId: string }>;
@@ -17,8 +18,15 @@ export default async function EditEventPage({ params }: EditEventPageProps) {
     redirect('/login');
   }
 
-  const event = await prisma.event.findFirst({
-    where: { id: eventId, userId: user.id },
+  // Check if user has edit permission (owner OR co-organizer with canEdit: true)
+  const access = await checkEventAccess(eventId, user.id, 'edit');
+  if (!access) {
+    notFound();
+  }
+
+  // Fetch event data (access already verified, so no userId filter needed)
+  const event = await prisma.event.findUnique({
+    where: { id: eventId },
     include: {
       organizers: {
         include: {
