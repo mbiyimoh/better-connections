@@ -153,13 +153,9 @@ function Statement1({ phase, onExitComplete, orbRef, goldFoilStyle }: Statement1
 
         const containerCenter = containerRect.width / 2;
 
-        // Current word positions relative to container (before any animation)
-        const ideaLeft = ideaRect.left - containerRect.left;
-        const ideaRight = ideaRect.right - containerRect.left;
-        const ideaCenter = ideaLeft + ideaRect.width / 2;
-        const execLeft = execRect.left - containerRect.left;
-        const execRight = execRect.right - containerRect.left;
-        const execCenter = execLeft + execRect.width / 2;
+        // Current word CENTER positions relative to container (before any animation)
+        const ideaCenter = (ideaRect.left - containerRect.left) + ideaRect.width / 2;
+        const execCenter = (execRect.left - containerRect.left) + execRect.width / 2;
         const suffixCenter = suffixRect.left - containerRect.left + suffixRect.width / 2;
 
         // After scaling, half-widths change
