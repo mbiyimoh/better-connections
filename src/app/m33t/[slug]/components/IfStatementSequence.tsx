@@ -144,20 +144,48 @@ function Statement1({ phase, onExitComplete, orbRef, goldFoilStyle }: Statement1
       }
 
       if (ideaRect && execRect && suffixRect && containerRect) {
-        // Calculate where each word needs to go to be centered at their max separation
+        // EDGE-BASED POSITIONING: We want equal gaps from word EDGES to the orb center
+        // - Gap from END of "idea" to orb center = Gap from orb center to START of "execution"
+        //
+        // The orb is at container center (x=0 in animation coordinates).
+        // After scaling, word edges move: scaledEdge = center + (edge - center) * scale
+        // We need to position words so their INNER edges are equidistant from x=0.
+
         const containerCenter = containerRect.width / 2;
-        const ideaCenter = ideaRect.left - containerRect.left + ideaRect.width / 2;
-        const execCenter = execRect.left - containerRect.left + execRect.width / 2;
+
+        // Current word positions relative to container (before any animation)
+        const ideaLeft = ideaRect.left - containerRect.left;
+        const ideaRight = ideaRect.right - containerRect.left;
+        const ideaCenter = ideaLeft + ideaRect.width / 2;
+        const execLeft = execRect.left - containerRect.left;
+        const execRight = execRect.right - containerRect.left;
+        const execCenter = execLeft + execRect.width / 2;
         const suffixCenter = suffixRect.left - containerRect.left + suffixRect.width / 2;
 
-        // How far each word is from container center
+        // After scaling, half-widths change
+        const ideaHalfWidthScaled = (ideaRect.width / 2) * driftScale;
+        const execHalfWidthScaled = (execRect.width / 2) * driftScale;
+
+        // We want: (ideaCenterFinal + ideaHalfWidthScaled) = -gapFromOrb
+        //          (execCenterFinal - execHalfWidthScaled) = +gapFromOrb
+        // Where gapFromOrb is the desired gap from the orb (at x=0) to each word's inner edge.
+        // Use driftDistance as the gap from orb to each word's inner edge.
+        const gapFromOrb = driftDistance;
+
+        // Target positions for word CENTERS (in container coordinates)
+        // "idea" right edge should be at (containerCenter - gapFromOrb), so center is further left
+        const ideaTargetCenter = containerCenter - gapFromOrb - ideaHalfWidthScaled;
+        // "execution" left edge should be at (containerCenter + gapFromOrb), so center is further right
+        const execTargetCenter = containerCenter + gapFromOrb + execHalfWidthScaled;
+
+        // Calculate drift as delta from current position to target
+        ideaDriftX = ideaTargetCenter - ideaCenter;
+        execDriftX = execTargetCenter - execCenter;
+
+        // How far each word is from container center (for snap-back calculation)
         const ideaFromCenter = ideaCenter - containerCenter;
         const execFromCenter = execCenter - containerCenter;
         const suffixFromCenter = suffixCenter - containerCenter;
-
-        // Drift away from center by equal amounts (responsive based on viewport)
-        ideaDriftX = -driftDistance - ideaFromCenter;
-        execDriftX = driftDistance - execFromCenter;
 
         // CRITICAL: On mobile, words may be on different lines with different Y positions
         // Calculate Y offsets to align both words to a common horizontal baseline
@@ -273,6 +301,9 @@ function Statement1({ phase, onExitComplete, orbRef, goldFoilStyle }: Statement1
           { duration: 0.35, ease: magneticEase }
         ),
       ]);
+
+      // Dramatic pause after collapse - let the "punchline" land before moving on
+      await new Promise((resolve) => setTimeout(resolve, 750));
 
       setShowContent(false);
       onExitComplete();
