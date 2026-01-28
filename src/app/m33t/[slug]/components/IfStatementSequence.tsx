@@ -124,6 +124,8 @@ function Statement1({ phase, onExitComplete, orbRef, goldFoilStyle }: Statement1
 
       let ideaDriftX = -driftDistance;
       let execDriftX = driftDistance;
+      let ideaDriftY = 0; // Y offset to align words horizontally
+      let execDriftY = 0;
       let ideaSnapX = 0;
       let execSnapX = 0;
       let suffixDriftX = 0;
@@ -157,6 +159,14 @@ function Statement1({ phase, onExitComplete, orbRef, goldFoilStyle }: Statement1
         ideaDriftX = -driftDistance - ideaFromCenter;
         execDriftX = driftDistance - execFromCenter;
 
+        // CRITICAL: On mobile, words may be on different lines with different Y positions
+        // Calculate Y offsets to align both words to a common horizontal baseline
+        const ideaCenterY = ideaRect.top + ideaRect.height / 2;
+        const execCenterY = execRect.top + execRect.height / 2;
+        const targetY = (ideaCenterY + execCenterY) / 2; // Meet in the middle
+        ideaDriftY = targetY - ideaCenterY;
+        execDriftY = targetY - execCenterY;
+
         // Suffix moves to center horizontally and down below the orb
         suffixDriftX = -suffixFromCenter; // Center horizontally
         suffixDriftY = 50; // Move down below the orb
@@ -167,9 +177,8 @@ function Statement1({ phase, onExitComplete, orbRef, goldFoilStyle }: Statement1
         suffixSnapX = -suffixFromCenter; // Stay centered
         suffixSnapY = 0; // Move back up into orb
 
-        // Calculate orb Y position relative to orb container center
-        const wordCenterY = ideaRect.top + ideaRect.height / 2;
-        orbY = wordCenterY - orbContainerCenter.y;
+        // Calculate orb Y position relative to orb container center (use target Y for consistency)
+        orbY = targetY - orbContainerCenter.y;
       }
 
       // Show orb immediately as white text starts fading - it appears between the words
@@ -189,15 +198,16 @@ function Statement1({ phase, onExitComplete, orbRef, goldFoilStyle }: Statement1
 
       // Step 2: "idea" and "execution" drift apart, "collapsed?" moves below orb
       // Words grow as they separate (responsive scale for mobile alignment)
+      // CRITICAL: Apply Y offsets so words align on same horizontal baseline (especially on mobile where they may wrap to different lines)
       await Promise.all([
         animate(
           '.word-idea',
-          { x: ideaDriftX, scale: driftScale },
+          { x: ideaDriftX, y: ideaDriftY, scale: driftScale },
           { duration: 1.5, ease: [0.25, 0.46, 0.45, 0.94] }
         ),
         animate(
           '.word-execution',
-          { x: execDriftX, scale: driftScale },
+          { x: execDriftX, y: execDriftY, scale: driftScale },
           { duration: 1.5, ease: [0.25, 0.46, 0.45, 0.94] }
         ),
         animate(
@@ -209,6 +219,7 @@ function Statement1({ phase, onExitComplete, orbRef, goldFoilStyle }: Statement1
 
       // Step 2b: Tension build - volatile isotope vibration before collapse
       // Grow to 1.75x and rapid micro-shake (many quick oscillations, tiny movements)
+      // Duration increased to 2.2s (was 1.2s) for extra second of linger/shake
       const d = 0.7; // tiny displacement (~1/3 of original)
       const generateVibration = (base: number) => {
         // 20+ rapid oscillations for unstable atom feel
@@ -220,18 +231,21 @@ function Statement1({ phase, onExitComplete, orbRef, goldFoilStyle }: Statement1
         return frames;
       };
 
+      // Maintain Y position during shake animation
       const shakeKeyframes = {
         x: generateVibration(ideaDriftX),
+        y: ideaDriftY, // Hold Y position constant
         scale: [driftScale, ...Array(24).fill(tensionScale), tensionScale],
       };
       const shakeKeyframesExec = {
         x: generateVibration(execDriftX),
+        y: execDriftY, // Hold Y position constant
         scale: [driftScale, ...Array(24).fill(tensionScale), tensionScale],
       };
 
       await Promise.all([
-        animate('.word-idea', shakeKeyframes, { duration: 1.2, ease: 'linear' }),
-        animate('.word-execution', shakeKeyframesExec, { duration: 1.2, ease: 'linear' }),
+        animate('.word-idea', shakeKeyframes, { duration: 2.2, ease: 'linear' }),
+        animate('.word-execution', shakeKeyframesExec, { duration: 2.2, ease: 'linear' }),
       ]);
 
       // Step 3: Magnetic collapse - resist at first, then rapid acceleration
@@ -241,15 +255,16 @@ function Statement1({ phase, onExitComplete, orbRef, goldFoilStyle }: Statement1
 
       // Magnetic collapse - keep words at full opacity since scale shrinks them to nothing
       // This maintains the visual metaphor of collapsing INTO the orb rather than fading away
+      // Both words snap to Y=0 (orb position) and center X, merging into the orb
       await Promise.all([
         animate(
           '.word-idea',
-          { x: ideaSnapX, scale: 0.1 },
+          { x: ideaSnapX, y: 0, scale: 0.1 },
           { duration: 0.35, ease: magneticEase }
         ),
         animate(
           '.word-execution',
-          { x: execSnapX, scale: 0.1 },
+          { x: execSnapX, y: 0, scale: 0.1 },
           { duration: 0.35, ease: magneticEase }
         ),
         animate(

@@ -177,46 +177,50 @@ function DissolvingBoundary({ isActive }: { isActive: boolean }) {
         />
       </svg>
 
-      {/* CSS-based center glow - renders consistently on mobile */}
+      {/* CSS-based center glow - uses blur filter for soft diffused glow like IfStatementSequence orb */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        {/* Outer gold glow */}
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.6, 0.9, 0.6],
-          }}
-          transition={{
-            duration: 2,
-            repeat: Infinity,
-            ease: 'easeInOut',
-          }}
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: '50%',
-            backgroundColor: GOLD,
-            boxShadow: `0 0 20px ${GOLD}, 0 0 40px ${GOLD}, 0 0 60px rgba(212, 165, 74, 0.5)`,
-          }}
-        />
-        {/* Inner white core */}
-        <motion.div
-          className="absolute"
-          animate={{
-            scale: [1, 1.15, 1],
-          }}
-          transition={{
-            duration: 2,
-            repeat: Infinity,
-            ease: 'easeInOut',
-          }}
-          style={{
-            width: 16,
-            height: 16,
-            borderRadius: '50%',
-            backgroundColor: '#fff',
-            boxShadow: '0 0 6px rgba(255, 255, 255, 0.8), 0 0 12px rgba(255, 255, 255, 0.4)',
-          }}
-        />
+        <div className="relative" style={{ width: 32, height: 32 }}>
+          {/* Outer gold glow - blur filter creates soft diffused effect (no hard edges) */}
+          <motion.div
+            animate={{
+              scale: [1, 1.2, 1],
+              opacity: [0.6, 0.9, 0.6],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: 'easeInOut',
+            }}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: '50%',
+              backgroundColor: GOLD,
+              filter: 'blur(4px)',
+            }}
+          />
+          {/* Inner white core */}
+          <motion.div
+            style={{
+              position: 'absolute',
+              top: '20%',
+              left: '20%',
+              width: '60%',
+              height: '60%',
+              borderRadius: '50%',
+              backgroundColor: '#fff',
+              boxShadow: '0 0 6px rgba(255, 255, 255, 0.8), 0 0 12px rgba(255, 255, 255, 0.4)',
+            }}
+            animate={{
+              scale: [1, 1.15, 1],
+            }}
+            transition={{
+              duration: 2,
+              repeat: Infinity,
+              ease: 'easeInOut',
+            }}
+          />
+        </div>
       </div>
 
       {/* Particle Layer - Absolute positioned divs */}
