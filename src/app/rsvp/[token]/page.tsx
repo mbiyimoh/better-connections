@@ -1,11 +1,23 @@
 import { redirect } from 'next/navigation';
+import type { Metadata } from 'next';
 import { prisma } from '@/lib/db';
 import { verifyRSVPToken, isTokenExpired } from '@/lib/m33t/tokens';
 import { TokenExpiredMessage } from '@/components/m33t/TokenExpiredMessage';
 import { TokenInvalidMessage } from '@/components/m33t/TokenInvalidMessage';
+import { generateRSVPOGMetadata } from '@/lib/m33t/og-metadata';
 
 interface RSVPPageProps {
   params: Promise<{ token: string }>;
+}
+
+/**
+ * OG metadata is defined here (not just on the target page) because social media
+ * crawlers don't follow JavaScript redirects -- they read metadata from the
+ * initially requested URL.
+ */
+export async function generateMetadata({ params }: RSVPPageProps): Promise<Metadata> {
+  const { token } = await params;
+  return generateRSVPOGMetadata(token);
 }
 
 /**

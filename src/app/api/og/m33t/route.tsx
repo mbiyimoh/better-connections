@@ -1,34 +1,9 @@
 import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
+import { loadInstrumentSerif } from '@/lib/og-fonts';
 
 // Use nodejs runtime for potential Prisma access in future
 export const runtime = 'nodejs';
-
-// Load Instrument Serif font from Google Fonts (woff format for OG image compatibility)
-async function loadInstrumentSerif(): Promise<ArrayBuffer> {
-  // Use a user agent that requests woff format (not woff2)
-  const cssResponse = await fetch(
-    'https://fonts.googleapis.com/css2?family=Instrument+Serif&display=swap',
-    {
-      headers: {
-        // Use IE user agent to get woff format (older browser doesn't support woff2)
-        'User-Agent': 'Mozilla/5.0 (compatible; MSIE 10.0; Windows NT 6.1; Trident/6.0)',
-      },
-    }
-  );
-  const css = await cssResponse.text();
-
-  // Extract the font file URL from the CSS - handles dynamic Google URLs
-  // Matches: url(https://...) format('woff')
-  const fontUrlMatch = css.match(/url\(([^)]+)\)\s*format\(['"]woff['"]\)/);
-  if (!fontUrlMatch || !fontUrlMatch[1]) {
-    throw new Error('Could not find font URL in CSS');
-  }
-
-  const fontUrl = fontUrlMatch[1];
-  const fontResponse = await fetch(fontUrl);
-  return fontResponse.arrayBuffer();
-}
 
 // Design constants
 const GOLD = '#d4a54a';

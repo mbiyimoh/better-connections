@@ -1,13 +1,20 @@
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 import { prisma } from '@/lib/db';
 import { verifyRSVPToken, isTokenExpired } from '@/lib/m33t/tokens';
 import { RSVPForm } from '@/components/m33t/RSVPForm';
 import { TokenExpiredMessage } from '@/components/m33t/TokenExpiredMessage';
 import { TokenInvalidMessage } from '@/components/m33t/TokenInvalidMessage';
+import { generateRSVPOGMetadata } from '@/lib/m33t/og-metadata';
 import { format } from 'date-fns';
 
 interface RSVPPageProps {
   params: Promise<{ slug: string; token: string }>;
+}
+
+export async function generateMetadata({ params }: RSVPPageProps): Promise<Metadata> {
+  const { slug, token } = await params;
+  return generateRSVPOGMetadata(token, slug);
 }
 
 export default async function RSVPPage({ params }: RSVPPageProps) {
