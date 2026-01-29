@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-import { generateRSVPToken, checkM33tAccess, m33tAccessDeniedResponse, checkEventAccess } from '@/lib/m33t';
+import { generateRSVPToken, checkM33tAccess, m33tAccessDeniedResponse, checkEventAccess, buildRsvpUrl } from '@/lib/m33t';
 
 type RouteContext = {
   params: Promise<{ eventId: string; attendeeId: string }>;
@@ -87,9 +87,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     // Generate RSVP token
     const token = generateRSVPToken(eventId, attendee.email, attendee.id, event.date);
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3333';
-    const url = event.slug
-      ? `${baseUrl}/m33t/${event.slug}/rsvp/${token}`
-      : `${baseUrl}/rsvp/${token}`;
+    const url = buildRsvpUrl(baseUrl, event.slug, token);
 
     // Calculate expiration (tokens are valid until event date + 24 hours)
     const expiresAt = new Date(event.date);

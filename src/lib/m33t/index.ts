@@ -92,7 +92,7 @@ export {
 } from './profile-completion';
 
 // RSVP Path Utilities (slug-aware URL construction)
-export { getRsvpBasePath } from './rsvp-paths';
+export { getRsvpBasePath, buildRsvpUrl } from './rsvp-paths';
 
 // Reveal Timing (Match visibility logic)
 export {

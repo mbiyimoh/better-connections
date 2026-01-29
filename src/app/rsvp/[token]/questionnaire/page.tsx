@@ -9,13 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { Loader2, Check, ArrowLeft, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  OpenTextQuestion,
-  SliderQuestion,
-  SingleSelectQuestion,
-  MultiSelectQuestion,
-  RankingQuestion,
-} from '@/components/m33t/questions';
+import { QuestionRenderer } from '@/components/m33t/questions';
 import type { Question, QuestionnaireResponse } from '@/lib/m33t/schemas';
 
 interface QuestionnaireData {
@@ -252,46 +246,12 @@ export default function QuestionnairePage() {
           <CardContent>
             {currentQuestion && (
               <div className="py-4">
-                {currentQuestion.type === 'open_text' && (
-                  <OpenTextQuestion
-                    question={currentQuestion}
-                    value={(responses[currentQuestion.id] as string) || ''}
-                    onChange={(value) => handleResponseChange(currentQuestion.id, value)}
-                    error={errors[currentQuestion.id]}
-                  />
-                )}
-                {currentQuestion.type === 'slider' && (
-                  <SliderQuestion
-                    question={currentQuestion}
-                    value={(responses[currentQuestion.id] as number) || 50}
-                    onChange={(value) => handleResponseChange(currentQuestion.id, value)}
-                    error={errors[currentQuestion.id]}
-                  />
-                )}
-                {currentQuestion.type === 'single_select' && (
-                  <SingleSelectQuestion
-                    question={currentQuestion}
-                    value={(responses[currentQuestion.id] as string) || ''}
-                    onChange={(value) => handleResponseChange(currentQuestion.id, value)}
-                    error={errors[currentQuestion.id]}
-                  />
-                )}
-                {currentQuestion.type === 'multi_select' && (
-                  <MultiSelectQuestion
-                    question={currentQuestion}
-                    value={(responses[currentQuestion.id] as string[]) || []}
-                    onChange={(value) => handleResponseChange(currentQuestion.id, value)}
-                    error={errors[currentQuestion.id]}
-                  />
-                )}
-                {currentQuestion.type === 'ranking' && (
-                  <RankingQuestion
-                    question={currentQuestion}
-                    value={(responses[currentQuestion.id] as string[]) || []}
-                    onChange={(value) => handleResponseChange(currentQuestion.id, value)}
-                    error={errors[currentQuestion.id]}
-                  />
-                )}
+                <QuestionRenderer
+                  question={currentQuestion}
+                  value={responses[currentQuestion.id]}
+                  onChange={handleResponseChange}
+                  error={errors[currentQuestion.id]}
+                />
               </div>
             )}
 

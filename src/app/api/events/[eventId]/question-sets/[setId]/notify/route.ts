@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/db';
-import { checkEventAccess, generateRSVPToken } from '@/lib/m33t';
+import { checkEventAccess, generateRSVPToken, buildRsvpUrl } from '@/lib/m33t';
 import { getCurrentUser } from '@/lib/auth-helpers';
 import { sendEmail, generateQuestionSetEmail } from '@/lib/notifications/email';
 import { sendSMS, formatPhoneE164, isValidE164, SMS_TEMPLATES } from '@/lib/notifications/sms';
@@ -147,8 +147,7 @@ export async function POST(
     try {
       // Generate RSVP token for the attendee
       const token = generateRSVPToken(eventId, attendee.email, attendee.id, questionSet.event.date);
-      const rsvpBase = questionSet.event.slug ? `${baseUrl}/m33t/${questionSet.event.slug}/rsvp` : `${baseUrl}/rsvp`;
-      const questionSetUrl = `${rsvpBase}/${token}/question-sets`;
+      const questionSetUrl = buildRsvpUrl(baseUrl, questionSet.event.slug, token, '/question-sets');
 
       // Send email if available
       if (attendee.email) {
