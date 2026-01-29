@@ -24,7 +24,11 @@ import {
   Users,
   MessageCircle,
   Target,
+  Send,
+  UserPlus,
 } from 'lucide-react';
+import { MatchRevealDialog } from '@/components/m33t/MatchRevealDialog';
+import { ManualMatchDialog } from '@/components/m33t/ManualMatchDialog';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Profile } from '@/lib/m33t/schemas';
@@ -61,6 +65,18 @@ interface EventData {
   status: string;
   _count: {
     attendees: number;
+    matches: number;
+  };
+}
+
+interface AttendeeData {
+  id: string;
+  firstName: string;
+  lastName: string | null;
+  email: string | null;
+  rsvpStatus: string;
+  matchRevealSentAt: string | null;
+  _count?: {
     matches: number;
   };
 }
@@ -331,10 +347,13 @@ export default function MatchCurationPage() {
 
   const [event, setEvent] = useState<EventData | null>(null);
   const [matches, setMatches] = useState<MatchData[]>([]);
+  const [attendees, setAttendees] = useState<AttendeeData[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [loadingMatchId, setLoadingMatchId] = useState<string | null>(null);
+  const [showRevealDialog, setShowRevealDialog] = useState(false);
+  const [showManualMatchDialog, setShowManualMatchDialog] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -351,6 +370,10 @@ export default function MatchCurationPage() {
 
       setEvent(eventData);
       setMatches(matchesData);
+      // Extract attendees from event data for dialogs
+      if (eventData.attendees) {
+        setAttendees(eventData.attendees);
+      }
     } catch (error) {
       toast.error('Failed to load match data');
       console.error(error);
@@ -462,6 +485,29 @@ export default function MatchCurationPage() {
   const approvedCount = matches.filter((m) => m.status === 'APPROVED').length;
   const rejectedCount = matches.filter((m) => m.status === 'REJECTED').length;
 
+  // Calculate eligible attendees for match reveal:
+  // - Must be CONFIRMED
+  // - Must have at least one APPROVED match
+  // - Must not have already received reveal notification
+  const eligibleForReveal = attendees.filter((a) => {
+    if (a.rsvpStatus !== 'CONFIRMED') return false;
+    if (a.matchRevealSentAt) return false;
+    // Check if they have approved matches
+    const hasApprovedMatches = matches.some(
+      (m) => m.attendee.id === a.id && m.status === 'APPROVED'
+    );
+    return hasApprovedMatches;
+  }).length;
+
+  // Attendee options for manual match dialog
+  const attendeeOptions = attendees
+    .filter((a) => a.rsvpStatus === 'CONFIRMED')
+    .map((a) => ({
+      id: a.id,
+      name: `${a.firstName} ${a.lastName || ''}`.trim(),
+      email: a.email,
+    }));
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -564,6 +610,27 @@ export default function MatchCurationPage() {
           )}
 
           <Button
+            variant="outline"
+            onClick={() => setShowManualMatchDialog(true)}
+            disabled={attendeeOptions.length < 2}
+          >
+            <UserPlus className="w-4 h-4 mr-2" />
+            Add Match
+          </Button>
+
+          {approvedCount > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => setShowRevealDialog(true)}
+              disabled={eligibleForReveal === 0}
+              className="border-gold-primary/50 text-gold-primary hover:bg-gold-subtle"
+            >
+              <Send className="w-4 h-4 mr-2" />
+              Send Reveals ({eligibleForReveal})
+            </Button>
+          )}
+
+          <Button
             onClick={handleGenerateMatches}
             disabled={generating}
             className="bg-gold-primary hover:bg-gold-light text-bg-primary"
@@ -620,6 +687,23 @@ export default function MatchCurationPage() {
           ))}
         </div>
       )}
+
+      {/* Dialogs */}
+      <MatchRevealDialog
+        isOpen={showRevealDialog}
+        onClose={() => setShowRevealDialog(false)}
+        eventId={eventId}
+        eligibleCount={eligibleForReveal}
+        onSuccess={fetchData}
+      />
+
+      <ManualMatchDialog
+        isOpen={showManualMatchDialog}
+        onClose={() => setShowManualMatchDialog(false)}
+        eventId={eventId}
+        attendees={attendeeOptions}
+        onSuccess={fetchData}
+      />
     </div>
   );
 }

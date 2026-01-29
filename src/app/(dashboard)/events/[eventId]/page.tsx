@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import Link from 'next/link'; // eslint-disable-line @typescript-eslint/no-unused-vars
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,7 +13,8 @@ import {
   MapPin,
   Users,
   Sparkles,
-  // Bell, - removed, unused
+  Bell,
+  CalendarClock,
   Edit,
   ArrowLeft,
   Check,
@@ -29,6 +29,9 @@ import { format } from 'date-fns';
 import type { Profile } from '@/lib/m33t/schemas';
 import { AttendeeProfileEditModal } from '@/components/m33t/AttendeeProfileEditModal';
 import { AttendeeOrderModal } from '@/components/m33t/AttendeeOrderModal';
+import { QuestionSetsManager, QuestionSetEditor } from '@/components/events/question-sets';
+import { RsvpReminderDialog } from '@/components/m33t/RsvpReminderDialog';
+import { EventReminderDialog } from '@/components/m33t/EventReminderDialog';
 
 interface AttendeeContact {
   id: string;
@@ -55,6 +58,10 @@ interface AttendeeData {
   contact: AttendeeContact | null;
   addedBy: { id: string; name: string } | null;
   overridesEditedBy: { id: string; name: string } | null;
+  // Notification timestamps for eligibility calculation
+  inviteSentAt: string | null;
+  rsvpReminderSentAt: string | null;
+  eventReminderSentAt: string | null;
 }
 
 interface CardSettings {
@@ -65,6 +72,22 @@ interface CardSettings {
   canHelp?: boolean;
   whyNow?: boolean;
   conversationStarters?: boolean;
+}
+
+interface QuestionSetData {
+  id: string;
+  internalId: string;
+  title: string;
+  description: string | null;
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
+  publishedAt: string | null;
+  questions: import('@/lib/m33t/schemas').Question[];
+  questionCount: number;
+  completionStats: {
+    total: number;
+    completed: number;
+    inProgress: number;
+  };
 }
 
 interface EventData {
@@ -84,6 +107,7 @@ interface EventData {
   revealTiming: string;
   cardSettings: CardSettings;
   attendees: AttendeeData[];
+  questionSets: QuestionSetData[];
   _count: {
     attendees: number;
     matches: number;
@@ -125,13 +149,29 @@ export default function EventOverviewPage() {
   const [editingAttendeeId, setEditingAttendeeId] = useState<string | null>(null);
   const [deletingAttendeeId, setDeletingAttendeeId] = useState<string | null>(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
+  const [questionSetView, setQuestionSetView] = useState<'list' | 'create' | string>('list');
+  const [showRsvpReminderDialog, setShowRsvpReminderDialog] = useState(false);
+  const [showEventReminderDialog, setShowEventReminderDialog] = useState(false);
 
   const fetchEvent = useCallback(async () => {
     try {
-      const res = await fetch(`/api/events/${eventId}`);
-      if (!res.ok) throw new Error('Failed to fetch event');
-      const data = await res.json();
-      setEvent(data);
+      // Fetch event data and question sets in parallel
+      const [eventRes, setsRes] = await Promise.all([
+        fetch(`/api/events/${eventId}`),
+        fetch(`/api/events/${eventId}/question-sets`),
+      ]);
+
+      if (!eventRes.ok) throw new Error('Failed to fetch event');
+      const eventData = await eventRes.json();
+
+      // Question sets are optional - don't fail if API doesn't exist yet
+      let questionSets: QuestionSetData[] = [];
+      if (setsRes.ok) {
+        const setsData = await setsRes.json();
+        questionSets = setsData.questionSets || [];
+      }
+
+      setEvent({ ...eventData, questionSets });
     } catch (error) {
       toast.error('Failed to load event');
       console.error(error);
@@ -213,6 +253,20 @@ export default function EventOverviewPage() {
   const confirmedCount = event.attendees.filter((a) => a.rsvpStatus === 'CONFIRMED').length;
   const pendingCount = event.attendees.filter((a) => a.rsvpStatus === 'PENDING').length;
   const profilesComplete = event.attendees.filter((a) => a.questionnaireCompletedAt).length;
+
+  // Calculate eligible counts for reminder buttons
+  // RSVP Reminder: invited but not responded, haven't been reminded yet
+  const eligibleForRsvpReminder = event.attendees.filter((a) =>
+    a.inviteSentAt &&
+    a.rsvpStatus === 'PENDING' &&
+    !a.rsvpReminderSentAt
+  ).length;
+
+  // Event Reminder: confirmed attendees who haven't been reminded yet
+  const eligibleForEventReminder = event.attendees.filter((a) =>
+    a.rsvpStatus === 'CONFIRMED' &&
+    !a.eventReminderSentAt
+  ).length;
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
@@ -342,6 +396,24 @@ export default function EventOverviewPage() {
 
           <Button
             variant="outline"
+            onClick={() => setShowRsvpReminderDialog(true)}
+            disabled={eligibleForRsvpReminder === 0}
+          >
+            <Bell className="w-4 h-4 mr-2" />
+            RSVP Reminder ({eligibleForRsvpReminder})
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={() => setShowEventReminderDialog(true)}
+            disabled={eligibleForEventReminder === 0}
+          >
+            <CalendarClock className="w-4 h-4 mr-2" />
+            Event Reminder ({eligibleForEventReminder})
+          </Button>
+
+          <Button
+            variant="outline"
             onClick={() => setShowOrderModal(true)}
           >
             <ArrowUpDown className="w-4 h-4 mr-2" />
@@ -355,6 +427,33 @@ export default function EventOverviewPage() {
             <Sparkles className="w-4 h-4 mr-2" />
             Manage Matches
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Question Sets Section */}
+      <Card className="bg-bg-secondary border-border mb-6">
+        <CardContent className="pt-6">
+          {questionSetView === 'list' ? (
+            <QuestionSetsManager
+              eventId={eventId}
+              questionSets={event.questionSets || []}
+              onCreateSet={() => setQuestionSetView('create')}
+              onEditSet={(setId) => setQuestionSetView(setId)}
+            />
+          ) : (
+            <QuestionSetEditor
+              eventId={eventId}
+              questionSet={
+                questionSetView !== 'create'
+                  ? (event.questionSets || []).find((s) => s.id === questionSetView)
+                  : undefined
+              }
+              onBack={() => {
+                setQuestionSetView('list');
+                fetchEvent(); // Refresh data when returning to list
+              }}
+            />
+          )}
         </CardContent>
       </Card>
 
@@ -507,6 +606,24 @@ export default function EventOverviewPage() {
         onSave={() => {
           fetchEvent(); // Refresh to show updated order
         }}
+      />
+
+      {/* RSVP Reminder Dialog */}
+      <RsvpReminderDialog
+        isOpen={showRsvpReminderDialog}
+        onClose={() => setShowRsvpReminderDialog(false)}
+        eventId={eventId}
+        eligibleCount={eligibleForRsvpReminder}
+        onSuccess={fetchEvent}
+      />
+
+      {/* Event Reminder Dialog */}
+      <EventReminderDialog
+        isOpen={showEventReminderDialog}
+        onClose={() => setShowEventReminderDialog(false)}
+        eventId={eventId}
+        eligibleCount={eligibleForEventReminder}
+        onSuccess={fetchEvent}
       />
     </div>
   );

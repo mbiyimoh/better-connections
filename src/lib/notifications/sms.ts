@@ -161,6 +161,18 @@ interface ProfileReminderParams {
   profileUrl: string;
 }
 
+interface PhoneVerificationParams {
+  code: string;
+  eventName: string;
+}
+
+interface QuestionSetParams {
+  eventName: string;
+  questionSetTitle: string;
+  url: string;
+  isNewSet: boolean;
+}
+
 export const SMS_TEMPLATES = {
   /**
    * Event invitation SMS
@@ -191,6 +203,20 @@ export const SMS_TEMPLATES = {
    */
   profileReminder: (params: ProfileReminderParams) =>
     `Your profile for ${params.eventName} is incomplete. Finish it to get better matches: ${params.profileUrl}`,
+
+  /**
+   * Phone verification OTP
+   */
+  phoneVerification: (params: PhoneVerificationParams) =>
+    `Your M33T verification code is ${params.code}. This confirms your number for ${params.eventName} match notifications. Code expires in 5 minutes.`,
+
+  /**
+   * Question set notification SMS
+   */
+  questionSet: (params: QuestionSetParams) => {
+    const action = params.isNewSet ? 'New questions available' : 'Reminder';
+    return `${action} for ${params.eventName}: "${params.questionSetTitle}". Complete here: ${params.url}`;
+  },
 } as const;
 
 export type SMSTemplateType = keyof typeof SMS_TEMPLATES;

@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
-import type { User, UserRole } from '@prisma/client';
+import type { User, UserRole, AccountOrigin } from '@prisma/client';
 
 export interface AuthUser {
   id: string;
@@ -8,6 +8,12 @@ export interface AuthUser {
   name: string;
   role: UserRole;
   hasM33tAccess?: boolean;
+  // M33T Invitee Auth fields
+  accountOrigin: AccountOrigin;
+  betterContactsActivated: boolean;
+  phone?: string | null;
+  phoneVerified: boolean;
+  phoneVerifiedAt?: Date | null;
 }
 
 /**
@@ -24,7 +30,19 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 
   const dbUser = await prisma.user.findUnique({
     where: { email: supabaseUser.email },
-    select: { id: true, email: true, name: true, role: true, hasM33tAccess: true },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      role: true,
+      hasM33tAccess: true,
+      // M33T Invitee Auth fields
+      accountOrigin: true,
+      betterContactsActivated: true,
+      phone: true,
+      phoneVerified: true,
+      phoneVerifiedAt: true,
+    },
   });
 
   return dbUser;
@@ -93,4 +111,27 @@ export async function requireM33tAccess(): Promise<AuthUser> {
   }
 
   return user;
+}
+
+// ========== M33T Invitee Auth Helpers ==========
+
+/**
+ * Check if user is a M33T-only invitee (not yet activated for Better Contacts)
+ */
+export function isM33tInvitee(user: AuthUser): boolean {
+  return user.accountOrigin === 'M33T_INVITEE' && !user.betterContactsActivated;
+}
+
+/**
+ * Check if user can access Better Contacts features
+ */
+export function canAccessBetterContacts(user: AuthUser): boolean {
+  return user.accountOrigin === 'BETTER_CONTACTS' || user.betterContactsActivated;
+}
+
+/**
+ * Check if user needs to verify their phone
+ */
+export function needsPhoneVerification(user: AuthUser): boolean {
+  return !user.phoneVerified;
 }

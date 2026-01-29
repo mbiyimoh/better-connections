@@ -55,7 +55,22 @@ export function RSVPForm({ token, event, attendee }: RSVPFormProps) {
           </h2>
           {attendee.rsvpStatus === 'CONFIRMED' && !attendee.questionnaireCompletedAt && (
             <Button
-              onClick={() => router.push(`/rsvp/${token}/questionnaire`)}
+              onClick={async () => {
+                // Check for question sets first
+                try {
+                  const res = await fetch(`/api/rsvp/${token}/question-sets`);
+                  if (res.ok) {
+                    const data = await res.json();
+                    if (data.questionSets?.length > 0 && data.nextSetId) {
+                      router.push(`/rsvp/${token}/question-sets`);
+                      return;
+                    }
+                  }
+                } catch {
+                  // Fall back to legacy questionnaire
+                }
+                router.push(`/rsvp/${token}/questionnaire`);
+              }}
               className="mt-4 bg-gold-primary hover:bg-gold-light text-bg-primary"
             >
               Complete Your Profile
@@ -99,6 +114,21 @@ export function RSVPForm({ token, event, attendee }: RSVPFormProps) {
       );
 
       if (status === 'CONFIRMED') {
+        // Check if there are published question sets to complete
+        try {
+          const questionSetsRes = await fetch(`/api/rsvp/${token}/question-sets`);
+          if (questionSetsRes.ok) {
+            const questionSetsData = await questionSetsRes.json();
+            // If there are any question sets with nextSetId, redirect to question sets
+            if (questionSetsData.questionSets?.length > 0 && questionSetsData.nextSetId) {
+              router.push(`/rsvp/${token}/question-sets`);
+              return;
+            }
+          }
+        } catch {
+          // If check fails, fall back to legacy questionnaire
+        }
+        // No question sets or all completed, use legacy questionnaire
         router.push(`/rsvp/${token}/questionnaire`);
       } else {
         router.refresh();

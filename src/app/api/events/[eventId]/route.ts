@@ -53,6 +53,11 @@ export async function GET(
             profile: true,
             profileOverrides: true,
             overridesEditedAt: true,
+            // Notification timestamps for eligibility calculations
+            inviteSentAt: true,
+            rsvpReminderSentAt: true,
+            matchRevealSentAt: true,
+            eventReminderSentAt: true,
             contactId: true,
             contact: {
               select: {
@@ -69,6 +74,12 @@ export async function GET(
             },
             addedBy: { select: { id: true, name: true } },
             overridesEditedBy: { select: { id: true, name: true } },
+            // Count of approved matches for match reveal eligibility
+            _count: {
+              select: {
+                matches: { where: { status: 'APPROVED' } }
+              }
+            }
           }
         },
         matches: true,

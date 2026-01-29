@@ -36,6 +36,15 @@ model User {
   attendeesAdded           EventAttendee[] @relation("AttendeeAddedBy")
   attendeeOverridesEdited  EventAttendee[] @relation("AttendeeOverridesEditedBy")
   attendeeOrderUpdated     EventAttendee[] @relation("AttendeeOrderUpdatedBy")
+
+  // M33T Invitee Auth: Account origin and phone verification
+  accountOrigin            AccountOrigin   @default(BETTER_CONTACTS)
+  betterContactsActivated  Boolean         @default(true)  // false for M33T_INVITEE until upgraded
+  phone                    String?         // E.164 format for SMS
+  phoneVerified            Boolean         @default(false)
+  phoneVerifiedAt          DateTime?
+  linkedAttendees          EventAttendee[] @relation("AttendeeLinkedUser")
+  phoneVerificationOTPs    PhoneVerificationOTP[]
 }
 
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -312,6 +321,12 @@ enum UserRole {
   SYSTEM_ADMIN
 }
 
+// M33T Invitee Auth: Account origin tracking
+enum AccountOrigin {
+  BETTER_CONTACTS
+  M33T_INVITEE
+}
+
 enum ContactSource {
   MANUAL
   CSV
@@ -423,6 +438,12 @@ enum MatchStatus {
   REVEALED   // Sent to attendee
 }
 
+enum QuestionSetStatus {
+  DRAFT      // Not visible to attendees
+  PUBLISHED  // Visible and completable by attendees
+  ARCHIVED   // Hidden but preserved (for data integrity)
+}
+
 // ========== M33T EVENT MODEL ==========
 
 model Event {
@@ -488,6 +509,7 @@ model Event {
   attendees         EventAttendee[]
   matches           Match[]
   organizers        EventOrganizer[]  // Co-organizers with permissions
+  questionSets      QuestionSet[]     // Multi-phase questionnaire sets
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -496,6 +518,63 @@ model Event {
   @@index([date])
   @@index([status])
   @@index([slug])
+}
+
+// ========== M33T QUESTION SET MODELS ==========
+
+model QuestionSet {
+  id          String   @id @default(cuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  // Identity
+  internalId  String   // Auto-generated: "set_1", "set_2", etc.
+  title       String   // User-defined display title
+  description String?  // Optional description shown to attendees
+
+  // Questions (same schema as current Question type)
+  questions   Json     @default("[]") // Array of Question objects
+
+  // Lifecycle
+  status      QuestionSetStatus @default(DRAFT)
+  publishedAt DateTime?
+
+  // Ordering
+  order       Int      @default(0)    // Display order among sets
+
+  // Timestamps
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  responses   QuestionSetResponse[]
+
+  @@unique([eventId, internalId])
+  @@index([eventId, status])
+}
+
+model QuestionSetResponse {
+  id              String      @id @default(cuid())
+  questionSetId   String
+  questionSet     QuestionSet @relation(fields: [questionSetId], references: [id], onDelete: Cascade)
+  attendeeId      String
+  attendee        EventAttendee @relation(fields: [attendeeId], references: [id], onDelete: Cascade)
+
+  // Response Data
+  responses       Json        @default("[]") // Array of { questionId, value, context?, answeredAt }
+
+  // AI-Generated Suggestions (populated on completion)
+  suggestions     Json?       // Array of ProfileSuggestion objects
+
+  // Completion State
+  completedAt     DateTime?   // null = in progress, set = completed
+
+  // Timestamps
+  startedAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@unique([questionSetId, attendeeId])
+  @@index([attendeeId])
 }
 
 // ========== M33T ATTENDEE MODEL ==========
@@ -508,6 +587,10 @@ model EventAttendee {
   // Link to Better Contacts (optional)
   contactId       String?
   contact         Contact? @relation(fields: [contactId], references: [id])
+
+  // Link to authenticated User (for M33T invitees)
+  userId          String?
+  user            User?    @relation("AttendeeLinkedUser", fields: [userId], references: [id])
 
   // Basic Info (at least one of email or phone required for invites)
   email           String?
@@ -564,11 +647,19 @@ model EventAttendee {
   matches         Match[]  @relation("AttendeeMatches")
   matchedWith     Match[]  @relation("MatchedWithAttendee")
 
+  // Question Set Responses (multi-phase questionnaires)
+  questionSetResponses QuestionSetResponse[]
+
   // Notification tracking (simple timestamps)
   inviteSentAt    DateTime?
   rsvpReminderSentAt DateTime?
   matchRevealSentAt DateTime?
   eventReminderSentAt DateTime?
+  questionSetNotifiedAt DateTime?  // Last time notified about question sets
+
+  // Match view tracking
+  matchesFirstViewedAt DateTime?  // When attendee first viewed their matches
+  matchesLastViewedAt  DateTime?  // When attendee last viewed their matches
 
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -578,6 +669,7 @@ model EventAttendee {
   @@index([rsvpStatus])
   @@index([experienceLevel])
   @@index([eventId, displayOrder])  // Composite index for efficient ordering queries
+  @@index([userId])                 // M33T invitee: Find all events for a user
 }
 
 // ========== M33T EVENT ORGANIZER MODEL ==========
@@ -647,4 +739,21 @@ model Match {
   @@index([eventId])
   @@index([attendeeId])
   @@index([status])
+}
+
+// ========== M33T PHONE VERIFICATION OTP MODEL ==========
+
+model PhoneVerificationOTP {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone       String   // Phone being verified (E.164 format)
+  code        String   // 6-digit OTP (hashed with SHA-256)
+  expiresAt   DateTime // Set to 5 minutes from creation
+  attempts    Int      @default(0)   // Max 3 attempts
+  verified    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([phone, code])  // Fast lookup for verification
 }

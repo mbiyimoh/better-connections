@@ -68,3 +68,34 @@ export {
   sortAttendeesByDisplayOrder,
   sortAttendeeGroups,
 } from './attendeeSort';
+
+// Phone Verification (M33T Invitee Auth)
+export {
+  generateOTP,
+  hashOTP,
+  isOTPExpired,
+  getOTPExpiration,
+  normalizePhone,
+  formatPhoneForDisplay,
+  maskPhone,
+  OTP_LENGTH,
+  OTP_EXPIRY_MINUTES,
+  MAX_ATTEMPTS,
+  RATE_LIMIT_MINUTES,
+} from './phone-verification';
+
+// Profile Completion (Guest Dashboard)
+export {
+  calculateAttendeeProfileCompletion,
+  isProfileIncomplete,
+  type AttendeeForCompletion,
+} from './profile-completion';
+
+// Reveal Timing (Match visibility logic)
+export {
+  calculateRevealTime,
+  areMatchesViewable,
+  getRevealTimingMessage,
+  type RevealTimingEvent,
+  type RevealTimingAttendee,
+} from './reveal-timing';

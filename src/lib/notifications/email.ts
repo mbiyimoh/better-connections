@@ -458,3 +458,135 @@ Powered by M33T • Better Connections
 
   return { subject, html, text };
 }
+
+/**
+ * Generate question set notification email HTML
+ */
+export function generateQuestionSetEmail(params: {
+  attendeeName: string;
+  event: EventInfo;
+  questionSetTitle: string;
+  questionSetUrl: string;
+  isNewSet: boolean; // true for publish/announce, false for reminder
+}): { subject: string; html: string; text: string } {
+  const { attendeeName, event, questionSetTitle, questionSetUrl, isNewSet } = params;
+  const eventDate = new Date(event.date).toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
+  const subject = isNewSet
+    ? `New questions for ${event.name}`
+    : `Reminder: Complete "${questionSetTitle}" for ${event.name}`;
+
+  const headerText = isNewSet ? 'New Questions Available' : 'Quick Reminder';
+  const introText = isNewSet
+    ? `New questions have been added for ${event.name}. Please complete them to help us create better connections for you.`
+    : `Just a friendly reminder to complete "${questionSetTitle}" for ${event.name}. Your answers help us match you with the right people.`;
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0D0D0F; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0D0D0F; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px;">
+          <!-- Header -->
+          <tr>
+            <td style="text-align: center; padding-bottom: 30px;">
+              <span style="color: #d4a54a; font-size: 14px; text-transform: uppercase; letter-spacing: 2px;">${headerText}</span>
+            </td>
+          </tr>
+
+          <!-- Main Content -->
+          <tr>
+            <td style="background-color: #1A1A1F; border-radius: 12px; padding: 40px;">
+              <h1 style="color: #FFFFFF; font-size: 24px; margin: 0 0 10px 0;">Hi ${attendeeName}!</h1>
+              <p style="color: #A0A0A8; font-size: 16px; margin: 0 0 30px 0;">
+                ${introText}
+              </p>
+
+              <!-- Event Details -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 30px;">
+                <tr>
+                  <td style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08);">
+                    <span style="color: #d4a54a;">📋</span>
+                    <span style="color: #FFFFFF; margin-left: 10px;">${questionSetTitle}</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.08);">
+                    <span style="color: #d4a54a;">📅</span>
+                    <span style="color: #FFFFFF; margin-left: 10px;">${eventDate}</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 12px 0;">
+                    <span style="color: #d4a54a;">📍</span>
+                    <span style="color: #FFFFFF; margin-left: 10px;">${event.venueName}</span>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA Button -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <a href="${questionSetUrl}" style="display: inline-block; background-color: #d4a54a; color: #0D0D0F; text-decoration: none; padding: 16px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+                      ${isNewSet ? 'Answer Questions' : 'Complete Now'}
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="color: #606068; font-size: 14px; margin-top: 30px; text-align: center;">
+                The more you share, the better your matches will be!
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="text-align: center; padding-top: 30px;">
+              <p style="color: #606068; font-size: 12px; margin: 0;">
+                Powered by M33T • Better Connections
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+
+  const text = `
+${isNewSet ? 'New Questions Available' : 'Quick Reminder'} for ${event.name}
+
+Hi ${attendeeName},
+
+${introText}
+
+Questions: ${questionSetTitle}
+Event Date: ${eventDate}
+Location: ${event.venueName}
+
+Complete the questions here: ${questionSetUrl}
+
+The more you share, the better your matches will be!
+
+---
+Powered by M33T • Better Connections
+  `.trim();
+
+  return { subject, html, text };
+}
