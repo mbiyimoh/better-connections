@@ -20,6 +20,7 @@ type RouteContext = {
 const NotifyRequestSchema = z.object({
   type: z.enum(['invitation', 'rsvp_reminder', 'match_reveal', 'event_reminder']),
   attendeeIds: z.array(z.string()).optional(), // If not provided, sends to all eligible
+  channels: z.enum(['email', 'sms', 'both', 'none']).optional().default('both'), // Which channels to use
 });
 
 interface NotificationResult {
@@ -82,7 +83,34 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     const body = await request.json();
-    const { type, attendeeIds } = NotifyRequestSchema.parse(body);
+    const { type, attendeeIds, channels } = NotifyRequestSchema.parse(body);
+
+    // Handle 'none' channel - just mark timestamps without sending (for link copy)
+    if (channels === 'none') {
+      const attendees = await getEligibleAttendees(eventId, type, attendeeIds);
+
+      // Mark all attendees with notification timestamps without sending
+      for (const attendee of attendees) {
+        await updateNotificationTimestamp(attendee.id, type, 'LINK_COPIED');
+      }
+
+      return NextResponse.json({
+        success: true,
+        sent: 0,
+        failed: 0,
+        emailSent: 0,
+        smsSent: 0,
+        total: attendees.length,
+        channels: 'none',
+        results: attendees.map((a) => ({
+          attendeeId: a.id,
+          name: `${a.firstName} ${a.lastName || ''}`.trim(),
+          emailSent: false,
+          smsSent: false,
+          errors: [],
+        })),
+      });
+    }
 
     // Get eligible attendees based on notification type
     const attendees = await getEligibleAttendees(eventId, type, attendeeIds);
@@ -175,8 +203,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
             break;
         }
 
-        // Send email only if attendee has an email address
-        if (attendee.email) {
+        // Send email only if channels includes email and attendee has an email address
+        const shouldSendEmail = channels === 'email' || channels === 'both';
+        if (shouldSendEmail && attendee.email) {
           const emailResult = await sendEmail({
             to: attendee.email,
             subject: emailContent.subject,
@@ -185,12 +214,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
           });
 
           result.email = emailResult;
-        } else {
+        } else if (shouldSendEmail && !attendee.email) {
           result.email = { success: false, error: 'No email address' };
+        } else {
+          result.email = { success: false, error: 'Email channel not selected' };
         }
 
-        // Send SMS if phone is available
-        if (attendee.phone) {
+        // Send SMS if channels includes sms and phone is available
+        const shouldSendSms = channels === 'sms' || channels === 'both';
+        if (shouldSendSms && attendee.phone) {
           const formattedPhone = formatPhoneE164(attendee.phone);
 
           if (isValidE164(formattedPhone)) {
@@ -228,10 +260,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
           } else {
             result.sms = { success: false, error: 'Invalid phone number format' };
           }
+        } else if (shouldSendSms && !attendee.phone) {
+          result.sms = { success: false, error: 'No phone number' };
         }
 
-        // Update notification timestamp
-        await updateNotificationTimestamp(attendee.id, type);
+        // Update notification timestamp with method tracking for invitations
+        const inviteMethod =
+          channels === 'both' ? 'BOTH' : channels === 'email' ? 'EMAIL' : channels === 'sms' ? 'SMS' : undefined;
+        await updateNotificationTimestamp(attendee.id, type, inviteMethod);
       } catch (error) {
         result.email = {
           success: false,
@@ -242,17 +278,22 @@ export async function POST(request: NextRequest, context: RouteContext) {
       results.push(result);
     }
 
-    // Calculate summary
-    const sent = results.filter((r) => r.email.success).length;
-    const failed = results.filter((r) => !r.email.success).length;
+    // Calculate summary based on selected channels
+    const emailSent = results.filter((r) => r.email.success).length;
     const smsSent = results.filter((r) => r.sms?.success).length;
+
+    // 'sent' = at least one channel succeeded per attendee
+    const sent = results.filter((r) => r.email.success || r.sms?.success).length;
+    const failed = results.filter((r) => !r.email.success && !r.sms?.success).length;
 
     return NextResponse.json({
       success: true,
       sent,
       failed,
+      emailSent,
       smsSent,
       total: results.length,
+      channels, // Include selected channels in response
       results: results.map((r) => ({
         attendeeId: r.attendeeId,
         name: r.attendeeName,
@@ -374,7 +415,8 @@ async function getAttendeeMatches(attendeeId: string) {
  */
 async function updateNotificationTimestamp(
   attendeeId: string,
-  type: 'invitation' | 'rsvp_reminder' | 'match_reveal' | 'event_reminder'
+  type: 'invitation' | 'rsvp_reminder' | 'match_reveal' | 'event_reminder',
+  inviteMethod?: 'EMAIL' | 'SMS' | 'BOTH' | 'LINK_COPIED'
 ) {
   const timestampField = {
     invitation: 'inviteSentAt',
@@ -383,8 +425,17 @@ async function updateNotificationTimestamp(
     event_reminder: 'eventReminderSentAt',
   }[type];
 
+  const updateData: { [key: string]: Date | string } = {
+    [timestampField]: new Date(),
+  };
+
+  // Track invite method for invitation type only
+  if (type === 'invitation' && inviteMethod) {
+    updateData.inviteMethod = inviteMethod;
+  }
+
   await prisma.eventAttendee.update({
     where: { id: attendeeId },
-    data: { [timestampField]: new Date() },
+    data: updateData,
   });
 }

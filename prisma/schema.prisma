@@ -424,6 +424,13 @@ enum RevealTiming {
   FORTY_EIGHT_HOURS_BEFORE
 }
 
+enum InviteMethod {
+  EMAIL        // Sent via email only
+  SMS          // Sent via SMS only
+  BOTH         // Sent via email and SMS
+  LINK_COPIED  // Organizer copied link for manual sending
+}
+
 enum RSVPStatus {
   PENDING
   CONFIRMED
@@ -652,6 +659,7 @@ model EventAttendee {
 
   // Notification tracking (simple timestamps)
   inviteSentAt    DateTime?
+  inviteMethod    InviteMethod?     // How the invite was delivered
   rsvpReminderSentAt DateTime?
   matchRevealSentAt DateTime?
   eventReminderSentAt DateTime?

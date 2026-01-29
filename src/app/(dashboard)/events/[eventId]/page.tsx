@@ -23,6 +23,7 @@ import {
   Send,
   Trash2,
   ArrowUpDown,
+  Link as LinkIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -32,6 +33,7 @@ import { AttendeeOrderModal } from '@/components/m33t/AttendeeOrderModal';
 import { QuestionSetsManager, QuestionSetEditor } from '@/components/events/question-sets';
 import { RsvpReminderDialog } from '@/components/m33t/RsvpReminderDialog';
 import { EventReminderDialog } from '@/components/m33t/EventReminderDialog';
+import { InviteDialog } from '@/components/m33t/InviteDialog';
 
 interface AttendeeContact {
   id: string;
@@ -145,13 +147,14 @@ export default function EventOverviewPage() {
 
   const [event, setEvent] = useState<EventData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [sendingNotifications, setSendingNotifications] = useState(false);
   const [editingAttendeeId, setEditingAttendeeId] = useState<string | null>(null);
   const [deletingAttendeeId, setDeletingAttendeeId] = useState<string | null>(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [questionSetView, setQuestionSetView] = useState<'list' | 'create' | string>('list');
   const [showRsvpReminderDialog, setShowRsvpReminderDialog] = useState(false);
   const [showEventReminderDialog, setShowEventReminderDialog] = useState(false);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [copyingLinkFor, setCopyingLinkFor] = useState<string | null>(null);
 
   const fetchEvent = useCallback(async () => {
     try {
@@ -184,27 +187,21 @@ export default function EventOverviewPage() {
     fetchEvent();
   }, [fetchEvent]);
 
-  const handleSendInvitations = async () => {
-    setSendingNotifications(true);
+  const handleCopyInviteLink = async (attendeeId: string, attendeeName: string) => {
+    setCopyingLinkFor(attendeeId);
     try {
-      const res = await fetch(`/api/events/${eventId}/notify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'invitation' }),
-      });
-
-      const data = await res.json();
-
+      const res = await fetch(`/api/events/${eventId}/attendees/${attendeeId}/invite-link`);
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to send invitations');
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to get invite link');
       }
-
-      toast.success(`Sent ${data.sent} invitations`);
-      fetchEvent(); // Refresh to show updated status
+      const data = await res.json();
+      await navigator.clipboard.writeText(data.url);
+      toast.success(`Invite link copied for ${attendeeName}`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to send invitations');
+      toast.error(error instanceof Error ? error.message : 'Failed to copy link');
     } finally {
-      setSendingNotifications(false);
+      setCopyingLinkFor(null);
     }
   };
 
@@ -383,14 +380,10 @@ export default function EventOverviewPage() {
 
           <Button
             variant="outline"
-            onClick={handleSendInvitations}
-            disabled={sendingNotifications || pendingCount === 0}
+            onClick={() => setShowInviteDialog(true)}
+            disabled={pendingCount === 0}
           >
-            {sendingNotifications ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4 mr-2" />
-            )}
+            <Send className="w-4 h-4 mr-2" />
             Send Invitations ({pendingCount})
           </Button>
 
@@ -557,8 +550,23 @@ export default function EventOverviewPage() {
                       <Button
                         variant="ghost"
                         size="sm"
+                        onClick={() => handleCopyInviteLink(attendee.id, fullName)}
+                        disabled={copyingLinkFor === attendee.id}
+                        className="text-text-tertiary hover:text-gold-primary"
+                        title="Copy invite link"
+                      >
+                        {copyingLinkFor === attendee.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <LinkIcon className="w-4 h-4" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={() => setEditingAttendeeId(attendee.id)}
                         className="text-text-tertiary hover:text-gold-primary"
+                        title="Edit profile"
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
@@ -568,6 +576,7 @@ export default function EventOverviewPage() {
                         onClick={() => handleDeleteAttendee(attendee.id, fullName)}
                         disabled={deletingAttendeeId === attendee.id}
                         className="text-text-tertiary hover:text-error"
+                        title="Remove attendee"
                       >
                         {deletingAttendeeId === attendee.id ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -623,6 +632,15 @@ export default function EventOverviewPage() {
         onClose={() => setShowEventReminderDialog(false)}
         eventId={eventId}
         eligibleCount={eligibleForEventReminder}
+        onSuccess={fetchEvent}
+      />
+
+      {/* Invite Dialog with Channel Selection */}
+      <InviteDialog
+        isOpen={showInviteDialog}
+        onClose={() => setShowInviteDialog(false)}
+        eventId={eventId}
+        eligibleCount={pendingCount}
         onSuccess={fetchEvent}
       />
     </div>

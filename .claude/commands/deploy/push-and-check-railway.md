@@ -9,7 +9,7 @@ Push changes to GitHub and verify that Railway deployments complete successfully
 ## Railway Service
 
 This project has a single Railway service:
-- **Project:** `exquisite-gratitude`
+- **Project:** `better-contacts`
 - **Service:** `better-connections` (Next.js full-stack)
 - **Domains:**
   - `https://bettercontacts.ai` (custom domain)
