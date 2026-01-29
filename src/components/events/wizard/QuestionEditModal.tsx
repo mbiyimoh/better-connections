@@ -33,7 +33,7 @@ export function QuestionEditModal({ question, isOpen, onClose, onSave }: Questio
 
     // Validate select questions have at least 2 options
     if (
-      (editedQuestion.type === 'single_select' || editedQuestion.type === 'multi_select') &&
+      (editedQuestion.type === 'single_select' || editedQuestion.type === 'multi_select' || editedQuestion.type === 'ranking') &&
       (!editedQuestion.config?.options || editedQuestion.config.options.length < 2)
     ) {
       // Don't save - validation message shown in OptionsEditor
@@ -200,7 +200,7 @@ export function QuestionEditModal({ question, isOpen, onClose, onSave }: Questio
             </div>
           )}
 
-          {(editedQuestion.type === 'single_select' || editedQuestion.type === 'multi_select') && (
+          {(editedQuestion.type === 'single_select' || editedQuestion.type === 'multi_select' || editedQuestion.type === 'ranking') && (
             <OptionsEditor
               options={editedQuestion.config?.options || []}
               onChange={(options) => updateConfig('options', options)}

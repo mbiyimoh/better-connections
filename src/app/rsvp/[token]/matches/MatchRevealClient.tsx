@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Loader2, Users } from 'lucide-react';
+import { getRsvpBasePath } from '@/lib/m33t/rsvp-paths';
 import { Button } from '@/components/ui/button';
 import {
   MatchRevealIntro,
@@ -64,6 +66,8 @@ interface MatchRevealClientProps {
 }
 
 export function MatchRevealClient({ token }: MatchRevealClientProps) {
+  const pathname = usePathname();
+  const rsvpBase = getRsvpBasePath(pathname);
   const [viewState, setViewState] = useState<ViewState>('loading');
   const [data, setData] = useState<MatchesResponse | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
@@ -151,7 +155,7 @@ export function MatchRevealClient({ token }: MatchRevealClientProps) {
             We&apos;re still curating your perfect connections for {data.event.name}.
             Check back soon!
           </p>
-          <Link href={`/rsvp/${token}`}>
+          <Link href={rsvpBase}>
             <Button variant="outline">
               Back to Event Details
             </Button>

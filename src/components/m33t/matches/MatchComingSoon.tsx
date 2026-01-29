@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Clock, ArrowLeft } from 'lucide-react';
+import { getRsvpBasePath } from '@/lib/m33t/rsvp-paths';
 
 interface MatchComingSoonProps {
   eventName: string;
@@ -24,6 +26,8 @@ export function MatchComingSoon({
   estimatedRevealDate,
   rsvpToken,
 }: MatchComingSoonProps) {
+  const pathname = usePathname();
+  const rsvpBase = getRsvpBasePath(pathname);
   const timingMessage = TIMING_MESSAGES[revealTiming] || 'soon';
 
   // Format date if available
@@ -68,7 +72,7 @@ export function MatchComingSoon({
           )}
         </p>
 
-        <Link href={`/rsvp/${rsvpToken}`}>
+        <Link href={rsvpBase}>
           <Button variant="outline" className="gap-2">
             <ArrowLeft className="w-4 h-4" />
             Back to Event Details

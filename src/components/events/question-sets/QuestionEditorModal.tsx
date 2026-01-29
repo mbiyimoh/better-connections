@@ -31,7 +31,7 @@ interface QuestionEditorModalProps {
   existingIds: string[];
 }
 
-type QuestionType = 'open_text' | 'slider' | 'single_select' | 'multi_select';
+type QuestionType = 'open_text' | 'slider' | 'single_select' | 'multi_select' | 'ranking';
 
 interface SelectOption {
   value: string;
@@ -117,7 +117,7 @@ export function QuestionEditorModal({
         leftLabel: config.leftLabel || '',
         rightLabel: config.rightLabel || '',
       };
-    } else if (type === 'single_select' || type === 'multi_select') {
+    } else if (type === 'single_select' || type === 'multi_select' || type === 'ranking') {
       finalConfig = {
         options: options.filter((o) => o.value && o.label),
         ...(type === 'multi_select' && { maxSelections: config.maxSelections }),
@@ -271,10 +271,10 @@ export function QuestionEditorModal({
             </div>
           )}
 
-          {(type === 'single_select' || type === 'multi_select') && (
+          {(type === 'single_select' || type === 'multi_select' || type === 'ranking') && (
             <div className="space-y-4 border-t border-border pt-4">
               <div className="flex items-center justify-between">
-                <Label>Options</Label>
+                <Label>{type === 'ranking' ? 'Items to Rank' : 'Options'}</Label>
                 <Button variant="ghost" size="sm" onClick={handleAddOption}>
                   <Plus className="h-4 w-4 mr-1" />
                   Add Option

@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
+import { getRsvpBasePath } from '@/lib/m33t/rsvp-paths';
 import { Loader2, CheckCircle2, Circle, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,8 @@ interface QuestionSetFlowProps {
 
 export function QuestionSetFlow({ token, onStartSet }: QuestionSetFlowProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const rsvpBase = getRsvpBasePath(pathname);
   const [data, setData] = useState<QuestionSetsData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -45,7 +48,7 @@ export function QuestionSetFlow({ token, onStartSet }: QuestionSetFlowProps) {
           const error = await res.json();
           if (res.status === 403) {
             toast.error('Please confirm your RSVP first');
-            router.push(`/rsvp/${token}`);
+            router.push(rsvpBase);
             return;
           }
           throw new Error(error.error || 'Failed to load question sets');
@@ -58,7 +61,7 @@ export function QuestionSetFlow({ token, onStartSet }: QuestionSetFlowProps) {
           (s: QuestionSetSummary) => s.status === 'completed'
         );
         if (allCompleted && setsData.questionSets.length > 0) {
-          router.push(`/rsvp/${token}/complete`);
+          router.push(`${rsvpBase}/complete`);
         }
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Failed to load');
@@ -89,7 +92,7 @@ export function QuestionSetFlow({ token, onStartSet }: QuestionSetFlowProps) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <p className="text-text-secondary mb-4">No question sets available yet.</p>
-        <Button variant="outline" onClick={() => router.push(`/rsvp/${token}`)}>
+        <Button variant="outline" onClick={() => router.push(rsvpBase)}>
           Return to RSVP
         </Button>
       </div>

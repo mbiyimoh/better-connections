@@ -81,6 +81,9 @@ export default async function GuestEventDetailPage({
     attendee.id,
     event.date
   );
+  const rsvpBasePath = event.slug
+    ? `/m33t/${event.slug}/rsvp/${rsvpToken}`
+    : `/rsvp/${rsvpToken}`;
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -168,7 +171,7 @@ export default async function GuestEventDetailPage({
 
             {isMatchesViewable ? (
               <Button asChild className="gap-2">
-                <Link href={`/rsvp/${rsvpToken}/matches`}>
+                <Link href={`${rsvpBasePath}/matches`}>
                   View Matches
                   <ArrowRight className="w-4 h-4" />
                 </Link>

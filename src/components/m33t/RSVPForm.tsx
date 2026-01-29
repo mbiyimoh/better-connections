@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
+import { getRsvpBasePath } from '@/lib/m33t/rsvp-paths';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,6 +31,8 @@ interface RSVPFormProps {
 
 export function RSVPForm({ token, event, attendee }: RSVPFormProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const rsvpBase = getRsvpBasePath(pathname);
   const [status, setStatus] = useState<string>(attendee.rsvpStatus);
   const [phone, setPhone] = useState(attendee.phone || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,14 +65,14 @@ export function RSVPForm({ token, event, attendee }: RSVPFormProps) {
                   if (res.ok) {
                     const data = await res.json();
                     if (data.questionSets?.length > 0 && data.nextSetId) {
-                      router.push(`/rsvp/${token}/question-sets`);
+                      router.push(`${rsvpBase}/question-sets`);
                       return;
                     }
                   }
                 } catch {
                   // Fall back to legacy questionnaire
                 }
-                router.push(`/rsvp/${token}/questionnaire`);
+                router.push(`${rsvpBase}/questionnaire`);
               }}
               className="mt-4 bg-gold-primary hover:bg-gold-light text-bg-primary"
             >
@@ -121,7 +124,7 @@ export function RSVPForm({ token, event, attendee }: RSVPFormProps) {
             const questionSetsData = await questionSetsRes.json();
             // If there are any question sets with nextSetId, redirect to question sets
             if (questionSetsData.questionSets?.length > 0 && questionSetsData.nextSetId) {
-              router.push(`/rsvp/${token}/question-sets`);
+              router.push(`${rsvpBase}/question-sets`);
               return;
             }
           }
@@ -129,7 +132,7 @@ export function RSVPForm({ token, event, attendee }: RSVPFormProps) {
           // If check fails, fall back to legacy questionnaire
         }
         // No question sets or all completed, use legacy questionnaire
-        router.push(`/rsvp/${token}/questionnaire`);
+        router.push(`${rsvpBase}/questionnaire`);
       } else {
         router.refresh();
       }

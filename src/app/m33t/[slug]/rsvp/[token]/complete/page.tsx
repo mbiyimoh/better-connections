@@ -1,4 +1,4 @@
-import { redirect, notFound } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { verifyRSVPToken } from '@/lib/m33t/tokens';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,29 +6,17 @@ import { Check, Calendar, Clock, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface CompletePageProps {
-  params: Promise<{ token: string }>;
+  params: Promise<{ slug: string; token: string }>;
 }
 
 export default async function CompletePage({ params }: CompletePageProps) {
   const { token } = await params;
 
-  // Verify token
   const payload = verifyRSVPToken(token);
   if (!payload) {
     return notFound();
   }
 
-  // Check for slug redirect
-  const eventForRedirect = await prisma.event.findUnique({
-    where: { id: payload.eventId },
-    select: { slug: true },
-  });
-
-  if (eventForRedirect?.slug) {
-    redirect(`/m33t/${eventForRedirect.slug}/rsvp/${token}/complete`);
-  }
-
-  // Fallback: render here if no slug
   const [event, attendee] = await Promise.all([
     prisma.event.findUnique({
       where: { id: payload.eventId },

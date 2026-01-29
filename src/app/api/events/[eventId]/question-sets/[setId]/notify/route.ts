@@ -50,6 +50,7 @@ export async function POST(
         select: {
           id: true,
           name: true,
+          slug: true,
           date: true,
           startTime: true,
           venueName: true,
@@ -146,7 +147,8 @@ export async function POST(
     try {
       // Generate RSVP token for the attendee
       const token = generateRSVPToken(eventId, attendee.email, attendee.id, questionSet.event.date);
-      const questionSetUrl = `${baseUrl}/rsvp/${token}/question-sets`;
+      const rsvpBase = questionSet.event.slug ? `${baseUrl}/m33t/${questionSet.event.slug}/rsvp` : `${baseUrl}/rsvp`;
+      const questionSetUrl = `${rsvpBase}/${token}/question-sets`;
 
       // Send email if available
       if (attendee.email) {

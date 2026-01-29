@@ -12,6 +12,7 @@ import {
   SliderQuestion,
   SingleSelectQuestion,
   MultiSelectQuestion,
+  RankingQuestion,
 } from '@/components/m33t/questions';
 import type { Question } from '@/lib/m33t/schemas';
 import type { ProfileSuggestion } from '@/lib/m33t/suggestion-schema';
@@ -311,6 +312,14 @@ export function QuestionSetQuestionnaire({
               )}
               {currentQuestion.type === 'multi_select' && (
                 <MultiSelectQuestion
+                  question={currentQuestion}
+                  value={(responses[currentQuestion.id] as string[]) || []}
+                  onChange={(value) => handleResponseChange(currentQuestion.id, value)}
+                  error={errors[currentQuestion.id]}
+                />
+              )}
+              {currentQuestion.type === 'ranking' && (
+                <RankingQuestion
                   question={currentQuestion}
                   value={(responses[currentQuestion.id] as string[]) || []}
                   onChange={(value) => handleResponseChange(currentQuestion.id, value)}

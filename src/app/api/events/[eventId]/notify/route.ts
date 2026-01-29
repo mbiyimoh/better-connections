@@ -66,6 +66,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       select: {
         id: true,
         name: true,
+        slug: true,
         date: true,
         startTime: true,
         endTime: true,
@@ -140,7 +141,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
       try {
         // Generate RSVP token and URL for this attendee
         const token = generateRSVPToken(eventId, attendee.email, attendee.id, event.date);
-        const rsvpUrl = `${baseUrl}/rsvp/${token}`;
+        const rsvpBase = event.slug ? `${baseUrl}/m33t/${event.slug}/rsvp` : `${baseUrl}/rsvp`;
+        const rsvpUrl = `${rsvpBase}/${token}`;
 
         // Build email content based on type
         let emailContent: { subject: string; html: string; text: string };
@@ -163,7 +165,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
           case 'match_reveal':
             const matches = await getAttendeeMatches(attendee.id);
-            const viewUrl = `${baseUrl}/rsvp/${token}/matches`;
+            const viewUrl = `${rsvpBase}/${token}/matches`;
             emailContent = generateMatchRevealEmail({
               attendeeName,
               event: {
@@ -187,7 +189,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
             const matchCount = await prisma.match.count({
               where: { attendeeId: attendee.id, status: 'APPROVED' },
             });
-            const reminderViewUrl = `${baseUrl}/rsvp/${token}/matches`;
+            const reminderViewUrl = `${rsvpBase}/${token}/matches`;
             emailContent = generateReminderEmail({
               attendeeName,
               event: {
@@ -239,7 +241,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
                 const smsMatchCount = await prisma.match.count({
                   where: { attendeeId: attendee.id, status: 'APPROVED' },
                 });
-                const smsViewUrl = `${baseUrl}/rsvp/${token}/matches`;
+                const smsViewUrl = `${rsvpBase}/${token}/matches`;
                 smsBody = SMS_TEMPLATES.matchReveal({
                   eventName: event.name,
                   matchCount: smsMatchCount,

@@ -51,6 +51,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       select: {
         id: true,
         name: true,
+        slug: true,
         date: true,
       },
     });
@@ -86,7 +87,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
     // Generate RSVP token
     const token = generateRSVPToken(eventId, attendee.email, attendee.id, event.date);
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3333';
-    const url = `${baseUrl}/rsvp/${token}`;
+    const url = event.slug
+      ? `${baseUrl}/m33t/${event.slug}/rsvp/${token}`
+      : `${baseUrl}/rsvp/${token}`;
 
     // Calculate expiration (tokens are valid until event date + 24 hours)
     const expiresAt = new Date(event.date);

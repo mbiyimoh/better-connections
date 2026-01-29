@@ -1,6 +1,6 @@
 import type { Question } from './schemas';
 
-export type QuestionType = 'open_text' | 'slider' | 'single_select' | 'multi_select';
+export type QuestionType = 'open_text' | 'slider' | 'single_select' | 'multi_select' | 'ranking';
 
 export interface QuestionOption {
   value: string;
@@ -13,6 +13,7 @@ export const QUESTION_TYPES = [
   { id: 'slider', label: 'Slider', icon: 'SlidersHorizontal', description: 'Spectrum between two poles' },
   { id: 'single_select', label: 'Single Select', icon: 'Circle', description: 'Choose one option' },
   { id: 'multi_select', label: 'Multi Select', icon: 'CheckSquare', description: 'Choose multiple options' },
+  { id: 'ranking', label: 'Ranking', icon: 'ArrowUpDown', description: 'Rank options in order of preference' },
 ] as const;
 
 export const QUESTION_CATEGORIES = [

@@ -35,7 +35,7 @@ export const eventValidators = {
     if (data.questions.length < 2) return 'incomplete';
     const hasInvalidSelect = data.questions.some(
       (q) =>
-        (q.type === 'single_select' || q.type === 'multi_select') &&
+        (q.type === 'single_select' || q.type === 'multi_select' || q.type === 'ranking') &&
         (!q.config?.options || q.config.options.length < 2)
     );
     if (hasInvalidSelect) return 'invalid';

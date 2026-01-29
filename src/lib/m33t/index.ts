@@ -91,6 +91,9 @@ export {
   type AttendeeForCompletion,
 } from './profile-completion';
 
+// RSVP Path Utilities (slug-aware URL construction)
+export { getRsvpBasePath } from './rsvp-paths';
+
 // Reveal Timing (Match visibility logic)
 export {
   calculateRevealTime,

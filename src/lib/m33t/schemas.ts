@@ -50,7 +50,7 @@ export const QuestionConfigSchema = z.object({
 
 export const QuestionSchema = z.object({
   id: z.string(),
-  type: z.enum(['open_text', 'slider', 'single_select', 'multi_select']),
+  type: z.enum(['open_text', 'slider', 'single_select', 'multi_select', 'ranking']),
   category: z.string(),
   title: z.string(),
   subtitle: z.string().optional(),

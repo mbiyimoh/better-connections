@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, usePathname } from 'next/navigation';
+import { getRsvpBasePath } from '@/lib/m33t/rsvp-paths';
 import { useDebouncedCallback } from 'use-debounce';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -13,6 +14,7 @@ import {
   SliderQuestion,
   SingleSelectQuestion,
   MultiSelectQuestion,
+  RankingQuestion,
 } from '@/components/m33t/questions';
 import type { Question, QuestionnaireResponse } from '@/lib/m33t/schemas';
 
@@ -28,7 +30,9 @@ type ResponseValue = string | number | string[];
 export default function QuestionnairePage() {
   const router = useRouter();
   const params = useParams();
+  const pathname = usePathname();
   const token = params.token as string;
+  const rsvpBase = getRsvpBasePath(pathname);
 
   const [data, setData] = useState<QuestionnaireData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,7 +51,7 @@ export default function QuestionnairePage() {
           const error = await res.json();
           if (res.status === 403) {
             toast.error('Please confirm your RSVP first');
-            router.push(`/rsvp/${token}`);
+            router.push(rsvpBase);
             return;
           }
           throw new Error(error.error || 'Failed to load questionnaire');
@@ -66,7 +70,7 @@ export default function QuestionnairePage() {
 
         // If already completed, redirect
         if (questionnaireData.attendee.completed) {
-          router.push(`/rsvp/${token}/complete`);
+          router.push(`${rsvpBase}/complete`);
         }
       } catch (error) {
         toast.error(error instanceof Error ? error.message : 'Failed to load questionnaire');
@@ -182,7 +186,7 @@ export default function QuestionnairePage() {
       }
 
       toast.success('Profile complete!');
-      router.push(`/rsvp/${token}/complete`);
+      router.push(`${rsvpBase}/complete`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to submit');
     } finally {
@@ -274,6 +278,14 @@ export default function QuestionnairePage() {
                 )}
                 {currentQuestion.type === 'multi_select' && (
                   <MultiSelectQuestion
+                    question={currentQuestion}
+                    value={(responses[currentQuestion.id] as string[]) || []}
+                    onChange={(value) => handleResponseChange(currentQuestion.id, value)}
+                    error={errors[currentQuestion.id]}
+                  />
+                )}
+                {currentQuestion.type === 'ranking' && (
+                  <RankingQuestion
                     question={currentQuestion}
                     value={(responses[currentQuestion.id] as string[]) || []}
                     onChange={(value) => handleResponseChange(currentQuestion.id, value)}
