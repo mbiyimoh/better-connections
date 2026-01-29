@@ -8,7 +8,7 @@ import { QuestionSchema } from '@/lib/m33t/schemas';
 // Validation schema for creating a question set
 const createQuestionSetSchema = z.object({
   title: z.string().min(1).max(200),
-  description: z.string().max(1000).optional(),
+  description: z.string().max(1000).nullable().optional(),
   questions: z.array(QuestionSchema).optional(),
 });
 

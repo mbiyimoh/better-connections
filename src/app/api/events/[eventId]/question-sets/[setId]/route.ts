@@ -7,7 +7,7 @@ import { getCurrentUser } from '@/lib/auth-helpers';
 // Validation schema for updating a question set
 const updateQuestionSetSchema = z.object({
   title: z.string().min(1).max(200).optional(),
-  description: z.string().max(1000).optional().nullable(),
+  description: z.string().max(1000).nullable().optional(),
   questions: z.array(z.any()).optional(),
   order: z.number().int().min(0).optional(),
 });
