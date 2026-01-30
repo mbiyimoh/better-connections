@@ -188,32 +188,21 @@ export async function GET(req: NextRequest) {
             zIndex: 10,
           }}
         >
-          {/* Event headline - smaller */}
+          {/* Event headline + tagline on single line */}
           <div
             style={{
+              display: 'flex',
+              alignItems: 'baseline',
               fontFamily: '"Instrument Serif", Georgia, serif',
-              fontSize: '64px',
+              fontSize: '51px',
               fontWeight: 400,
-              color: GOLD,
-              opacity: 0.75,
+              opacity: 0.85,
               letterSpacing: '-0.5px',
-              marginBottom: '6px',
+              marginBottom: '8px',
             }}
           >
-            {eventConfig.headline}
-          </div>
-
-          {/* Tagline */}
-          <div
-            style={{
-              fontFamily: 'Georgia, "Times New Roman", serif',
-              fontSize: '45px',
-              fontWeight: 400,
-              color: TEXT_MUTED,
-              opacity: 0.8,
-            }}
-          >
-            {eventConfig.tagline}
+            <span style={{ color: GOLD }}>{eventConfig.headline}</span>
+            <span style={{ color: TEXT_PRIMARY, marginLeft: '12px' }}>{eventConfig.tagline}</span>
           </div>
 
           {/* Date/Location */}
@@ -221,7 +210,7 @@ export async function GET(req: NextRequest) {
             <div
               style={{
                 fontFamily: 'system-ui, -apple-system, sans-serif',
-                fontSize: '15px',
+                fontSize: '30px',
                 fontWeight: 400,
                 color: TEXT_MUTED,
                 opacity: 0.6,
