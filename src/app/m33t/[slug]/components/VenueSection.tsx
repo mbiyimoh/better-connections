@@ -119,54 +119,48 @@ export function VenueSection({
           </a>
         )}
 
-        {/* Info cards with icons - below gallery and map */}
+        {/* Info tiles - side-by-side grid */}
         {(parkingNotes || dressCode || foodInfo) && (
-          <div className="space-y-4 mt-8 max-w-2xl mx-auto">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-8">
             {parkingNotes && (
-              <div className="flex gap-4 items-start p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
-                <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 text-center hover:border-amber-500/30 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
                   <Car className="w-5 h-5 text-amber-500" />
                 </div>
-                <div>
-                  <p className="text-amber-500 text-xs font-medium tracking-widest uppercase mb-1">
-                    Parking
-                  </p>
-                  <MarkdownContent className="text-zinc-300 text-sm">
-                    {parkingNotes}
-                  </MarkdownContent>
-                </div>
+                <p className="text-amber-500 text-xs font-medium tracking-widest uppercase mb-2">
+                  Parking
+                </p>
+                <MarkdownContent className="text-zinc-400 text-sm">
+                  {parkingNotes}
+                </MarkdownContent>
               </div>
             )}
 
             {dressCode && (
-              <div className="flex gap-4 items-start p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
-                <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 text-center hover:border-amber-500/30 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
                   <Shirt className="w-5 h-5 text-amber-500" />
                 </div>
-                <div>
-                  <p className="text-amber-500 text-xs font-medium tracking-widest uppercase mb-1">
-                    Dress Code
-                  </p>
-                  <MarkdownContent className="text-zinc-300 text-sm">
-                    {dressCode}
-                  </MarkdownContent>
-                </div>
+                <p className="text-amber-500 text-xs font-medium tracking-widest uppercase mb-2">
+                  Dress Code
+                </p>
+                <MarkdownContent className="text-zinc-400 text-sm">
+                  {dressCode}
+                </MarkdownContent>
               </div>
             )}
 
             {foodInfo && (
-              <div className="flex gap-4 items-start p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
-                <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 text-center hover:border-amber-500/30 transition-colors">
+                <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
                   <UtensilsCrossed className="w-5 h-5 text-amber-500" />
                 </div>
-                <div>
-                  <p className="text-amber-500 text-xs font-medium tracking-widest uppercase mb-1">
-                    Food & Drinks
-                  </p>
-                  <MarkdownContent className="text-zinc-300 text-sm">
-                    {foodInfo}
-                  </MarkdownContent>
-                </div>
+                <p className="text-amber-500 text-xs font-medium tracking-widest uppercase mb-2">
+                  Food & Drinks
+                </p>
+                <MarkdownContent className="text-zinc-400 text-sm">
+                  {foodInfo}
+                </MarkdownContent>
               </div>
             )}
           </div>
