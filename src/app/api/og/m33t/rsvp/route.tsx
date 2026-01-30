@@ -207,7 +207,7 @@ export async function GET(req: NextRequest) {
           <div
             style={{
               fontFamily: 'Georgia, "Times New Roman", serif',
-              fontSize: '36px',
+              fontSize: '45px',
               fontWeight: 400,
               color: TEXT_MUTED,
               opacity: 0.8,
