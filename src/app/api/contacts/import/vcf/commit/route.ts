@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db';
 import { z } from 'zod';
 import { calculateEnrichmentScore } from '@/lib/enrichment';
 import { normalizeName } from '@/lib/vcf-parser';
+import { normalizePhone } from '@/lib/phone';
 
 const parsedContactSchema = z.object({
   tempId: z.string(),
@@ -146,11 +147,11 @@ function mergeContactData(contacts: ContactData[]): ContactData {
   merged.primaryEmail = emailArray[0] || null;
   merged.secondaryEmail = emailArray[1] || null;
 
-  // Collect all phones
+  // Collect all phones (normalize for dedup)
   const phones = new Set<string>();
   for (const c of contacts) {
-    if (c.primaryPhone) phones.add(c.primaryPhone);
-    if (c.secondaryPhone) phones.add(c.secondaryPhone);
+    if (c.primaryPhone) phones.add(normalizePhone(c.primaryPhone) ?? c.primaryPhone);
+    if (c.secondaryPhone) phones.add(normalizePhone(c.secondaryPhone) ?? c.secondaryPhone);
   }
   const phoneArray = Array.from(phones);
   merged.primaryPhone = phoneArray[0] || null;

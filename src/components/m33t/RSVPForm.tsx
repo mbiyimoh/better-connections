@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Check, X, HelpCircle, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
+import { normalizePhone, formatPhoneForDisplay } from '@/lib/phone';
 
 interface RSVPFormProps {
   token: string;
@@ -44,18 +44,12 @@ export function RSVPForm({ token, event, attendee }: RSVPFormProps) {
       setPhoneValid(null);
       return;
     }
-    try {
-      // Try parsing with US default country
-      const parsed = parsePhoneNumber(value, 'US');
-      if (parsed && parsed.isValid()) {
-        setPhone(parsed.formatNational());
-        setPhoneValid(true);
-      } else {
-        setPhoneValid(false);
-      }
-    } catch {
-      // If parsing fails entirely, check with isValidPhoneNumber as fallback
-      setPhoneValid(isValidPhoneNumber(value, 'US'));
+    const normalized = normalizePhone(value);
+    if (normalized) {
+      setPhone(formatPhoneForDisplay(normalized));
+      setPhoneValid(true);
+    } else {
+      setPhoneValid(false);
     }
   }, []);
 
@@ -134,8 +128,13 @@ export function RSVPForm({ token, event, attendee }: RSVPFormProps) {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to submit RSVP');
+        const errorData = await response.json();
+        if (errorData.code === 'INVALID_PHONE') {
+          setPhoneValid(false);
+          toast.error('Please enter a valid phone number');
+          return;
+        }
+        throw new Error(errorData.error || 'Failed to submit RSVP');
       }
 
       toast.success(

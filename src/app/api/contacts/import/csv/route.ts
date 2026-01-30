@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
 import { z } from 'zod';
 import { calculateEnrichmentScore } from '@/lib/enrichment';
+import { normalizePhone } from '@/lib/phone';
 
 const importContactSchema = z.object({
   contact: z.object({
@@ -95,8 +96,8 @@ export async function POST(request: NextRequest) {
         lastName: cleanContact.lastName || null,
         primaryEmail: cleanContact.primaryEmail || null,
         secondaryEmail: cleanContact.secondaryEmail || null,
-        primaryPhone: cleanContact.primaryPhone || null,
-        secondaryPhone: cleanContact.secondaryPhone || null,
+        primaryPhone: cleanContact.primaryPhone ? (normalizePhone(cleanContact.primaryPhone) ?? null) : null,
+        secondaryPhone: cleanContact.secondaryPhone ? (normalizePhone(cleanContact.secondaryPhone) ?? null) : null,
         title: cleanContact.title || null,
         company: cleanContact.company || null,
         linkedinUrl: cleanContact.linkedinUrl || null,

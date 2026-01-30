@@ -1,6 +1,7 @@
 // src/lib/vcf-parser.ts
 import { parseVCards, VCard4 } from 'vcard4-ts';
 import { v4 as uuidv4 } from 'uuid';
+import { normalizePhone } from '@/lib/phone';
 
 // ============================================
 // Types
@@ -269,9 +270,10 @@ export function extractPhones(vcard: VCard4): {
   // Sort by priority (lower is better)
   extracted.sort((a, b) => a.priority - b.priority);
 
-  const values = extracted.map(e => e.value);
-  // Remove duplicates
-  const unique = [...new Set(values)];
+  // Normalize phone numbers, keeping raw value as fallback
+  const normalized = extracted.map(e => normalizePhone(e.value) ?? e.value);
+  // Remove duplicates (normalization may merge different formats of same number)
+  const unique = [...new Set(normalized)];
 
   return {
     primaryPhone: unique[0] || null,
@@ -419,12 +421,20 @@ export function detectConflicts(
     const incomingValue = incoming[field as keyof ParsedContact];
     const existingValue = existing[field as keyof typeof existing];
 
-    // Only conflict if both have values AND they differ
-    if (
-      incomingValue &&
-      existingValue &&
-      String(incomingValue) !== String(existingValue)
-    ) {
+    if (!incomingValue || !existingValue) continue;
+
+    // For phone fields, normalize both sides before comparison
+    if (field === 'primaryPhone' || field === 'secondaryPhone') {
+      const normalizedIncoming = normalizePhone(String(incomingValue));
+      const normalizedExisting = normalizePhone(String(existingValue));
+      if (normalizedIncoming && normalizedExisting && normalizedIncoming !== normalizedExisting) {
+        conflicts.push({
+          field,
+          existingValue: String(existingValue),
+          incomingValue: String(incomingValue),
+        });
+      }
+    } else if (String(incomingValue) !== String(existingValue)) {
       conflicts.push({
         field,
         existingValue: String(existingValue),

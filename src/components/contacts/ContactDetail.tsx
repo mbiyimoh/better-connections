@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { formatPhoneForDisplay } from '@/lib/phone';
 import type { Contact } from '@/types/contact';
 import { getDisplayName, getInitials as getContactInitials, getAvatarColor } from '@/types/contact';
 import { EnrichmentScoreCard } from './EnrichmentScoreCard';
@@ -375,7 +376,7 @@ export function ContactDetail({ contact, researchRuns = [], totalContacts = 1, a
                 <div className="flex items-center gap-3">
                   <Phone className="h-4 w-4 text-text-tertiary" />
                   <a href={`tel:${contact.primaryPhone}`} className="text-white hover:text-gold-primary">
-                    {contact.primaryPhone}
+                    {formatPhoneForDisplay(contact.primaryPhone)}
                   </a>
                 </div>
               )}
@@ -383,7 +384,7 @@ export function ContactDetail({ contact, researchRuns = [], totalContacts = 1, a
                 <div className="flex items-center gap-3">
                   <Phone className="h-4 w-4 text-text-tertiary opacity-50" />
                   <a href={`tel:${contact.secondaryPhone}`} className="text-text-tertiary hover:text-gold-primary">
-                    {contact.secondaryPhone}
+                    {formatPhoneForDisplay(contact.secondaryPhone)}
                   </a>
                 </div>
               )}

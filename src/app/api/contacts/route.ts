@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
 import { contactCreateSchema, contactQuerySchema } from '@/lib/validations/contact';
 import { calculateEnrichmentScore } from '@/lib/enrichment';
+import { normalizeContactPhones } from '@/lib/phone';
 import { Prisma } from '@prisma/client';
 
 // GET /api/contacts - List contacts with filtering, sorting, pagination
@@ -144,7 +145,16 @@ export async function POST(request: NextRequest) {
     const data = contactCreateSchema.parse(body);
 
     // Extract tags for separate creation
-    const { tags, ...contactData } = data;
+    const { tags, ...rawContactData } = data;
+
+    // Normalize phone numbers (reject invalid)
+    const { data: contactData, phoneErrors } = normalizeContactPhones(rawContactData);
+    if (phoneErrors.length > 0) {
+      return NextResponse.json(
+        { error: 'Invalid phone number', details: phoneErrors },
+        { status: 400 }
+      );
+    }
 
     // Calculate enrichment score
     const enrichmentScore = calculateEnrichmentScore(contactData, tags?.length ?? 0);

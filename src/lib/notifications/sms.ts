@@ -12,6 +12,7 @@
  */
 
 import type { Twilio } from 'twilio';
+import { normalizePhone } from '@/lib/phone';
 
 // Lazy-load Twilio client to avoid build-time errors
 let twilioClient: Twilio | null = null;
@@ -106,33 +107,19 @@ export async function sendSMS(options: SMSOptions): Promise<SMSResult> {
 }
 
 /**
- * Format a phone number to E.164 format
- * Assumes US numbers if no country code provided
+ * Format a phone number to E.164 format.
+ * @deprecated Use `normalizePhone` from `@/lib/phone` instead.
  */
 export function formatPhoneE164(phone: string): string {
-  // Remove all non-numeric characters
-  const digits = phone.replace(/\D/g, '');
-
-  // If it already starts with 1 and is 11 digits, add +
-  if (digits.length === 11 && digits.startsWith('1')) {
-    return `+${digits}`;
-  }
-
-  // If it's 10 digits, assume US and add +1
-  if (digits.length === 10) {
-    return `+1${digits}`;
-  }
-
-  // Return as-is with + prefix if not matching expected patterns
-  return digits.startsWith('+') ? phone : `+${digits}`;
+  return normalizePhone(phone) ?? phone;
 }
 
 /**
- * Validate if a phone number appears to be valid E.164 format
+ * Validate if a phone number appears to be valid E.164 format.
+ * @deprecated Use `normalizePhone` from `@/lib/phone` instead (returns null for invalid).
  */
 export function isValidE164(phone: string): boolean {
-  // E.164: + followed by 1-15 digits, typically 10-15
-  return /^\+[1-9]\d{9,14}$/.test(phone);
+  return normalizePhone(phone) !== null;
 }
 
 // =====================

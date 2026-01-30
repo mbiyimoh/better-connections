@@ -222,7 +222,7 @@ export type EventUpdate = z.infer<typeof EventUpdateSchema>;
 // ========== ATTENDEE SCHEMAS ==========
 export const AttendeeCreateSchema = z.object({
   email: z.string().email("Valid email is required"),
-  phone: z.string().regex(/^\+1\d{10}$/, "Phone must be E.164 format (+1XXXXXXXXXX)").optional(),
+  phone: z.string().optional(),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().optional(),
   contactId: z.string().optional(), // Link to Better Contacts
@@ -230,7 +230,7 @@ export const AttendeeCreateSchema = z.object({
 
 export const RSVPResponseSchema = z.object({
   status: z.enum(['CONFIRMED', 'MAYBE', 'DECLINED']),
-  phone: z.string().regex(/^\+1\d{10}$/, "Phone must be E.164 format").optional(),
+  phone: z.string().optional(),
 });
 
 export const QuestionnaireResponseSchema = z.object({

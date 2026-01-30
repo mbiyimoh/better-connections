@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { verifyRSVPToken, isTokenExpired } from '@/lib/m33t/tokens';
 import { RSVPResponseSchema } from '@/lib/m33t/schemas';
 import { z } from 'zod';
+import { normalizePhone } from '@/lib/phone';
 
 type RouteContext = {
   params: Promise<{ token: string }>;
@@ -63,17 +64,17 @@ export async function POST(
       );
     }
 
-    // Format phone to E.164 if provided
-    let formattedPhone = validatedData.phone;
-    if (formattedPhone && !formattedPhone.startsWith('+')) {
-      // Remove all non-digits
-      const digits = formattedPhone.replace(/\D/g, '');
-      // Assume US if 10 digits
-      if (digits.length === 10) {
-        formattedPhone = `+1${digits}`;
-      } else if (digits.length === 11 && digits.startsWith('1')) {
-        formattedPhone = `+${digits}`;
+    // Normalize phone to E.164 if provided
+    let formattedPhone: string | undefined = validatedData.phone;
+    if (formattedPhone) {
+      const normalized = normalizePhone(formattedPhone);
+      if (!normalized) {
+        return NextResponse.json(
+          { error: 'Please enter a valid phone number', code: 'INVALID_PHONE', retryable: false },
+          { status: 400 }
+        );
       }
+      formattedPhone = normalized;
     }
 
     // Update attendee status

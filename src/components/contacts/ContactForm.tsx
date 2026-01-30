@@ -20,6 +20,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { TAG_CATEGORY_COLORS } from '@/lib/design-system';
+import { formatPhoneForDisplay } from '@/lib/phone';
 import type { Contact, TagCategory } from '@/types/contact';
 import Link from 'next/link';
 import { HometownSuggestion } from './HometownSuggestion';
@@ -121,6 +122,17 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
   const relationshipStrength = watch('relationshipStrength');
   const primaryPhone = watch('primaryPhone');
   const location = watch('location');
+
+  // Format phone numbers on blur for nice display
+  const handlePhoneBlur = (field: 'primaryPhone' | 'secondaryPhone') => {
+    const value = getValues(field);
+    if (value) {
+      const formatted = formatPhoneForDisplay(value);
+      if (formatted !== value) {
+        setValue(field, formatted);
+      }
+    }
+  };
 
   // Handle focus field from query param (scroll to field and apply glow)
   useEffect(() => {
@@ -327,7 +339,18 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
         body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error('Failed to save contact');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        if (errorData?.error === 'Invalid phone number') {
+          toast({
+            title: 'Invalid phone number',
+            description: errorData.details?.join('. ') || 'Please check your phone numbers.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        throw new Error('Failed to save contact');
+      }
 
       const savedContact = await res.json();
       // Redirect to profile page after save (or contacts list for new contacts)
@@ -454,8 +477,10 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
               <Label htmlFor="primaryPhone">Primary Phone</Label>
               <Input
                 id="primaryPhone"
-                {...register('primaryPhone')}
-                placeholder="+1 (555) 123-4567"
+                {...register('primaryPhone', {
+                  onBlur: () => handlePhoneBlur('primaryPhone'),
+                })}
+                placeholder="(555) 123-4567"
                 className={getFieldClasses('primaryPhone')}
               />
             </div>
@@ -463,8 +488,10 @@ export function ContactForm({ contact, isEditing = false }: ContactFormProps) {
               <Label htmlFor="secondaryPhone">Secondary Phone</Label>
               <Input
                 id="secondaryPhone"
-                {...register('secondaryPhone')}
-                placeholder="+1 (555) 987-6543"
+                {...register('secondaryPhone', {
+                  onBlur: () => handlePhoneBlur('secondaryPhone'),
+                })}
+                placeholder="(555) 987-6543"
                 className={getFieldClasses('secondaryPhone')}
               />
             </div>

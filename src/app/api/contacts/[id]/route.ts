@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
 import { contactUpdateSchema } from '@/lib/validations/contact';
 import { calculateEnrichmentScore } from '@/lib/enrichment';
+import { normalizeContactPhones } from '@/lib/phone';
 
 // GET /api/contacts/[id] - Get a single contact
 export async function GET(
@@ -76,7 +77,16 @@ export async function PUT(
     const data = contactUpdateSchema.parse(body);
 
     // Extract tags for separate handling
-    const { tags, ...contactData } = data;
+    const { tags, ...rawContactData } = data;
+
+    // Normalize phone numbers (reject invalid)
+    const { data: contactData, phoneErrors } = normalizeContactPhones(rawContactData);
+    if (phoneErrors.length > 0) {
+      return NextResponse.json(
+        { error: 'Invalid phone number', details: phoneErrors },
+        { status: 400 }
+      );
+    }
 
     // Build update data
     const updateData: Record<string, unknown> = {
