@@ -69,7 +69,8 @@ export async function updateSession(request: NextRequest) {
   if (user && isAuthPath) {
     // Respect `next` param for M33T invitee flows that redirect through auth pages
     const next = request.nextUrl.searchParams.get('next');
-    const redirectUrl = next || '/contacts';
+    // Only allow internal paths (prevent open redirects)
+    const redirectUrl = next && next.startsWith('/') && !next.startsWith('//') ? next : '/contacts';
     return NextResponse.redirect(new URL(redirectUrl, request.url));
   }
 

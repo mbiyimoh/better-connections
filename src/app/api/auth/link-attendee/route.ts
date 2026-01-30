@@ -34,6 +34,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Verify email match to prevent hijacking invitations
+    if (attendee.email && user.email.toLowerCase() !== attendee.email.toLowerCase()) {
+      return NextResponse.json(
+        { error: 'This invitation is for a different email address' },
+        { status: 403 }
+      );
+    }
+
     // Already linked to this user
     if (attendee.userId === user.id) {
       return NextResponse.json({ success: true, alreadyLinked: true });
