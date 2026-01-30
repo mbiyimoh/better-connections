@@ -72,10 +72,15 @@ interface EventPageProps {
   searchParams: Promise<{ token?: string }>;
 }
 
-export async function generateMetadata({ params }: EventPageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: EventPageProps): Promise<Metadata> {
   const { slug } = await params;
+  const { token } = await searchParams;
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://bettercontacts.ai';
-  const ogImageUrl = `${baseUrl}/api/og/m33t?slug=${encodeURIComponent(slug)}`;
+
+  // Use personalized OG image when invitee token is present
+  const ogImageUrl = token
+    ? `${baseUrl}/api/og/m33t/rsvp?token=${encodeURIComponent(token)}`
+    : `${baseUrl}/api/og/m33t?slug=${encodeURIComponent(slug)}`;
   const eventMeta = getEventMetadata(slug);
 
   return {

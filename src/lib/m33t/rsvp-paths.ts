@@ -26,7 +26,13 @@ export function getRsvpBasePath(pathname: string): string {
 
 /**
  * Build an RSVP URL from server-side context (API routes, server components).
- * Uses the branded /m33t/[slug]/rsvp/[token] structure when a slug is available.
+ *
+ * When no subpath is provided, returns the personalized event landing page URL
+ * (/m33t/{slug}?token=...) so invitees see the full experience (scrollytelling,
+ * hero with "Welcome, {name}", "RSVP Here" CTA) before entering the RSVP flow.
+ *
+ * When a subpath is provided (e.g., "/matches", "/question-sets"), returns the
+ * direct RSVP route (/m33t/{slug}/rsvp/{token}/...) for deep links.
  *
  * @param baseUrl - The app base URL (e.g., "https://bettercontacts.ai")
  * @param slug - The event slug (null falls back to legacy /rsvp/ path)
@@ -39,8 +45,16 @@ export function buildRsvpUrl(
   token: string,
   subpath?: string
 ): string {
-  const base = slug
-    ? `${baseUrl}/m33t/${slug}/rsvp/${token}`
+  if (subpath) {
+    // Deep links go directly to the RSVP sub-page
+    const base = slug
+      ? `${baseUrl}/m33t/${slug}/rsvp/${token}`
+      : `${baseUrl}/rsvp/${token}`;
+    return `${base}${subpath}`;
+  }
+
+  // Base invite link → personalized landing page
+  return slug
+    ? `${baseUrl}/m33t/${slug}?token=${token}`
     : `${baseUrl}/rsvp/${token}`;
-  return subpath ? `${base}${subpath}` : base;
 }

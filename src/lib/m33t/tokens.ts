@@ -83,7 +83,8 @@ export function isTokenExpired(token: string): boolean {
 
 /**
  * Generate the RSVP URL for an attendee.
- * Uses the branded /m33t/[slug]/rsvp/[token] structure when a slug is provided.
+ * Routes to the personalized event landing page (/m33t/{slug}?token=...)
+ * so invitees see the full experience before entering the RSVP flow.
  */
 export function generateRSVPUrl(
   eventId: string,
@@ -95,6 +96,6 @@ export function generateRSVPUrl(
 ): string {
   const token = generateRSVPToken(eventId, email, attendeeId, eventDate);
   return slug
-    ? `${baseUrl}/m33t/${slug}/rsvp/${token}`
+    ? `${baseUrl}/m33t/${slug}?token=${token}`
     : `${baseUrl}/rsvp/${token}`;
 }
