@@ -1,7 +1,7 @@
 'use client';
 
+import { motion } from 'framer-motion';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import type { Question } from '@/lib/m33t/schemas';
 
 interface MultiSelectQuestionProps {
@@ -18,7 +18,7 @@ export function MultiSelectQuestion({ question, value, onChange, error }: MultiS
   const handleToggle = (optionValue: string, checked: boolean) => {
     if (checked) {
       if (maxSelections && value.length >= maxSelections) {
-        return; // Don't add if at max
+        return;
       }
       onChange([...value, optionValue]);
     } else {
@@ -29,16 +29,16 @@ export function MultiSelectQuestion({ question, value, onChange, error }: MultiS
   return (
     <div className="space-y-3">
       <div>
-        <Label className="text-base font-medium">
+        <Label className="font-display text-lg font-normal text-white">
           {question.title}
           {question.required && <span className="text-error ml-1">*</span>}
         </Label>
         {question.subtitle && (
-          <p className="text-sm text-text-secondary mt-1">{question.subtitle}</p>
+          <p className="text-sm text-zinc-400 mt-1 font-body">{question.subtitle}</p>
         )}
         {maxSelections && (
-          <p className="text-sm text-text-tertiary mt-1">
-            Select up to {maxSelections} ({value.length}/{maxSelections})
+          <p className="text-sm text-zinc-500 mt-1 font-mono">
+            {value.length}/{maxSelections} selected
           </p>
         )}
       </div>
@@ -49,32 +49,48 @@ export function MultiSelectQuestion({ question, value, onChange, error }: MultiS
           const isDisabled = !isSelected && maxSelections !== undefined && value.length >= maxSelections;
 
           return (
-            <div
+            <motion.button
               key={option.value}
-              className={`flex items-start space-x-3 p-3 rounded-lg border border-border cursor-pointer transition-colors ${
-                isSelected ? 'bg-gold-subtle border-gold-primary' : 'hover:bg-bg-tertiary'
-              } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+              type="button"
+              role="checkbox"
+              aria-checked={isSelected}
+              disabled={isDisabled}
               onClick={() => !isDisabled && handleToggle(option.value, !isSelected)}
+              whileHover={isDisabled ? undefined : { scale: 1.01 }}
+              whileTap={isDisabled ? undefined : { scale: 0.99 }}
+              className={`w-full flex items-start gap-3 p-4 rounded-lg border transition-colors text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-primary/50 ${
+                isSelected
+                  ? 'border-gold-primary bg-gold-subtle'
+                  : 'border-zinc-700 bg-zinc-900/50 hover:border-zinc-600'
+              } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              <Checkbox
-                checked={isSelected}
-                onCheckedChange={(checked) => handleToggle(option.value, checked === true)}
-                disabled={isDisabled}
-                className="mt-0.5"
-              />
-              <div className="flex-1">
-                <span className="font-medium">{option.label}</span>
-                {option.description && (
-                  <p className="text-sm text-text-secondary mt-0.5">{option.description}</p>
+              {/* Custom checkbox */}
+              <div className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                isSelected
+                  ? 'border-gold-primary bg-gold-primary'
+                  : 'border-zinc-600 bg-transparent'
+              }`}>
+                {isSelected && (
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M2 6L5 9L10 3" stroke="#0a0a0f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 )}
               </div>
-            </div>
+              <div className="flex-1">
+                <span className={`font-body font-medium ${isSelected ? 'text-white' : 'text-zinc-300'}`}>
+                  {option.label}
+                </span>
+                {option.description && (
+                  <p className="text-sm text-zinc-500 mt-0.5 font-body">{option.description}</p>
+                )}
+              </div>
+            </motion.button>
           );
         })}
       </div>
 
       {question.config?.hint && (
-        <p className="text-xs text-text-tertiary">{question.config.hint}</p>
+        <p className="text-xs text-zinc-500 font-body">{question.config.hint}</p>
       )}
 
       {error && <p className="text-sm text-error">{error}</p>}

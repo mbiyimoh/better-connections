@@ -2,8 +2,9 @@ import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/db';
 import { verifyRSVPToken } from '@/lib/m33t/tokens';
 import { Card, CardContent } from '@/components/ui/card';
-import { Check, Calendar, Clock, MapPin } from 'lucide-react';
+import { Check, Calendar, Clock, MapPin, User, Briefcase, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
+import type { Profile } from '@/lib/m33t/schemas';
 
 interface CompletePageProps {
   params: Promise<{ slug: string; token: string }>;
@@ -29,14 +30,15 @@ export default async function CompletePage({ params }: CompletePageProps) {
         endTime: true,
         venueName: true,
         venueAddress: true,
-        revealTiming: true,
       },
     }),
     prisma.eventAttendee.findUnique({
       where: { id: payload.attendeeId },
       select: {
         firstName: true,
+        lastName: true,
         questionnaireCompletedAt: true,
+        profile: true,
       },
     }),
   ]);
@@ -45,11 +47,13 @@ export default async function CompletePage({ params }: CompletePageProps) {
     return notFound();
   }
 
-  const revealMessage = {
-    IMMEDIATE: "You'll see your matches right away!",
-    TWENTY_FOUR_HOURS_BEFORE: "You'll receive your matches 24 hours before the event.",
-    FORTY_EIGHT_HOURS_BEFORE: "You'll receive your matches 48 hours before the event.",
-  }[event.revealTiming];
+  // Parse profile JSON if available
+  const profile = attendee.profile as Profile | null;
+  const hasProfileData = profile && (
+    profile.role || profile.company || profile.location ||
+    (profile.expertise && profile.expertise.length > 0) ||
+    profile.currentFocus
+  );
 
   return (
     <div className="min-h-screen bg-bg-primary">
@@ -68,8 +72,8 @@ export default async function CompletePage({ params }: CompletePageProps) {
         </div>
       </div>
 
-      {/* Event Details */}
-      <div className="max-w-2xl mx-auto px-4 py-8">
+      <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+        {/* Event Details */}
         <Card className="bg-bg-secondary border-border">
           <CardContent className="pt-6">
             <h2 className="text-xl font-semibold text-text-primary mb-4">{event.name}</h2>
@@ -96,10 +100,82 @@ export default async function CompletePage({ params }: CompletePageProps) {
             </div>
 
             <div className="mt-6 pt-6 border-t border-border">
-              <h3 className="font-medium text-text-primary mb-2">What happens next?</h3>
-              <p className="text-text-secondary">{revealMessage}</p>
+              <h3 className="font-medium text-gold-primary mb-2">What happens next?</h3>
+              <p className="text-text-secondary">
+                Stay tuned &mdash; we may send you follow-up questions to help us find your best connections.
+              </p>
               <p className="text-sm text-text-tertiary mt-2">
-                We&apos;ll send you an SMS with your curated list of people to meet.
+                Before the event, you&apos;ll receive your curated list of people to meet via SMS.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Profile Preview Card */}
+        <Card className="bg-bg-secondary border-border">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <User className="w-5 h-5 text-gold-primary" />
+              <h3 className="text-lg font-semibold text-text-primary">Your Profile</h3>
+            </div>
+
+            {hasProfileData ? (
+              <div className="space-y-3">
+                <p className="text-text-primary font-medium">
+                  {attendee.firstName} {attendee.lastName}
+                </p>
+
+                {(profile.role || profile.company) && (
+                  <div className="flex items-center text-text-secondary">
+                    <Briefcase className="w-4 h-4 mr-2 text-text-tertiary" />
+                    <span>
+                      {profile.role}{profile.role && profile.company ? ' at ' : ''}{profile.company}
+                    </span>
+                  </div>
+                )}
+
+                {profile.location && (
+                  <div className="flex items-center text-text-secondary">
+                    <MapPin className="w-4 h-4 mr-2 text-text-tertiary" />
+                    <span>{profile.location}</span>
+                  </div>
+                )}
+
+                {profile.currentFocus && (
+                  <div className="flex items-center text-text-secondary">
+                    <Sparkles className="w-4 h-4 mr-2 text-text-tertiary" />
+                    <span>{profile.currentFocus}</span>
+                  </div>
+                )}
+
+                {profile.expertise && profile.expertise.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {profile.expertise.map((skill) => (
+                      <span
+                        key={skill}
+                        className="px-2 py-1 text-xs rounded-full bg-gold-subtle text-gold-primary"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-text-secondary">
+                Complete your profile to get better matches!
+              </p>
+            )}
+
+            <div className="mt-4 pt-4 border-t border-border">
+              <a
+                href={`/guest/events/${event.id}`}
+                className="inline-block px-4 py-2 bg-gold-primary hover:bg-gold-light text-bg-primary text-sm font-medium rounded-lg transition-colors"
+              >
+                View &amp; Edit Your Profile
+              </a>
+              <p className="text-xs text-text-tertiary mt-2">
+                You&apos;ll need to create an account or log in to access the full guest experience.
               </p>
             </div>
           </CardContent>

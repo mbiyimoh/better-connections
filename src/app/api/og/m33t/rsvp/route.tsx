@@ -147,7 +147,7 @@ export async function GET(req: NextRequest) {
           <div
             style={{
               fontFamily: '"Instrument Serif", Georgia, serif',
-              fontSize: firstName.length > 10 ? '110px' : '140px',
+              fontSize: firstName.length > 10 ? '132px' : '168px',
               fontWeight: 400,
               color: GOLD,
               letterSpacing: '-2px',
@@ -163,7 +163,7 @@ export async function GET(req: NextRequest) {
           <div
             style={{
               fontFamily: 'Georgia, "Times New Roman", serif',
-              fontSize: '42px',
+              fontSize: '59px',
               fontWeight: 400,
               color: TEXT_PRIMARY,
               textAlign: 'center',
@@ -192,7 +192,7 @@ export async function GET(req: NextRequest) {
           <div
             style={{
               fontFamily: '"Instrument Serif", Georgia, serif',
-              fontSize: '32px',
+              fontSize: '64px',
               fontWeight: 400,
               color: GOLD,
               opacity: 0.75,
@@ -207,7 +207,7 @@ export async function GET(req: NextRequest) {
           <div
             style={{
               fontFamily: 'Georgia, "Times New Roman", serif',
-              fontSize: '18px',
+              fontSize: '36px',
               fontWeight: 400,
               color: TEXT_MUTED,
               opacity: 0.8,

@@ -61,29 +61,29 @@ function SortableOption({ id, label, description, index, total, onMoveUp, onMove
       style={style}
       className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
         isDragging
-          ? 'bg-bg-tertiary border-gold-primary shadow-lg z-50'
-          : 'bg-bg-tertiary border-border hover:border-gold-primary/50'
+          ? 'bg-gold-subtle border-gold-primary shadow-lg z-50'
+          : 'bg-zinc-900/50 border-zinc-700 hover:border-zinc-600'
       }`}
     >
       {/* Drag handle */}
       <button
-        className="cursor-grab active:cursor-grabbing text-text-tertiary hover:text-text-secondary touch-none"
+        className="cursor-grab active:cursor-grabbing text-zinc-600 hover:text-zinc-400 touch-none"
         {...attributes}
         {...listeners}
       >
         <GripVertical className="w-5 h-5" />
       </button>
 
-      {/* Rank number */}
-      <div className="w-7 h-7 rounded-full bg-gold-subtle flex items-center justify-center shrink-0">
-        <span className="text-sm font-semibold text-gold-primary">{index + 1}</span>
+      {/* Rank number - solid gold badge */}
+      <div className="w-7 h-7 rounded-full bg-gold-primary flex items-center justify-center shrink-0">
+        <span className="text-sm font-semibold text-bg-primary">{index + 1}</span>
       </div>
 
       {/* Option label */}
       <div className="flex-1 min-w-0">
-        <span className="font-medium text-text-primary">{label}</span>
+        <span className="font-body font-medium text-white">{label}</span>
         {description && (
-          <p className="text-sm text-text-secondary mt-0.5">{description}</p>
+          <p className="text-sm text-zinc-500 mt-0.5 font-body">{description}</p>
         )}
       </div>
 
@@ -92,7 +92,7 @@ function SortableOption({ id, label, description, index, total, onMoveUp, onMove
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6 text-text-tertiary hover:text-text-primary"
+          className="h-6 w-6 text-zinc-600 hover:text-zinc-300"
           onClick={onMoveUp}
           disabled={index === 0}
           aria-label={`Move ${label} up`}
@@ -102,7 +102,7 @@ function SortableOption({ id, label, description, index, total, onMoveUp, onMove
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6 text-text-tertiary hover:text-text-primary"
+          className="h-6 w-6 text-zinc-600 hover:text-zinc-300"
           onClick={onMoveDown}
           disabled={index === total - 1}
           aria-label={`Move ${label} down`}
@@ -163,14 +163,14 @@ export function RankingQuestion({ question, value, onChange, error }: RankingQue
   return (
     <div className="space-y-3">
       <div>
-        <Label className="text-base font-medium">
+        <Label className="font-display text-lg font-normal text-white">
           {question.title}
           {question.required && <span className="text-error ml-1">*</span>}
         </Label>
         {question.subtitle && (
-          <p className="text-sm text-text-secondary mt-1">{question.subtitle}</p>
+          <p className="text-sm text-zinc-400 mt-1 font-body">{question.subtitle}</p>
         )}
-        <p className="text-sm text-text-tertiary mt-1">
+        <p className="text-sm text-zinc-500 mt-1 font-body">
           Drag to reorder, or use the arrows. #1 = most important.
         </p>
       </div>
@@ -202,11 +202,11 @@ export function RankingQuestion({ question, value, onChange, error }: RankingQue
       </DndContext>
 
       {question.config?.hint && (
-        <p className="text-xs text-text-tertiary">{question.config.hint}</p>
+        <p className="text-xs text-zinc-500 font-body">{question.config.hint}</p>
       )}
 
       {!hasInteracted && value.length === 0 && (
-        <p className="text-xs text-text-tertiary italic">
+        <p className="text-xs text-zinc-500 italic font-body">
           Reorder the items above to set your ranking
         </p>
       )}

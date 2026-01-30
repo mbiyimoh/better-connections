@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { EventLandingClient } from './EventLandingClient';
-import type { PublicEventData } from './types';
+import type { PublicEventData, InviteeContext } from './types';
+import { verifyRSVPToken } from '@/lib/m33t/tokens';
+import { prisma } from '@/lib/db';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -18,6 +20,33 @@ async function getEventData(slug: string): Promise<PublicEventData | null> {
   } catch (error) {
     console.error('Error fetching event data:', error);
     return null;
+  }
+}
+
+async function resolveInviteeContext(token: string, slug: string): Promise<InviteeContext | undefined> {
+  try {
+    const payload = verifyRSVPToken(token);
+    if (!payload) return undefined;
+
+    const attendee = await prisma.eventAttendee.findUnique({
+      where: { id: payload.attendeeId },
+      select: {
+        firstName: true,
+        event: { select: { slug: true } },
+      },
+    });
+
+    if (!attendee) return undefined;
+
+    // Verify token belongs to this event (prevent cross-event token reuse)
+    if (attendee.event.slug !== slug) return undefined;
+
+    return {
+      firstName: attendee.firstName,
+      rsvpUrl: `/m33t/${slug}/rsvp/${token}`,
+    };
+  } catch {
+    return undefined;
   }
 }
 
@@ -40,6 +69,7 @@ function getEventMetadata(slug: string) {
 
 interface EventPageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ token?: string }>;
 }
 
 export async function generateMetadata({ params }: EventPageProps): Promise<Metadata> {
@@ -74,12 +104,21 @@ export async function generateMetadata({ params }: EventPageProps): Promise<Meta
   };
 }
 
-export default async function EventPage({ params }: EventPageProps) {
+export default async function EventPage({ params, searchParams }: EventPageProps) {
   const { slug } = await params;
+  const { token } = await searchParams;
   const data = await getEventData(slug);
 
   if (!data) {
     notFound();
+  }
+
+  // If a token is present, resolve invitee context for personalization
+  if (token) {
+    const inviteeContext = await resolveInviteeContext(token, slug);
+    if (inviteeContext) {
+      data.inviteeContext = inviteeContext;
+    }
   }
 
   return <EventLandingClient data={data} />;

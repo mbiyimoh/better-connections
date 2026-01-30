@@ -1,11 +1,13 @@
 import { formatEventDate } from '@/lib/m33t';
 import { GOLD_FOIL_BUTTON } from '@/lib/design-system';
+import type { InviteeContext } from '../types';
 
 interface FooterCTAProps {
   tagline?: string | null;
   date: string;
   location: string;
   rsvpUrl: string;
+  inviteeContext?: InviteeContext;
 }
 
 export function FooterCTA({
@@ -13,6 +15,7 @@ export function FooterCTA({
   date,
   location,
   rsvpUrl,
+  inviteeContext,
 }: FooterCTAProps) {
 
   return (
@@ -34,11 +37,11 @@ export function FooterCTA({
 
         {/* CTA Button */}
         <a
-          href={rsvpUrl}
+          href={inviteeContext?.rsvpUrl || rsvpUrl}
           className="inline-block px-10 py-5 rounded-xl text-lg transition-all hover:scale-105 hover:shadow-lg hover:shadow-amber-500/20"
           style={{ ...GOLD_FOIL_BUTTON }}
         >
-          Request an Invitation
+          {inviteeContext ? 'RSVP Here' : 'Request an Invitation'}
         </a>
 
         {/* Event details */}

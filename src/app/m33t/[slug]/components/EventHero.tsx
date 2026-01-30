@@ -1,13 +1,14 @@
-import type { EventData } from '../types';
+import type { EventData, InviteeContext } from '../types';
 import { formatEventDate, formatEventTime } from '@/lib/m33t';
 import { GOLD_FOIL_GRADIENT, GOLD_FOIL_BUTTON } from '@/lib/design-system';
 
 interface EventHeroProps {
   event: EventData;
   rsvpUrl: string;
+  inviteeContext?: InviteeContext;
 }
 
-export function EventHero({ event, rsvpUrl }: EventHeroProps) {
+export function EventHero({ event, rsvpUrl, inviteeContext }: EventHeroProps) {
   // Split event name on colon to separate title from subtitle
   const [rawTitle, subtitle] = event.name.includes(':')
     ? event.name.split(':').map((s) => s.trim())
@@ -41,12 +42,18 @@ export function EventHero({ event, rsvpUrl }: EventHeroProps) {
         <p className="mt-2">{event.venueName}</p>
       </div>
 
+      {inviteeContext && (
+        <p className="text-xl md:text-2xl text-zinc-300 mb-6">
+          Welcome, {inviteeContext.firstName}
+        </p>
+      )}
+
       <a
-        href={rsvpUrl}
+        href={inviteeContext?.rsvpUrl || rsvpUrl}
         className="px-8 py-4 rounded-xl transition-all hover:scale-105 hover:shadow-lg hover:shadow-amber-500/20"
         style={{ ...GOLD_FOIL_BUTTON }}
       >
-        Request an Invitation
+        {inviteeContext ? 'RSVP Here' : 'Request an Invitation'}
       </a>
     </section>
   );

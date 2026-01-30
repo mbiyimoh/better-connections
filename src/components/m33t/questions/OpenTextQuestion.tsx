@@ -1,6 +1,5 @@
 'use client';
 
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import type { Question } from '@/lib/m33t/schemas';
 
@@ -18,28 +17,28 @@ export function OpenTextQuestion({ question, value, onChange, error }: OpenTextQ
   return (
     <div className="space-y-3">
       <div>
-        <Label className="text-base font-medium">
+        <Label className="font-display text-lg font-normal text-white">
           {question.title}
           {question.required && <span className="text-error ml-1">*</span>}
         </Label>
         {question.subtitle && (
-          <p className="text-sm text-text-secondary mt-1">{question.subtitle}</p>
+          <p className="text-sm text-zinc-400 mt-1 font-body">{question.subtitle}</p>
         )}
       </div>
 
-      <Textarea
+      <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={question.config?.placeholder}
-        className="bg-bg-tertiary min-h-[120px] resize-none"
         maxLength={maxLength}
+        className="w-full min-h-[120px] resize-none rounded-lg border border-zinc-700 bg-zinc-900/50 px-4 py-3 text-white font-body placeholder:text-zinc-600 focus:border-gold-primary focus:outline-none focus:ring-1 focus:ring-gold-primary/50 transition-colors"
       />
 
       <div className="flex justify-between items-center">
         {question.config?.hint && (
-          <p className="text-xs text-text-tertiary">{question.config.hint}</p>
+          <p className="text-xs text-zinc-500 font-body">{question.config.hint}</p>
         )}
-        <p className={`text-xs ${charCount > maxLength * 0.9 ? 'text-warning' : 'text-text-tertiary'}`}>
+        <p className={`text-xs font-mono ml-auto ${charCount > maxLength * 0.9 ? 'text-warning' : 'text-zinc-500'}`}>
           {charCount}/{maxLength}
         </p>
       </div>

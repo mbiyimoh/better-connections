@@ -63,6 +63,11 @@ export interface HostData {
   photo?: string | null;
 }
 
+export interface InviteeContext {
+  firstName: string;
+  rsvpUrl: string;
+}
+
 export interface PublicEventData {
   event: EventData;
   attendees: {
@@ -72,4 +77,5 @@ export interface PublicEventData {
   };
   hosts: HostData[];
   rsvpUrl: string;
+  inviteeContext?: InviteeContext;
 }

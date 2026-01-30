@@ -25,7 +25,7 @@ function formatSectionNumber(num: number): string {
 }
 
 export function EventLandingClient({ data }: EventLandingClientProps) {
-  const { event, attendees, hosts, rsvpUrl } = data;
+  const { event, attendees, hosts, rsvpUrl, inviteeContext } = data;
   const [selectedAttendee, setSelectedAttendee] = useState<PublicAttendee | null>(null);
   const [showFullGuestList, setShowFullGuestList] = useState(false);
   const [scrollytellingComplete, setScrollytellingComplete] = useState(false);
@@ -119,7 +119,7 @@ export function EventLandingClient({ data }: EventLandingClientProps) {
         )}
 
         {/* Hero Section */}
-        <EventHero event={event} rsvpUrl={rsvpUrl} />
+        <EventHero event={event} rsvpUrl={rsvpUrl} inviteeContext={inviteeContext} />
 
         {/* Venue Section */}
         {event.landingPageSettings.showVenue && (
@@ -214,6 +214,7 @@ export function EventLandingClient({ data }: EventLandingClientProps) {
           date={event.date}
           location={event.venueName}
           rsvpUrl={rsvpUrl}
+          inviteeContext={inviteeContext}
         />
       </div>
 

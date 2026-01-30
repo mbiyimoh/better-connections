@@ -1,15 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { getRsvpBasePath } from '@/lib/m33t/rsvp-paths';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Check, X, HelpCircle, Loader2 } from 'lucide-react';
+import { Check, X, HelpCircle, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
 
 interface RSVPFormProps {
   token: string;
@@ -35,7 +36,29 @@ export function RSVPForm({ token, event, attendee }: RSVPFormProps) {
   const rsvpBase = getRsvpBasePath(pathname);
   const [status, setStatus] = useState<string>(attendee.rsvpStatus);
   const [phone, setPhone] = useState(attendee.phone || '');
+  const [phoneValid, setPhoneValid] = useState<boolean | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const formatAndValidatePhone = useCallback((value: string) => {
+    if (!value.trim()) {
+      setPhoneValid(null);
+      return;
+    }
+    try {
+      // Try parsing with US default country
+      const parsed = parsePhoneNumber(value, 'US');
+      if (parsed && parsed.isValid()) {
+        setPhone(parsed.formatNational());
+        setPhoneValid(true);
+      } else {
+        setPhoneValid(false);
+      }
+    } catch {
+      // If parsing fails entirely, check with isValidPhoneNumber as fallback
+      setPhoneValid(isValidPhoneNumber(value, 'US'));
+    }
+  }, []);
+
 
   // Already responded - show status
   if (attendee.rsvpRespondedAt && attendee.rsvpStatus !== 'PENDING') {
@@ -97,12 +120,17 @@ export function RSVPForm({ token, event, attendee }: RSVPFormProps) {
       return;
     }
 
+    if (status === 'CONFIRMED' && phone && phoneValid === false) {
+      toast.error('Please enter a valid phone number');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const response = await fetch(`/api/rsvp/${token}/respond`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, phone: phone || undefined }),
+        body: JSON.stringify({ status, phone: phone.trim() || undefined }),
       });
 
       if (!response.ok) {
@@ -153,40 +181,79 @@ export function RSVPForm({ token, event, attendee }: RSVPFormProps) {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
-          <RadioGroup value={status} onValueChange={setStatus}>
-            <div className="flex items-center space-x-2 p-3 rounded-lg hover:bg-bg-tertiary cursor-pointer">
-              <RadioGroupItem value="CONFIRMED" id="confirmed" />
-              <Label htmlFor="confirmed" className="flex-1 cursor-pointer">
-                <span className="text-success">Yes, I&apos;ll be there!</span>
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2 p-3 rounded-lg hover:bg-bg-tertiary cursor-pointer">
-              <RadioGroupItem value="MAYBE" id="maybe" />
-              <Label htmlFor="maybe" className="flex-1 cursor-pointer">
-                <span className="text-warning">Maybe</span>
-              </Label>
-            </div>
-            <div className="flex items-center space-x-2 p-3 rounded-lg hover:bg-bg-tertiary cursor-pointer">
-              <RadioGroupItem value="DECLINED" id="declined" />
-              <Label htmlFor="declined" className="flex-1 cursor-pointer">
-                <span className="text-error">Can&apos;t make it</span>
-              </Label>
-            </div>
-          </RadioGroup>
+          <div className="space-y-2" role="radiogroup">
+            {[
+              { value: 'CONFIRMED', label: "Yes, I'll be there!" },
+              { value: 'MAYBE', label: 'Maybe' },
+              { value: 'DECLINED', label: "Can't make it" },
+            ].map((option) => {
+              const isSelected = status === option.value;
+              return (
+                <motion.button
+                  key={option.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={isSelected}
+                  onClick={() => setStatus(option.value)}
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  className={`w-full flex items-center gap-3 p-4 rounded-lg border transition-colors text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-primary/50 ${
+                    isSelected
+                      ? 'border-gold-primary bg-gold-subtle'
+                      : 'border-zinc-700 bg-zinc-900/50 hover:border-zinc-600'
+                  }`}
+                >
+                  {/* Custom radio dot */}
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                    isSelected ? 'border-gold-primary' : 'border-zinc-600'
+                  }`}>
+                    {isSelected && (
+                      <div className="w-2.5 h-2.5 rounded-full bg-gold-primary" />
+                    )}
+                  </div>
+                  <span className={`font-body font-medium ${isSelected ? 'text-white' : 'text-zinc-300'}`}>
+                    {option.label}
+                  </span>
+                </motion.button>
+              );
+            })}
+          </div>
 
           {status === 'CONFIRMED' && (
             <div className="space-y-2">
               <Label htmlFor="phone">
                 Phone Number (for match notifications) *
               </Label>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="+1 (512) 555-0123"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="bg-bg-tertiary"
-              />
+              <div className="relative">
+                <Input
+                  id="phone"
+                  type="tel"
+                  inputMode="tel"
+                  placeholder="(512) 555-0123"
+                  value={phone}
+                  onChange={(e) => {
+                    setPhone(e.target.value);
+                    // Reset validation on typing so it re-validates on blur
+                    if (phoneValid !== null) setPhoneValid(null);
+                  }}
+                  onBlur={() => formatAndValidatePhone(phone)}
+                  className={`bg-bg-tertiary pr-10 ${
+                    phoneValid === false ? 'border-error' :
+                    phoneValid === true ? 'border-success' : ''
+                  }`}
+                />
+                {phoneValid === true && (
+                  <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-success" />
+                )}
+                {phoneValid === false && (
+                  <AlertCircle className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-error" />
+                )}
+              </div>
+              {phoneValid === false && (
+                <p className="text-xs text-error">
+                  Please enter a valid phone number
+                </p>
+              )}
               <p className="text-xs text-text-secondary">
                 We&apos;ll text you your curated matches before the event
               </p>
