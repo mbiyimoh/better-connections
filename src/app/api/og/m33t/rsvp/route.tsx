@@ -140,7 +140,7 @@ export async function GET(req: NextRequest) {
             justifyContent: 'center',
             zIndex: 10,
             padding: '0 80px',
-            marginTop: '-40px',
+            marginTop: '-80px',
           }}
         >
           {/* First name - large, gold, Instrument Serif */}
