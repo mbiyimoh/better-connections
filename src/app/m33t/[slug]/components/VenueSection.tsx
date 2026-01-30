@@ -123,13 +123,15 @@ export function VenueSection({
         {(parkingNotes || dressCode || foodInfo) && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-8">
             {parkingNotes && (
-              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 text-center hover:border-amber-500/30 transition-colors">
-                <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
-                  <Car className="w-5 h-5 text-amber-500" />
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 hover:border-amber-500/30 transition-colors">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-11 h-11 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                    <Car className="w-6 h-6 text-amber-500" />
+                  </div>
+                  <h4 className="text-amber-500 text-sm font-semibold tracking-widest uppercase">
+                    Parking
+                  </h4>
                 </div>
-                <p className="text-amber-500 text-xs font-medium tracking-widest uppercase mb-2">
-                  Parking
-                </p>
                 <MarkdownContent className="text-zinc-400 text-sm">
                   {parkingNotes}
                 </MarkdownContent>
@@ -137,13 +139,15 @@ export function VenueSection({
             )}
 
             {dressCode && (
-              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 text-center hover:border-amber-500/30 transition-colors">
-                <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
-                  <Shirt className="w-5 h-5 text-amber-500" />
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 hover:border-amber-500/30 transition-colors">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-11 h-11 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                    <Shirt className="w-6 h-6 text-amber-500" />
+                  </div>
+                  <h4 className="text-amber-500 text-sm font-semibold tracking-widest uppercase">
+                    Dress Code
+                  </h4>
                 </div>
-                <p className="text-amber-500 text-xs font-medium tracking-widest uppercase mb-2">
-                  Dress Code
-                </p>
                 <MarkdownContent className="text-zinc-400 text-sm">
                   {dressCode}
                 </MarkdownContent>
@@ -151,13 +155,15 @@ export function VenueSection({
             )}
 
             {foodInfo && (
-              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 text-center hover:border-amber-500/30 transition-colors">
-                <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
-                  <UtensilsCrossed className="w-5 h-5 text-amber-500" />
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-6 hover:border-amber-500/30 transition-colors">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-11 h-11 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                    <UtensilsCrossed className="w-6 h-6 text-amber-500" />
+                  </div>
+                  <h4 className="text-amber-500 text-sm font-semibold tracking-widest uppercase">
+                    Food & Drinks
+                  </h4>
                 </div>
-                <p className="text-amber-500 text-xs font-medium tracking-widest uppercase mb-2">
-                  Food & Drinks
-                </p>
                 <MarkdownContent className="text-zinc-400 text-sm">
                   {foodInfo}
                 </MarkdownContent>

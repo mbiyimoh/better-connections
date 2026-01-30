@@ -1,6 +1,7 @@
 import type { EventData, InviteeContext } from '../types';
 import { formatEventDate, formatEventTime } from '@/lib/m33t';
 import { GOLD_FOIL_GRADIENT, GOLD_FOIL_BUTTON } from '@/lib/design-system';
+import { MarkdownContent } from '@/components/ui/MarkdownContent';
 
 interface EventHeroProps {
   event: EventData;
@@ -33,9 +34,9 @@ export function EventHero({ event, rsvpUrl, inviteeContext }: EventHeroProps) {
       </p>
 
       {event.description && (
-        <p className="max-w-xl text-base md:text-lg text-zinc-400 leading-relaxed mb-8">
+        <MarkdownContent className="max-w-xl text-base md:text-lg text-zinc-400 leading-relaxed mb-8 text-center">
           {event.description}
-        </p>
+        </MarkdownContent>
       )}
 
       <div className="w-20 h-px bg-gradient-to-r from-transparent via-amber-500 to-transparent mb-8" />
