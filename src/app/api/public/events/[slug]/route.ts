@@ -274,6 +274,7 @@ export async function GET(
         slug: event.slug,
         name: event.name,
         tagline: event.tagline,
+        description: event.description,
         date: event.date.toISOString(),
         startTime: event.startTime,
         endTime: event.endTime,

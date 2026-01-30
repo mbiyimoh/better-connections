@@ -32,6 +32,12 @@ export function EventHero({ event, rsvpUrl, inviteeContext }: EventHeroProps) {
         {subtitle || 'Building at the Speed of Thought'}
       </p>
 
+      {event.description && (
+        <p className="max-w-xl text-base md:text-lg text-zinc-400 leading-relaxed mb-8">
+          {event.description}
+        </p>
+      )}
+
       <div className="w-20 h-px bg-gradient-to-r from-transparent via-amber-500 to-transparent mb-8" />
 
       <div className="text-zinc-400 tracking-widest uppercase text-sm mb-8">

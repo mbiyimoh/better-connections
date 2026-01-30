@@ -40,6 +40,7 @@ export interface EventData {
   slug: string | null;
   name: string;
   tagline?: string | null;
+  description?: string | null;
   date: string;
   startTime: string;
   endTime: string;
