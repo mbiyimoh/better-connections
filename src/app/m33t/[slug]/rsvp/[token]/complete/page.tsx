@@ -11,7 +11,7 @@ interface CompletePageProps {
 }
 
 export default async function CompletePage({ params }: CompletePageProps) {
-  const { token } = await params;
+  const { slug, token } = await params;
 
   const payload = verifyRSVPToken(token);
   if (!payload) {
@@ -35,10 +35,13 @@ export default async function CompletePage({ params }: CompletePageProps) {
     prisma.eventAttendee.findUnique({
       where: { id: payload.attendeeId },
       select: {
+        id: true,
         firstName: true,
         lastName: true,
+        email: true,
         questionnaireCompletedAt: true,
         profile: true,
+        userId: true,
       },
     }),
   ]);
@@ -168,15 +171,31 @@ export default async function CompletePage({ params }: CompletePageProps) {
             )}
 
             <div className="mt-4 pt-4 border-t border-border">
-              <a
-                href={`/guest/events/${event.id}`}
-                className="inline-block px-4 py-2 bg-gold-primary hover:bg-gold-light text-bg-primary text-sm font-medium rounded-lg transition-colors"
-              >
-                View &amp; Edit Your Profile
-              </a>
-              <p className="text-xs text-text-tertiary mt-2">
-                You&apos;ll need to create an account or log in to access the full guest experience.
-              </p>
+              {attendee.userId ? (
+                <>
+                  <a
+                    href={`/guest/events/${event.id}`}
+                    className="inline-block px-4 py-2 bg-gold-primary hover:bg-gold-light text-bg-primary text-sm font-medium rounded-lg transition-colors"
+                  >
+                    View &amp; Edit Your Profile
+                  </a>
+                  <p className="text-xs text-text-tertiary mt-2">
+                    You already have an account linked to this event.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <a
+                    href={`/signup?next=${encodeURIComponent(`/guest/events/${event.id}`)}&m33t_invitee=true&attendee_id=${attendee.id}${attendee.email ? `&email=${encodeURIComponent(attendee.email)}` : ''}`}
+                    className="inline-block px-4 py-2 bg-gold-primary hover:bg-gold-light text-bg-primary text-sm font-medium rounded-lg transition-colors"
+                  >
+                    View &amp; Edit Your Profile
+                  </a>
+                  <p className="text-xs text-text-tertiary mt-2">
+                    Create an account to view and edit how you appear to other attendees.
+                  </p>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>

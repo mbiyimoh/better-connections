@@ -56,12 +56,14 @@ function SortableQuestionItem({
   onEdit,
   onDelete,
   disabled,
+  editDisabled = disabled,
 }: {
   question: Question;
   index: number;
   onEdit: () => void;
   onDelete: () => void;
   disabled: boolean;
+  editDisabled?: boolean;
 }) {
   const {
     attributes,
@@ -114,7 +116,7 @@ function SortableQuestionItem({
           size="icon"
           className="h-8 w-8"
           onClick={onEdit}
-          disabled={disabled}
+          disabled={editDisabled}
         >
           <Pencil className="h-4 w-4" />
         </Button>
@@ -262,8 +264,7 @@ export function QuestionSetEditor({
         <div className="flex items-center gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-sm">
           <AlertCircle className="h-4 w-4 text-amber-400" />
           <span className="text-amber-400">
-            This set is published. You can edit title and description but not
-            questions.
+            This set is published. You can edit question text, answer labels, and descriptions, but cannot add, remove, or reorder questions.
           </span>
         </div>
       )}
@@ -341,6 +342,7 @@ export function QuestionSetEditor({
                     onEdit={() => setEditingQuestion(question)}
                     onDelete={() => handleDeleteQuestion(question.id)}
                     disabled={isPublished}
+                    editDisabled={false}
                   />
                 ))}
               </div>
@@ -360,6 +362,7 @@ export function QuestionSetEditor({
           question={editingQuestion}
           onSave={editingQuestion ? handleEditQuestion : handleAddQuestion}
           existingIds={questions.map((q) => q.id)}
+          textOnlyMode={isPublished}
         />
       )}
     </div>

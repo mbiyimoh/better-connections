@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -33,10 +34,17 @@ const passwordRequirements = [
 ];
 
 export default function SignupPage() {
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [success, setSuccess] = useState(false);
+
+  // M33T invitee params for auth callback linking
+  const nextUrl = searchParams.get('next');
+  const isM33tInvitee = searchParams.get('m33t_invitee') === 'true';
+  const attendeeId = searchParams.get('attendee_id');
+  const prefillEmail = searchParams.get('email');
 
   const {
     register,
@@ -45,6 +53,9 @@ export default function SignupPage() {
     formState: { errors },
   } = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
+    defaultValues: {
+      email: prefillEmail || '',
+    },
   });
 
   const password = watch('password', '');
@@ -54,7 +65,19 @@ export default function SignupPage() {
     setError(null);
 
     try {
-      await signUp(data.email, data.password, data.name);
+      // Build email redirect URL with M33T params for account linking
+      let emailRedirectTo: string | undefined;
+      if (isM33tInvitee && attendeeId) {
+        const baseUrl = window.location.origin;
+        const callbackParams = new URLSearchParams({
+          next: nextUrl || '/guest/events',
+          m33t_invitee: 'true',
+          attendee_id: attendeeId,
+        });
+        emailRedirectTo = `${baseUrl}/auth/callback?${callbackParams.toString()}`;
+      }
+
+      await signUp(data.email, data.password, data.name, emailRedirectTo);
       setSuccess(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign up');
@@ -177,7 +200,10 @@ export default function SignupPage() {
 
       <div className="mt-6 text-center text-sm text-text-secondary">
         Already have an account?{' '}
-        <Link href="/login" className="text-gold-primary hover:text-gold-light">
+        <Link
+          href={isM33tInvitee ? `/login?${searchParams.toString()}` : '/login'}
+          className="text-gold-primary hover:text-gold-light"
+        >
           Sign in
         </Link>
       </div>

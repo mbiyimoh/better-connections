@@ -126,12 +126,59 @@ export async function PATCH(
 
   const { title, description, questions, order } = result.data;
 
-  // Cannot modify questions of published sets
+  // For published sets, allow text-only edits but block structural changes
   if (existingSet.status === 'PUBLISHED' && questions !== undefined) {
-    return NextResponse.json(
-      { error: 'Cannot modify questions of a published set' },
-      { status: 400 }
-    );
+    const existingQuestions = existingSet.questions as Array<Record<string, unknown>>;
+
+    // Must have the same number of questions
+    if (!Array.isArray(questions) || questions.length !== existingQuestions.length) {
+      return NextResponse.json(
+        { error: 'Cannot add or remove questions on a published set' },
+        { status: 400 }
+      );
+    }
+
+    // Validate each question preserves structural fields
+    for (let i = 0; i < questions.length; i++) {
+      const existing = existingQuestions[i] as Record<string, unknown>;
+      const incoming = questions[i] as Record<string, unknown>;
+
+      // Structural fields that must not change
+      if (
+        incoming.id !== existing.id ||
+        incoming.type !== existing.type ||
+        incoming.order !== existing.order
+      ) {
+        return NextResponse.json(
+          { error: 'Cannot change question IDs, types, or order on a published set. Only text edits are allowed.' },
+          { status: 400 }
+        );
+      }
+
+      // Validate option count is preserved (no adding/removing options)
+      const existingOptions = (existing.config as Record<string, unknown> | undefined)?.options as unknown[] | undefined;
+      const incomingOptions = (incoming.config as Record<string, unknown> | undefined)?.options as unknown[] | undefined;
+      if (existingOptions && incomingOptions && existingOptions.length !== incomingOptions.length) {
+        return NextResponse.json(
+          { error: 'Cannot add or remove answer options on a published set. Only text edits are allowed.' },
+          { status: 400 }
+        );
+      }
+
+      // Validate option values (IDs) are preserved
+      if (existingOptions && incomingOptions) {
+        for (let j = 0; j < existingOptions.length; j++) {
+          const existingOpt = existingOptions[j] as Record<string, unknown>;
+          const incomingOpt = incomingOptions[j] as Record<string, unknown>;
+          if (incomingOpt.value !== existingOpt.value) {
+            return NextResponse.json(
+              { error: 'Cannot change option values on a published set. Only label and description text can be edited.' },
+              { status: 400 }
+            );
+          }
+        }
+      }
+    }
   }
 
   // Build update data

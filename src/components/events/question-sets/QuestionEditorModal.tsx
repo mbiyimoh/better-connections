@@ -29,6 +29,7 @@ interface QuestionEditorModalProps {
   question: Question | null;
   onSave: (question: Question) => void;
   existingIds: string[];
+  textOnlyMode?: boolean;
 }
 
 type QuestionType = 'open_text' | 'slider' | 'single_select' | 'multi_select' | 'ranking';
@@ -44,6 +45,7 @@ export function QuestionEditorModal({
   onClose,
   question,
   onSave,
+  textOnlyMode = false,
 }: QuestionEditorModalProps) {
   const isEditing = !!question;
 
@@ -156,6 +158,7 @@ export function QuestionEditorModal({
               <Select
                 value={type}
                 onValueChange={(v) => setType(v as QuestionType)}
+                disabled={textOnlyMode}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -172,7 +175,7 @@ export function QuestionEditorModal({
 
             <div className="space-y-2">
               <Label>Category</Label>
-              <Select value={category} onValueChange={setCategory}>
+              <Select value={category} onValueChange={setCategory} disabled={textOnlyMode}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -215,7 +218,7 @@ export function QuestionEditorModal({
                 Attendees must answer this question
               </p>
             </div>
-            <Switch checked={required} onCheckedChange={setRequired} />
+            <Switch checked={required} onCheckedChange={setRequired} disabled={textOnlyMode} />
           </div>
 
           {/* Type-specific config */}
@@ -275,10 +278,12 @@ export function QuestionEditorModal({
             <div className="space-y-4 border-t border-border pt-4">
               <div className="flex items-center justify-between">
                 <Label>{type === 'ranking' ? 'Items to Rank' : 'Options'}</Label>
-                <Button variant="ghost" size="sm" onClick={handleAddOption}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Option
-                </Button>
+                {!textOnlyMode && (
+                  <Button variant="ghost" size="sm" onClick={handleAddOption}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Option
+                  </Button>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -291,6 +296,7 @@ export function QuestionEditorModal({
                       }
                       placeholder="Value"
                       className="w-24"
+                      disabled={textOnlyMode}
                     />
                     <Input
                       value={option.label}
@@ -300,14 +306,16 @@ export function QuestionEditorModal({
                       placeholder="Label"
                       className="flex-1"
                     />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleRemoveOption(index)}
-                      disabled={options.length <= 1}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {!textOnlyMode && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveOption(index)}
+                        disabled={options.length <= 1}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>

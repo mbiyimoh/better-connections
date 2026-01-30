@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 
-export async function signUp(email: string, password: string, name: string) {
+export async function signUp(email: string, password: string, name: string, emailRedirectTo?: string) {
   const supabase = createClient();
 
   const { data, error } = await supabase.auth.signUp({
@@ -8,6 +8,7 @@ export async function signUp(email: string, password: string, name: string) {
     password,
     options: {
       data: { name },
+      ...(emailRedirectTo ? { emailRedirectTo } : {}),
     },
   });
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,9 +21,15 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+
+  // M33T invitee params for post-login redirect + linking
+  const nextUrl = searchParams.get('next');
+  const isM33tInvitee = searchParams.get('m33t_invitee') === 'true';
+  const attendeeId = searchParams.get('attendee_id');
 
   const {
     register,
@@ -39,7 +45,22 @@ export default function LoginPage() {
 
     try {
       await signIn(data.email, data.password);
-      router.push('/contacts');
+
+      // If M33T invitee flow, link attendee to user and redirect to guest experience
+      if (isM33tInvitee && attendeeId) {
+        try {
+          await fetch('/api/auth/link-attendee', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ attendeeId }),
+          });
+        } catch {
+          // Non-blocking — attendee linking is best-effort on login
+        }
+        router.push(nextUrl || '/guest/events');
+      } else {
+        router.push('/contacts');
+      }
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign in');

@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useDebouncedCallback } from 'use-debounce';
 import { Loader2, ArrowLeft, ArrowRight, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { QuestionRenderer } from '@/components/m33t/questions';
@@ -271,13 +271,7 @@ export function QuestionSetQuestionnaire({
 
       {/* Question Card */}
       <Card className="bg-bg-secondary border-border">
-        <CardHeader>
-          <CardTitle className="text-lg">{currentQuestion?.title}</CardTitle>
-          {currentQuestion?.subtitle && (
-            <CardDescription>{currentQuestion.subtitle}</CardDescription>
-          )}
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {currentQuestion && (
             <div className="py-4">
               <QuestionRenderer

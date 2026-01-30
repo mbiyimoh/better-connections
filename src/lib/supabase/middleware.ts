@@ -67,10 +67,10 @@ export async function updateSession(request: NextRequest) {
   const isAuthPath = authPaths.some((path) => pathname === path);
 
   if (user && isAuthPath) {
-    // Redirect to contacts by default
-    // Note: M33T invitee routing is handled in the page layouts
-    // because we need Prisma access to check accountOrigin
-    return NextResponse.redirect(new URL('/contacts', request.url));
+    // Respect `next` param for M33T invitee flows that redirect through auth pages
+    const next = request.nextUrl.searchParams.get('next');
+    const redirectUrl = next || '/contacts';
+    return NextResponse.redirect(new URL(redirectUrl, request.url));
   }
 
   return response;
