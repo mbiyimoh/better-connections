@@ -56,7 +56,7 @@ function getEventMetadata(slug: string) {
   if (slug === 'no-edges-33-strategies-launch' || slug.includes('no-edges')) {
     return {
       title: 'No Edges - 3.12.26 - Austin, TX',
-      description: 'Building at the speed of thought. Join us for NO EDGES, a 33 Strategies event.',
+      description: 'An intimate gathering of builders, athletes and operators exploring what\'s possible in the new world of AI.',
     };
   }
 
