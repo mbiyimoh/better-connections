@@ -28,9 +28,12 @@ interface RSVPFormProps {
     rsvpRespondedAt: Date | null;
     questionnaireCompletedAt: Date | null;
   };
+  profileUrl?: string;
+  profileCtaLabel?: string;
+  eventLandingUrl?: string;
 }
 
-export function RSVPForm({ token, event, attendee }: RSVPFormProps) {
+export function RSVPForm({ token, event, attendee, profileUrl, profileCtaLabel, eventLandingUrl }: RSVPFormProps) {
   const router = useRouter();
   const pathname = usePathname();
   const rsvpBase = getRsvpBasePath(pathname);
@@ -97,9 +100,27 @@ export function RSVPForm({ token, event, attendee }: RSVPFormProps) {
             </Button>
           )}
           {attendee.rsvpStatus === 'CONFIRMED' && attendee.questionnaireCompletedAt && (
-            <p className="text-text-secondary mt-2">
-              Profile complete! You&apos;ll receive your matches before the event.
-            </p>
+            <div className="mt-2 space-y-3">
+              <p className="text-text-secondary">
+                Profile complete! You&apos;ll receive your matches before the event.
+              </p>
+              {profileUrl && (
+                <a
+                  href={profileUrl}
+                  className="inline-block w-full px-4 py-2 bg-gold-primary hover:bg-gold-light text-bg-primary text-sm font-medium rounded-lg transition-colors text-center"
+                >
+                  {profileCtaLabel || 'View & Edit Your Profile'}
+                </a>
+              )}
+              {eventLandingUrl && (
+                <a
+                  href={eventLandingUrl}
+                  className="inline-block w-full px-4 py-2 border border-border hover:bg-white/5 text-text-primary text-sm font-medium rounded-lg transition-colors text-center"
+                >
+                  View Event Details
+                </a>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>

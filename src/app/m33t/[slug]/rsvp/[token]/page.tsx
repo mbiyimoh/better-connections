@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { prisma } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth-helpers';
 import { verifyRSVPToken, isTokenExpired } from '@/lib/m33t/tokens';
 import { RSVPForm } from '@/components/m33t/RSVPForm';
 import { TokenExpiredMessage } from '@/components/m33t/TokenExpiredMessage';
@@ -18,7 +19,7 @@ export async function generateMetadata({ params }: RSVPPageProps): Promise<Metad
 }
 
 export default async function RSVPPage({ params }: RSVPPageProps) {
-  const { token } = await params;
+  const { slug, token } = await params;
 
   // Check if token is expired (show different message)
   if (isTokenExpired(token)) {
@@ -38,6 +39,7 @@ export default async function RSVPPage({ params }: RSVPPageProps) {
       select: {
         id: true,
         name: true,
+        slug: true,
         tagline: true,
         date: true,
         startTime: true,
@@ -57,6 +59,7 @@ export default async function RSVPPage({ params }: RSVPPageProps) {
         lastName: true,
         email: true,
         phone: true,
+        userId: true,
         rsvpStatus: true,
         rsvpRespondedAt: true,
         questionnaireCompletedAt: true,
@@ -67,6 +70,43 @@ export default async function RSVPPage({ params }: RSVPPageProps) {
   if (!event || !attendee) {
     return notFound();
   }
+
+  // Check auth state and try to link attendee if logged in
+  const currentUser = await getCurrentUser();
+  let isLinkedAndLoggedIn = !!(currentUser && attendee.userId === currentUser.id);
+
+  if (currentUser && !attendee.userId) {
+    const emailMatch = attendee.email &&
+      currentUser.email.toLowerCase() === attendee.email.toLowerCase();
+    if (emailMatch) {
+      try {
+        await prisma.eventAttendee.update({
+          where: { id: attendee.id },
+          data: { userId: currentUser.id },
+        });
+        attendee.userId = currentUser.id;
+        isLinkedAndLoggedIn = true;
+      } catch {
+        // Non-blocking
+      }
+    }
+  }
+
+  // Compute CTA URLs for the status card
+  let profileUrl: string | undefined;
+  let profileCtaLabel: string | undefined;
+  if (isLinkedAndLoggedIn) {
+    profileUrl = `/guest/events/${event.id}`;
+    profileCtaLabel = 'View & Edit Your Profile';
+  } else if (attendee.userId && !currentUser) {
+    profileUrl = `/login?next=${encodeURIComponent(`/guest/events/${event.id}`)}`;
+    profileCtaLabel = 'Sign In to Edit Your Profile';
+  } else if (!attendee.userId) {
+    profileUrl = `/signup?next=${encodeURIComponent(`/guest/events/${event.id}`)}&m33t_invitee=true&attendee_id=${attendee.id}${attendee.email ? `&email=${encodeURIComponent(attendee.email)}` : ''}`;
+    profileCtaLabel = 'View & Edit Your Profile';
+  }
+
+  const eventLandingUrl = `/m33t/${event.slug || slug}`;
 
   // Check if event is still accepting RSVPs
   if (event.status === 'CANCELLED') {
@@ -106,6 +146,9 @@ export default async function RSVPPage({ params }: RSVPPageProps) {
           token={token}
           event={event}
           attendee={attendee}
+          profileUrl={profileUrl}
+          profileCtaLabel={profileCtaLabel}
+          eventLandingUrl={eventLandingUrl}
         />
       </div>
     </div>
