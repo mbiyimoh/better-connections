@@ -108,7 +108,6 @@ export async function GET(
           select: {
             id: true,
             name: true,
-            email: true,
           },
         },
       },
@@ -306,7 +305,7 @@ export async function GET(
               id: 'host_default',
               name: event.user.name || 'Event Host',
             }],
-      rsvpUrl: `mailto:${event.user.email}?subject=${encodeURIComponent(`Request to attend: ${event.name}`)}&body=${encodeURIComponent(`Hi ${event.user.name || 'there'},\n\nI'd love to attend ${event.name}. Could you send me an invite?\n\nThanks!`)}`,
+      rsvpUrl: '#request-invite',
     };
 
     return NextResponse.json(response, {
