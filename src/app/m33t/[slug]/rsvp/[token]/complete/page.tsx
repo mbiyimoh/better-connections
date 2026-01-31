@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth-helpers';
 import { verifyRSVPToken } from '@/lib/m33t/tokens';
 import { Card, CardContent } from '@/components/ui/card';
 import { Check, Calendar, Clock, MapPin, User, Briefcase, Sparkles } from 'lucide-react';
@@ -49,6 +50,29 @@ export default async function CompletePage({ params }: CompletePageProps) {
   if (!event || !attendee) {
     return notFound();
   }
+
+  // Check if the current visitor is already authenticated
+  const currentUser = await getCurrentUser();
+
+  // If logged in but attendee not yet linked, try to link now (server-side)
+  if (currentUser && !attendee.userId) {
+    // Only link if emails match (prevent hijacking)
+    const emailMatch = attendee.email &&
+      currentUser.email.toLowerCase() === attendee.email.toLowerCase();
+    if (emailMatch) {
+      try {
+        await prisma.eventAttendee.update({
+          where: { id: attendee.id },
+          data: { userId: currentUser.id },
+        });
+        attendee.userId = currentUser.id;
+      } catch {
+        // Non-blocking — linking may fail if already linked to another user
+      }
+    }
+  }
+
+  const isLinkedAndLoggedIn = currentUser && attendee.userId === currentUser.id;
 
   // Parse profile JSON if available
   const profile = attendee.profile as Profile | null;
@@ -171,7 +195,7 @@ export default async function CompletePage({ params }: CompletePageProps) {
             )}
 
             <div className="mt-4 pt-4 border-t border-border">
-              {attendee.userId ? (
+              {isLinkedAndLoggedIn ? (
                 <>
                   <a
                     href={`/guest/events/${event.id}`}
@@ -180,7 +204,19 @@ export default async function CompletePage({ params }: CompletePageProps) {
                     View &amp; Edit Your Profile
                   </a>
                   <p className="text-xs text-text-tertiary mt-2">
-                    You already have an account linked to this event.
+                    Manage your profile and see your connections.
+                  </p>
+                </>
+              ) : attendee.userId && !currentUser ? (
+                <>
+                  <a
+                    href={`/login?next=${encodeURIComponent(`/guest/events/${event.id}`)}`}
+                    className="inline-block px-4 py-2 bg-gold-primary hover:bg-gold-light text-bg-primary text-sm font-medium rounded-lg transition-colors"
+                  >
+                    View &amp; Edit Your Profile
+                  </a>
+                  <p className="text-xs text-text-tertiary mt-2">
+                    Sign in to view and edit how you appear to other attendees.
                   </p>
                 </>
               ) : (
