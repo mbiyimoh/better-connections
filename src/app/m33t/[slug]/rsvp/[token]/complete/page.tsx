@@ -1,7 +1,6 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth-helpers';
-import { verifyRSVPToken } from '@/lib/m33t/tokens';
+import { verifyRSVPToken, resolveAttendeeAuth } from '@/lib/m33t';
 import { Card, CardContent } from '@/components/ui/card';
 import { Check, Calendar, Clock, MapPin, User, Briefcase, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
@@ -51,28 +50,9 @@ export default async function CompletePage({ params }: CompletePageProps) {
     return notFound();
   }
 
-  // Check if the current visitor is already authenticated
-  const currentUser = await getCurrentUser();
-
-  // If logged in but attendee not yet linked, try to link now (server-side)
-  if (currentUser && !attendee.userId) {
-    // Only link if emails match (prevent hijacking)
-    const emailMatch = attendee.email &&
-      currentUser.email.toLowerCase() === attendee.email.toLowerCase();
-    if (emailMatch) {
-      try {
-        await prisma.eventAttendee.update({
-          where: { id: attendee.id },
-          data: { userId: currentUser.id },
-        });
-        attendee.userId = currentUser.id;
-      } catch {
-        // Non-blocking — linking may fail if already linked to another user
-      }
-    }
-  }
-
-  const isLinkedAndLoggedIn = currentUser && attendee.userId === currentUser.id;
+  // Check auth state, link attendee if possible, compute CTA URLs
+  const { currentUser, isLinkedAndLoggedIn, profileUrl, profileCtaLabel } =
+    await resolveAttendeeAuth(attendee, event.id);
 
   // Parse profile JSON if available
   const profile = attendee.profile as Profile | null;
@@ -195,40 +175,20 @@ export default async function CompletePage({ params }: CompletePageProps) {
             )}
 
             <div className="mt-4 pt-4 border-t border-border">
-              {isLinkedAndLoggedIn ? (
+              {profileUrl && (
                 <>
                   <a
-                    href={`/guest/events/${event.id}`}
+                    href={profileUrl}
                     className="inline-block px-4 py-2 bg-gold-primary hover:bg-gold-light text-bg-primary text-sm font-medium rounded-lg transition-colors"
                   >
-                    View &amp; Edit Your Profile
+                    {profileCtaLabel}
                   </a>
                   <p className="text-xs text-text-tertiary mt-2">
-                    Manage your profile and see your connections.
-                  </p>
-                </>
-              ) : attendee.userId && !currentUser ? (
-                <>
-                  <a
-                    href={`/login?next=${encodeURIComponent(`/guest/events/${event.id}`)}`}
-                    className="inline-block px-4 py-2 bg-gold-primary hover:bg-gold-light text-bg-primary text-sm font-medium rounded-lg transition-colors"
-                  >
-                    View &amp; Edit Your Profile
-                  </a>
-                  <p className="text-xs text-text-tertiary mt-2">
-                    Sign in to view and edit how you appear to other attendees.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <a
-                    href={`/signup?next=${encodeURIComponent(`/guest/events/${event.id}`)}&m33t_invitee=true&attendee_id=${attendee.id}${attendee.email ? `&email=${encodeURIComponent(attendee.email)}` : ''}`}
-                    className="inline-block px-4 py-2 bg-gold-primary hover:bg-gold-light text-bg-primary text-sm font-medium rounded-lg transition-colors"
-                  >
-                    View &amp; Edit Your Profile
-                  </a>
-                  <p className="text-xs text-text-tertiary mt-2">
-                    Create an account to view and edit how you appear to other attendees.
+                    {isLinkedAndLoggedIn
+                      ? 'Manage your profile and see your connections.'
+                      : currentUser
+                        ? 'View and edit how you appear to other attendees.'
+                        : 'Create an account to view and edit how you appear to other attendees.'}
                   </p>
                 </>
               )}

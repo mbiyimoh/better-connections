@@ -94,6 +94,12 @@ export {
 // RSVP Path Utilities (slug-aware URL construction)
 export { getRsvpBasePath, buildRsvpUrl } from './rsvp-paths';
 
+// Attendee Auth Linking (server-side linking + CTA computation)
+export {
+  resolveAttendeeAuth,
+  type AttendeeAuthState,
+} from './attendee-linking';
+
 // Reveal Timing (Match visibility logic)
 export {
   calculateRevealTime,

@@ -1,8 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { prisma } from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth-helpers';
-import { verifyRSVPToken, isTokenExpired } from '@/lib/m33t/tokens';
+import { verifyRSVPToken, isTokenExpired, resolveAttendeeAuth } from '@/lib/m33t';
 import { RSVPForm } from '@/components/m33t/RSVPForm';
 import { TokenExpiredMessage } from '@/components/m33t/TokenExpiredMessage';
 import { TokenInvalidMessage } from '@/components/m33t/TokenInvalidMessage';
@@ -71,41 +70,8 @@ export default async function RSVPPage({ params }: RSVPPageProps) {
     return notFound();
   }
 
-  // Check auth state and try to link attendee if logged in
-  const currentUser = await getCurrentUser();
-  let isLinkedAndLoggedIn = !!(currentUser && attendee.userId === currentUser.id);
-
-  if (currentUser && !attendee.userId) {
-    const emailMatch = attendee.email &&
-      currentUser.email.toLowerCase() === attendee.email.toLowerCase();
-    if (emailMatch) {
-      try {
-        await prisma.eventAttendee.update({
-          where: { id: attendee.id },
-          data: { userId: currentUser.id },
-        });
-        attendee.userId = currentUser.id;
-        isLinkedAndLoggedIn = true;
-      } catch {
-        // Non-blocking
-      }
-    }
-  }
-
-  // Compute CTA URLs for the status card
-  let profileUrl: string | undefined;
-  let profileCtaLabel: string | undefined;
-  if (isLinkedAndLoggedIn) {
-    profileUrl = `/guest/events/${event.id}`;
-    profileCtaLabel = 'View & Edit Your Profile';
-  } else if (attendee.userId && !currentUser) {
-    profileUrl = `/login?next=${encodeURIComponent(`/guest/events/${event.id}`)}`;
-    profileCtaLabel = 'Sign In to Edit Your Profile';
-  } else if (!attendee.userId) {
-    profileUrl = `/signup?next=${encodeURIComponent(`/guest/events/${event.id}`)}&m33t_invitee=true&attendee_id=${attendee.id}${attendee.email ? `&email=${encodeURIComponent(attendee.email)}` : ''}`;
-    profileCtaLabel = 'View & Edit Your Profile';
-  }
-
+  // Check auth state, link attendee if possible, compute CTA URLs
+  const { profileUrl, profileCtaLabel } = await resolveAttendeeAuth(attendee, event.id);
   const eventLandingUrl = `/m33t/${event.slug || slug}`;
 
   // Check if event is still accepting RSVPs
