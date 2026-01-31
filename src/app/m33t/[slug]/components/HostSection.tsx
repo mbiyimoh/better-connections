@@ -65,28 +65,18 @@ function HostCard({ host }: { host: HostData }) {
 export function HostSection({ hosts, sectionNumber }: HostSectionProps) {
   if (hosts.length === 0) return null;
 
-  const isSingleHost = hosts.length === 1;
-
   return (
     <section className="py-24 px-4">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-3xl mx-auto">
         <p className="font-mono text-amber-500 text-sm font-medium tracking-widest uppercase mb-4 text-left md:text-center">
-          {sectionNumber ? `${sectionNumber} — ` : ''}{isSingleHost ? 'YOUR HOST' : 'YOUR HOSTS'}
+          {sectionNumber ? `${sectionNumber} — ` : ''}{hosts.length === 1 ? 'YOUR HOST' : 'YOUR HOSTS'}
         </p>
 
-        {isSingleHost && hosts[0] ? (
-          // Single host: centered layout
-          <div className="max-w-3xl mx-auto">
-            <HostCard host={hosts[0]} />
-          </div>
-        ) : (
-          // Multiple hosts: grid layout
-          <div className="grid gap-12 md:grid-cols-2">
-            {hosts.map((host, index) => (
-              <HostCard key={host.id || index} host={host} />
-            ))}
-          </div>
-        )}
+        <div className="space-y-16">
+          {hosts.map((host, index) => (
+            <HostCard key={host.id || index} host={host} />
+          ))}
+        </div>
       </div>
     </section>
   );
