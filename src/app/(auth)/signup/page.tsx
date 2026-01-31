@@ -68,7 +68,7 @@ export default function SignupPage() {
       // Build email redirect URL with M33T params for account linking
       let emailRedirectTo: string | undefined;
       if (isM33tInvitee && attendeeId) {
-        const baseUrl = window.location.origin;
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
         const callbackParams = new URLSearchParams({
           next: nextUrl || '/guest/events',
           m33t_invitee: 'true',
