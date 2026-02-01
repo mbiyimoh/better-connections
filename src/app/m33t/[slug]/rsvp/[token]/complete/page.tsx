@@ -5,6 +5,7 @@ import { resolveAttendeeAuth } from '@/lib/m33t/attendee-linking';
 import { Card, CardContent } from '@/components/ui/card';
 import { Check, Calendar, Clock, MapPin, User, Briefcase, Sparkles } from 'lucide-react';
 import { formatEventDate, formatEventTimeRange } from '@/lib/m33t';
+import { AddToCalendarButton } from '@/components/m33t/AddToCalendarButton';
 import type { Profile } from '@/lib/m33t/schemas';
 
 interface CompletePageProps {
@@ -26,9 +27,11 @@ export default async function CompletePage({ params }: CompletePageProps) {
         id: true,
         name: true,
         tagline: true,
+        description: true,
         date: true,
         startTime: true,
         endTime: true,
+        timezone: true,
         venueName: true,
         venueAddress: true,
       },
@@ -96,7 +99,7 @@ export default async function CompletePage({ params }: CompletePageProps) {
               </div>
               <div className="flex items-center">
                 <Clock className="w-5 h-5 mr-3 text-gold-primary" />
-                <span>{event.startTime} - {event.endTime}</span>
+                <span>{formatEventTimeRange(event.startTime, event.endTime)}</span>
               </div>
               <div className="flex items-center">
                 <MapPin className="w-5 h-5 mr-3 text-gold-primary" />
@@ -105,6 +108,23 @@ export default async function CompletePage({ params }: CompletePageProps) {
                   <p className="text-sm text-text-tertiary">{event.venueAddress}</p>
                 </div>
               </div>
+            </div>
+
+            {/* Add to Calendar */}
+            <div className="mt-6 pt-6 border-t border-border">
+              <AddToCalendarButton
+                event={{
+                  title: `${event.name}${event.tagline ? ': ' + event.tagline : ''}`,
+                  description: event.description || '',
+                  date: event.date.toISOString(),
+                  startTime: event.startTime,
+                  endTime: event.endTime,
+                  timezone: event.timezone,
+                  venueName: event.venueName,
+                  venueAddress: event.venueAddress,
+                }}
+                variant="completion"
+              />
             </div>
 
             <div className="mt-6 pt-6 border-t border-border">

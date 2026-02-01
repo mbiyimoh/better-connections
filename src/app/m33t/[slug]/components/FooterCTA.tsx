@@ -1,11 +1,17 @@
 import { formatEventDate } from '@/lib/m33t';
 import { GOLD_FOIL_BUTTON } from '@/lib/design-system';
+import { AddToCalendarButton } from '@/components/m33t/AddToCalendarButton';
 import type { InviteeContext } from '../types';
 
 interface FooterCTAProps {
   tagline?: string | null;
   date: string;
+  startTime: string;
+  endTime: string;
   location: string;
+  venueAddress: string;
+  description?: string | null;
+  eventName: string;
   rsvpUrl: string;
   inviteeContext?: InviteeContext;
 }
@@ -13,7 +19,12 @@ interface FooterCTAProps {
 export function FooterCTA({
   tagline,
   date,
+  startTime,
+  endTime,
   location,
+  venueAddress,
+  description,
+  eventName,
   rsvpUrl,
   inviteeContext,
 }: FooterCTAProps) {
@@ -48,6 +59,23 @@ export function FooterCTA({
         <div className="mt-8 text-zinc-500 text-sm">
           <p>{formatEventDate(date)}</p>
           <p>{location}</p>
+        </div>
+
+        {/* Add to Calendar */}
+        <div className="mt-4">
+          <AddToCalendarButton
+            event={{
+              title: eventName,
+              description: description || '',
+              date,
+              startTime,
+              endTime,
+              timezone: 'America/Chicago',
+              venueName: location,
+              venueAddress,
+            }}
+            variant="landing"
+          />
         </div>
       </div>
     </section>

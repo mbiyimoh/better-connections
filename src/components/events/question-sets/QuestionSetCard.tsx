@@ -18,6 +18,7 @@ import {
   Archive,
   Trash2,
   FileText,
+  Eye,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -40,6 +41,7 @@ interface QuestionSetCardProps {
   onPublish: () => void;
   onNotify: () => void;
   onDelete: () => void;
+  onViewResponses?: () => void;
   isDragging?: boolean;
   dragHandleProps?: Record<string, unknown>;
 }
@@ -71,6 +73,7 @@ export function QuestionSetCard({
   onPublish,
   onNotify,
   onDelete,
+  onViewResponses,
   isDragging,
   dragHandleProps,
 }: QuestionSetCardProps) {
@@ -149,6 +152,13 @@ export function QuestionSetCard({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {status === 'PUBLISHED' && onViewResponses && (
+              <DropdownMenuItem onClick={onViewResponses}>
+                <Eye className="h-4 w-4 mr-2" />
+                View Responses
+              </DropdownMenuItem>
+            )}
+
             {status !== 'ARCHIVED' && (
               <DropdownMenuItem onClick={onEdit}>
                 <Pencil className="h-4 w-4 mr-2" />

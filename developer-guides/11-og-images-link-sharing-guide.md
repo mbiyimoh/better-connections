@@ -402,12 +402,146 @@ curl -I https://bettercontacts.ai/m33t/no-edges-33-strategies-launch | grep -i o
 
 ---
 
+## Personalized RSVP OG Images
+
+### When to Use
+
+When generating invite links with JWT tokens, use a personalized OG image showing the invitee's name.
+
+**URL Pattern:**
+```
+/api/og/m33t/rsvp?token={jwt_token}
+```
+
+### Implementation
+
+```typescript
+// app/api/og/m33t/rsvp/route.tsx
+import { verifyRSVPToken } from '@/lib/m33t/tokens';
+import { loadInstrumentSerif } from '@/lib/og-fonts';
+
+export const runtime = 'nodejs';  // Required for Prisma
+
+export async function GET(req: NextRequest) {
+  const token = req.nextUrl.searchParams.get('token');
+
+  // Resolve invitee name and event from token
+  let firstName = '';
+  let eventConfig: EventConfig = getEventConfig(null);
+
+  if (token) {
+    try {
+      const payload = verifyRSVPToken(token);
+      if (payload) {
+        const [attendee, event] = await Promise.all([
+          prisma.eventAttendee.findUnique({
+            where: { id: payload.attendeeId },
+            select: { firstName: true },
+          }),
+          prisma.event.findUnique({
+            where: { id: payload.eventId },
+            select: { name: true },
+          }),
+        ]);
+
+        if (attendee) firstName = attendee.firstName;
+        if (event) eventConfig = getEventConfig(event.name);
+      }
+    } catch {
+      // Invalid/expired token - fall back to generic
+    }
+  }
+
+  const displayName = firstName || 'You';
+
+  return new ImageResponse(
+    <div>{/* Layout with displayName */}</div>,
+    {
+      width: 1200,
+      height: 630,
+      fonts: [
+        {
+          name: 'Instrument Serif',
+          data: await loadInstrumentSerif(),
+          style: 'normal',
+          weight: 400,
+        },
+      ],
+    }
+  );
+}
+```
+
+### Layout Pattern
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│                           ○ (gold glow)                      │
+│                                                              │
+│                       John                  ← 168px, gold    │
+│                   You're Invited            ← 59px, white    │
+│                                                              │
+│                                                              │
+│  ┌────────────────────────────────────────────────┐         │
+│  │ No Edges. Building at the speed of thought.    │ 51px    │
+│  │ 3.12.26  •  Austin, TX                         │ 30px    │
+│  └────────────────────────────────────────────────┘         │
+│                                               ○ (glow)       │
+├──────────────────────────────────────────────────────────────┤
+│▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░░░░░│ ← gold gradient       │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### Key Details
+
+| Element | Specs |
+|---------|-------|
+| Invitee name | 168px (≤10 chars), 132px (>10 chars) Instrument Serif, gold |
+| "You're Invited" | 59px Georgia, white, 0.9 opacity |
+| Vertical position | marginTop: -80px (raised high to avoid bottom crowding) |
+| Headline + tagline | Single line, 51px, gold + white |
+| Date/location | 30px system-ui, muted (2x normal size) |
+| Fallback | "You're Invited" if token invalid/expired |
+
+### Metadata Integration
+
+```typescript
+// app/m33t/[slug]/page.tsx
+export async function generateMetadata({ params, searchParams }): Promise<Metadata> {
+  const { slug } = await params;
+  const { token } = await searchParams;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://bettercontacts.ai';
+
+  // Use personalized OG image when invitee token is present
+  const ogImageUrl = token
+    ? `${baseUrl}/api/og/m33t/rsvp?token=${encodeURIComponent(token)}`
+    : `${baseUrl}/api/og/m33t?slug=${encodeURIComponent(slug)}`;
+
+  return {
+    openGraph: { images: [{ url: ogImageUrl, width: 1200, height: 630 }] },
+    twitter: { card: 'summary_large_image', images: [ogImageUrl] },
+  };
+}
+```
+
+### Gotchas
+
+- **Font scaling:** Names >10 characters use 132px to prevent overflow
+- **Token verification:** Always use try/catch - invalid tokens should show generic fallback
+- **Event config:** Extract event-specific branding from event name (e.g., "NO EDGES")
+- **Performance:** Prisma queries run in parallel with `Promise.all()`
+
+---
+
 ## File Inventory
 
 | File | Purpose |
 |------|---------|
 | `app/api/og/m33t/route.tsx` | M33T event OG image API |
+| `app/api/og/m33t/rsvp/route.tsx` | Personalized RSVP OG image API |
 | `app/m33t/[slug]/page.tsx` | Event page with metadata generation |
 | `lib/design-system.ts` | Color constants |
+| `lib/og-fonts.ts` | Custom font loading |
 
 **Location:** `app/api/og/`, `app/m33t/[slug]/`

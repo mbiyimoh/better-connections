@@ -212,7 +212,12 @@ export function EventLandingClient({ data }: EventLandingClientProps) {
         <FooterCTA
           tagline={event.tagline}
           date={event.date}
+          startTime={event.startTime}
+          endTime={event.endTime}
           location={event.venueName}
+          venueAddress={event.venueAddress}
+          description={event.description}
+          eventName={event.name}
           rsvpUrl={rsvpUrl}
           inviteeContext={inviteeContext}
         />

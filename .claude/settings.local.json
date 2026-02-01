@@ -45,7 +45,8 @@
       "WebFetch(domain:www.framer.com)",
       "WebFetch(domain:community.cloudflare.com)",
       "WebFetch(domain:www.indragie.com)",
-      "WebFetch(domain:dimillian.medium.com)"
+      "WebFetch(domain:dimillian.medium.com)",
+      "WebFetch(domain:bundlephobia.com)"
     ],
     "deny": [],
     "ask": []

@@ -291,7 +291,104 @@ const handleSelectAttendee = (attendee: PublicAttendee) => {
 
 ---
 
-## 7. RSVP Token Flow
+## 7. Personalized Invite Links
+
+### URL Routing Strategy
+
+**Base invite links route to the personalized landing page, NOT directly to RSVP form:**
+
+```typescript
+// src/lib/m33t/rsvp-paths.ts
+export function buildRsvpUrl(baseUrl, slug, token, subpath?) {
+  if (subpath) {
+    // Deep links go directly to the RSVP sub-page
+    const base = slug ? `${baseUrl}/m33t/${slug}/rsvp/${token}` : `${baseUrl}/rsvp/${token}`;
+    return `${base}${subpath}`;
+  }
+
+  // Base invite link → personalized landing page
+  return slug ? `${baseUrl}/m33t/${slug}?token=${token}` : `${baseUrl}/rsvp/${token}`;
+}
+```
+
+**Why this matters:** Invitees see the full brand experience (scrollytelling, hero with "Welcome, {firstName}") before reaching the RSVP CTA. Deep links for notifications (matches, question-sets) still route directly.
+
+### Token Resolution in Landing Page
+
+```typescript
+// src/app/m33t/[slug]/page.tsx
+async function resolveInviteeContext(token: string, slug: string): Promise<InviteeContext | undefined> {
+  try {
+    const payload = verifyRSVPToken(token);
+    if (!payload) return undefined;
+
+    const attendee = await prisma.eventAttendee.findUnique({
+      where: { id: payload.attendeeId },
+      select: {
+        firstName: true,
+        event: { select: { slug: true } },
+      },
+    });
+
+    if (!attendee) return undefined;
+
+    // Verify token belongs to this event (prevent cross-event token reuse)
+    if (attendee.event.slug !== slug) return undefined;
+
+    return {
+      firstName: attendee.firstName,
+      rsvpUrl: `/m33t/${slug}/rsvp/${token}`,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+// In page component
+export default async function EventPage({ params, searchParams }) {
+  const { slug } = await params;
+  const { token } = await searchParams;
+  const data = await getEventData(slug);
+
+  // If token present, resolve invitee context for personalization
+  if (token) {
+    const inviteeContext = await resolveInviteeContext(token, slug);
+    if (inviteeContext) {
+      data.inviteeContext = inviteeContext;
+    }
+  }
+
+  return <EventLandingClient data={data} />;
+}
+```
+
+### Personalized OG Metadata
+
+```typescript
+// generateMetadata() in page.tsx
+export async function generateMetadata({ params, searchParams }): Promise<Metadata> {
+  const { slug } = await params;
+  const { token } = await searchParams;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://bettercontacts.ai';
+
+  // Use personalized OG image when invitee token is present
+  const ogImageUrl = token
+    ? `${baseUrl}/api/og/m33t/rsvp?token=${encodeURIComponent(token)}`
+    : `${baseUrl}/api/og/m33t?slug=${encodeURIComponent(slug)}`;
+
+  return {
+    openGraph: {
+      images: [{ url: ogImageUrl, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      images: [ogImageUrl],
+    },
+  };
+}
+```
+
+## 8. RSVP Token Flow
 
 ### Token-Based Authentication
 
@@ -305,17 +402,20 @@ const handleSelectAttendee = (attendee: PublicAttendee) => {
 │      │  Generate Token       │                      │                       │
 │      │──────────────────────>│                      │                       │
 │      │                       │                      │                       │
-│      │                       │  /rsvp/{token}       │                       │
+│      │                       │  /m33t/{slug}?token  │                       │
 │      │                       │─────────────────────>│                       │
 │      │                       │                      │                       │
-│      │                       │                      │ Verify Token          │
-│      │                       │                      │ Show RSVP Form        │
+│      │                       │                      │ Show Landing Page     │
+│      │                       │                      │ (personalized)        │
 │      │                       │                      │                       │
-│      │                       │                      │ Submit RSVP           │
+│      │                       │                      │ Click RSVP CTA        │
 │      │                       │                      │──────────>            │
 │      │                       │                      │                       │
+│      │                       │                      │ Submit RSVP           │
+│      │                       │                      │ /m33t/{slug}/rsvp/{token} │
+│      │                       │                      │                       │
 │      │                       │                      │ (If confirmed)        │
-│      │                       │                      │ /rsvp/{token}/questionnaire │
+│      │                       │                      │ /m33t/{slug}/rsvp/{token}/questionnaire │
 │      │                       │                      │──────────>            │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -375,7 +475,7 @@ export function isTokenExpired(token: string): boolean {
 
 ---
 
-## 8. RSVP Form Component
+## 9. RSVP Form Component
 
 ### State-Based Rendering
 
@@ -434,7 +534,7 @@ const handleSubmit = async () => {
 
 ---
 
-## 9. Questionnaire Flow
+## 10. Questionnaire Flow
 
 ### Question Types
 
@@ -486,7 +586,7 @@ interface QuestionnaireResponse {
 
 ---
 
-## 10. Design System (33 Strategies Brand)
+## 11. Design System (33 Strategies Brand)
 
 ### Colors
 
@@ -494,9 +594,11 @@ interface QuestionnaireResponse {
 // Background
 'bg-zinc-950'  // Main page background
 
-// Gold accent
-'text-amber-500'  // Primary text accent
-'bg-amber-500'    // Buttons, highlights
+// Gold accent (ALWAYS use Tailwind tokens, never hardcode #D4A84B)
+'text-gold-primary'   // #d4a54a
+'bg-gold-primary'
+'bg-gold-subtle'      // rgba(212, 165, 74, 0.15)
+'border-gold-primary'
 
 // Status colors
 'bg-emerald-500'  // Confirmed
@@ -506,10 +608,14 @@ interface QuestionnaireResponse {
 
 ### Typography
 
-```css
-/* Headings use Georgia serif */
-font-family: Georgia, serif;
+```typescript
+// Tailwind font classes
+'font-display'  // Instrument Serif (headings)
+'font-body'     // DM Sans (body text)
+'font-mono'     // JetBrains Mono (counters, technical)
+```
 
+```css
 /* Section labels */
 font-size: 0.875rem;
 font-weight: 500;
@@ -518,9 +624,71 @@ text-transform: uppercase;
 color: #f59e0b; /* amber-500 */
 ```
 
+### Custom Form Controls (33 Strategies Questionnaire)
+
+**CRITICAL:** Replace shadcn RadioGroup/Checkbox with custom `motion.button` controls.
+
+**Custom Radio Pattern:**
+```tsx
+<motion.button
+  type="button" role="radio" aria-checked={isSelected}
+  onClick={() => setValue(option.value)}
+  whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
+  className={`flex items-center gap-3 p-4 rounded-lg border transition-colors focus-visible:ring-2 focus-visible:ring-gold-primary/50 ${
+    isSelected ? 'border-gold-primary bg-gold-subtle' : 'border-zinc-700 bg-zinc-900/50'
+  }`}
+>
+  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+    isSelected ? 'border-gold-primary' : 'border-zinc-600'
+  }`}>
+    {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-gold-primary" />}
+  </div>
+  <span className={`font-body ${isSelected ? 'text-white' : 'text-zinc-300'}`}>
+    {option.label}
+  </span>
+</motion.button>
+```
+
+**Custom Checkbox Pattern:**
+```tsx
+<div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+  isSelected ? 'border-gold-primary bg-gold-primary' : 'border-zinc-600'
+}`}>
+  {isSelected && (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+      <path d="M2 6L5 9L10 3" stroke="#0a0a0f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )}
+</div>
+```
+
+**Native Slider with Gold Gradient:**
+```tsx
+<input
+  type="range" min={1} max={10} value={value}
+  className="w-full h-2 rounded-lg appearance-none cursor-pointer"
+  style={{
+    background: `linear-gradient(to right, #D4A84B 0%, #D4A84B ${percentage}%, #3f3f46 ${percentage}%, #3f3f46 100%)`,
+  }}
+/>
+```
+
+**Gold Rank Badge (Ranking Question):**
+```tsx
+<div className="bg-gold-primary text-bg-primary font-mono text-sm font-bold w-8 h-8 rounded flex items-center justify-center">
+  {rank}
+</div>
+```
+
+**Gotchas:**
+- NEVER hardcode `#D4A84B` in Tailwind classes - use `gold-*` tokens (except in CSS pseudo-elements/gradients where hex is required)
+- Add `focus-visible:ring-2 focus-visible:ring-gold-primary/50` for keyboard navigation
+- Use `font-display` for question titles, `font-body` for labels/options
+- Slider requires inline style for gradient fill (legitimate hex exception)
+
 ---
 
-## 11. Critical Gotchas
+## 12. Critical Gotchas
 
 ### Force Dynamic Rendering
 
@@ -582,7 +750,7 @@ if (!title && attendee.profile?.title) {
 
 ---
 
-## 12. Testing Public Pages
+## 13. Testing Public Pages
 
 ### Manual Testing
 
@@ -609,7 +777,7 @@ if (!title && attendee.profile?.title) {
 
 ---
 
-## 13. Related Guides
+## 14. Related Guides
 
 - [M33T Architecture Guide](./07-m33t-architecture-guide.md) - System boundaries
 - [M33T Event Management Guide](./08-m33t-event-management-guide.md) - Wizard, matches

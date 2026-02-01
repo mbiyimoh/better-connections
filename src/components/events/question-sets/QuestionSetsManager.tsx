@@ -53,12 +53,14 @@ function SortableQuestionSetCard({
   onPublish,
   onNotify,
   onDelete,
+  onViewResponses,
 }: {
   set: QuestionSet;
   onEdit: () => void;
   onPublish: () => void;
   onNotify: () => void;
   onDelete: () => void;
+  onViewResponses?: () => void;
 }) {
   const {
     attributes,
@@ -82,6 +84,7 @@ function SortableQuestionSetCard({
         onPublish={onPublish}
         onNotify={onNotify}
         onDelete={onDelete}
+        onViewResponses={onViewResponses}
         isDragging={isDragging}
         dragHandleProps={{ ...attributes, ...listeners }}
       />
@@ -238,6 +241,11 @@ export function QuestionSetsManager({
                   onPublish={() => setPublishDialogSet(set)}
                   onNotify={() => setNotifyDialogSet(set)}
                   onDelete={() => handleDelete(set.id)}
+                  onViewResponses={
+                    set.status === 'PUBLISHED'
+                      ? () => router.push(`/events/${eventId}/question-sets/${set.id}/responses`)
+                      : undefined
+                  }
                 />
               ))}
             </div>

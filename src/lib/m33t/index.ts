@@ -94,6 +94,14 @@ export {
 // RSVP Path Utilities (slug-aware URL construction)
 export { getRsvpBasePath, buildRsvpUrl } from './rsvp-paths';
 
+// Calendar Integration
+export {
+  buildGoogleCalendarUrl,
+  generateICSContent,
+  downloadICSFile,
+  type CalendarEventData,
+} from './calendar';
+
 // Reveal Timing (Match visibility logic)
 export {
   calculateRevealTime,
