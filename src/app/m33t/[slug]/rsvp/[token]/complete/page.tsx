@@ -4,7 +4,7 @@ import { verifyRSVPToken } from '@/lib/m33t';
 import { resolveAttendeeAuth } from '@/lib/m33t/attendee-linking';
 import { Card, CardContent } from '@/components/ui/card';
 import { Check, Calendar, Clock, MapPin, User, Briefcase, Sparkles } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatEventDate, formatEventTimeRange } from '@/lib/m33t';
 import type { Profile } from '@/lib/m33t/schemas';
 
 interface CompletePageProps {
@@ -92,7 +92,7 @@ export default async function CompletePage({ params }: CompletePageProps) {
             <div className="space-y-3 text-text-secondary">
               <div className="flex items-center">
                 <Calendar className="w-5 h-5 mr-3 text-gold-primary" />
-                <span>{format(event.date, 'EEEE, MMMM d, yyyy')}</span>
+                <span>{formatEventDate(event.date)}</span>
               </div>
               <div className="flex items-center">
                 <Clock className="w-5 h-5 mr-3 text-gold-primary" />

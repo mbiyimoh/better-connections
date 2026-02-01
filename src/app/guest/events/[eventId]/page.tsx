@@ -8,8 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Calendar, MapPin, Users, Edit, Search, ArrowRight, Sparkles } from 'lucide-react';
-import { format } from 'date-fns';
-import { calculateAttendeeProfileCompletion } from '@/lib/m33t';
+import { calculateAttendeeProfileCompletion, formatEventDate } from '@/lib/m33t';
 import type { RSVPStatus } from '@prisma/client';
 
 const statusColors: Record<RSVPStatus, { bg: string; text: string }> = {
@@ -111,7 +110,7 @@ export default async function GuestEventDetailPage({
           <div className="flex items-center gap-3">
             <Calendar className="w-5 h-5 text-text-tertiary" />
             <div>
-              <div>{format(new Date(event.date), 'EEEE, MMMM d, yyyy')}</div>
+              <div>{formatEventDate(event.date)}</div>
               <div className="text-text-secondary">
                 {event.startTime} - {event.endTime}
               </div>

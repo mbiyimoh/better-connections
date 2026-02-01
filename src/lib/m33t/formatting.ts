@@ -7,18 +7,38 @@
 
 /**
  * Format an ISO date string for event display.
- * Returns full weekday, month, day, and year.
+ * Returns full weekday, month, day, and year in the event's timezone.
+ *
+ * @param dateStr - ISO date string or Date object
+ * @param timezone - IANA timezone (defaults to America/Chicago for M33T events)
  *
  * @example
- * formatEventDate("2026-02-15T00:00:00.000Z") // "Saturday, February 15, 2026"
+ * formatEventDate("2026-03-13T00:00:00.000Z") // "Thursday, March 12, 2026" (in Central time)
  */
-export function formatEventDate(dateStr: string): string {
-  const date = new Date(dateStr);
+export function formatEventDate(dateStr: string | Date, timezone: string = 'America/Chicago'): string {
+  const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
   return date.toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    timeZone: timezone,
+  });
+}
+
+/**
+ * Format a date for short display (e.g., "Mar 12, 2026").
+ *
+ * @param dateStr - ISO date string or Date object
+ * @param timezone - IANA timezone (defaults to America/Chicago for M33T events)
+ */
+export function formatEventDateShort(dateStr: string | Date, timezone: string = 'America/Chicago'): string {
+  const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: timezone,
   });
 }
 

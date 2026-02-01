@@ -1,13 +1,12 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { prisma } from '@/lib/db';
-import { verifyRSVPToken, isTokenExpired } from '@/lib/m33t';
+import { verifyRSVPToken, isTokenExpired, formatEventDate, formatEventTimeRange } from '@/lib/m33t';
 import { resolveAttendeeAuth } from '@/lib/m33t/attendee-linking';
 import { RSVPForm } from '@/components/m33t/RSVPForm';
 import { TokenExpiredMessage } from '@/components/m33t/TokenExpiredMessage';
 import { TokenInvalidMessage } from '@/components/m33t/TokenInvalidMessage';
 import { generateRSVPOGMetadata } from '@/lib/m33t/og-metadata';
-import { format } from 'date-fns';
 
 interface RSVPPageProps {
   params: Promise<{ slug: string; token: string }>;
@@ -100,7 +99,7 @@ export default async function RSVPPage({ params }: RSVPPageProps) {
             <p className="text-lg text-text-secondary mb-4">{event.tagline}</p>
           )}
           <div className="flex flex-wrap gap-4 text-sm text-text-secondary">
-            <span>{format(event.date, 'EEEE, MMMM d, yyyy')}</span>
+            <span>{formatEventDate(event.date)}</span>
             <span>{event.startTime} - {event.endTime}</span>
             <span>{event.venueName}</span>
           </div>

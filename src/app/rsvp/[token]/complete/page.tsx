@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db';
 import { verifyRSVPToken } from '@/lib/m33t/tokens';
 import { Card, CardContent } from '@/components/ui/card';
 import { Check, Calendar, Clock, MapPin } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatEventDate } from '@/lib/m33t';
 
 interface CompletePageProps {
   params: Promise<{ token: string }>;
@@ -92,7 +92,7 @@ export default async function CompletePage({ params }: CompletePageProps) {
             <div className="space-y-3 text-text-secondary">
               <div className="flex items-center">
                 <Calendar className="w-5 h-5 mr-3 text-gold-primary" />
-                <span>{format(event.date, 'EEEE, MMMM d, yyyy')}</span>
+                <span>{formatEventDate(event.date)}</span>
               </div>
               <div className="flex items-center">
                 <Clock className="w-5 h-5 mr-3 text-gold-primary" />

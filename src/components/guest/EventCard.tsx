@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, MapPin, Users } from 'lucide-react';
-import { format } from 'date-fns';
+import { formatEventDateShort } from '@/lib/m33t';
 import type { RSVPStatus } from '@prisma/client';
 
 interface EventCardProps {
@@ -60,7 +60,7 @@ export function EventCard({ event, rsvpStatus, profileCompletion }: EventCardPro
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 flex-shrink-0" />
             <span>
-              {format(new Date(event.date), 'MMM d, yyyy')} at {event.startTime}
+              {formatEventDateShort(event.date)} at {event.startTime}
             </span>
           </div>
           <div className="flex items-center gap-2">

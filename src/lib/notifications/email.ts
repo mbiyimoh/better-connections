@@ -125,6 +125,7 @@ export function generateInvitationEmail(params: {
     month: 'long',
     day: 'numeric',
     year: 'numeric',
+    timeZone: 'America/Chicago',
   });
 
   const subject = `You're invited to ${event.name}`;
@@ -475,6 +476,7 @@ export function generateQuestionSetEmail(params: {
     month: 'long',
     day: 'numeric',
     year: 'numeric',
+    timeZone: 'America/Chicago',
   });
 
   const subject = isNewSet
