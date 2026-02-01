@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { prisma } from '@/lib/db';
-import { verifyRSVPToken, isTokenExpired, resolveAttendeeAuth } from '@/lib/m33t';
+import { verifyRSVPToken, isTokenExpired } from '@/lib/m33t';
+import { resolveAttendeeAuth } from '@/lib/m33t/attendee-linking';
 import { RSVPForm } from '@/components/m33t/RSVPForm';
 import { TokenExpiredMessage } from '@/components/m33t/TokenExpiredMessage';
 import { TokenInvalidMessage } from '@/components/m33t/TokenInvalidMessage';

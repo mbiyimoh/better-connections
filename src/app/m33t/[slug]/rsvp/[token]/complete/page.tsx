@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/db';
-import { verifyRSVPToken, resolveAttendeeAuth } from '@/lib/m33t';
+import { verifyRSVPToken } from '@/lib/m33t';
+import { resolveAttendeeAuth } from '@/lib/m33t/attendee-linking';
 import { Card, CardContent } from '@/components/ui/card';
 import { Check, Calendar, Clock, MapPin, User, Briefcase, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
