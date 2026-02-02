@@ -197,7 +197,25 @@ export default function EventOverviewPage() {
         throw new Error(error.error || 'Failed to get invite link');
       }
       const data = await res.json();
-      await navigator.clipboard.writeText(data.url);
+
+      // Use clipboard API with fallback for mobile Safari
+      // Mobile Safari revokes clipboard permission after async fetch breaks user gesture chain
+      try {
+        await navigator.clipboard.writeText(data.url);
+      } catch {
+        // Fallback: use a temporary textarea element to copy
+        const textarea = document.createElement('textarea');
+        textarea.value = data.url;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.style.top = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+
       toast.success(`Invite link copied for ${attendeeName}`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to copy link');
@@ -491,19 +509,26 @@ export default function EventOverviewPage() {
                 return (
                   <div
                     key={attendee.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-bg-tertiary/50"
+                    className="p-3 rounded-lg bg-bg-tertiary/50"
                   >
-                    <div className="flex items-center gap-3 flex-1 min-w-0 overflow-hidden">
+                    {/* Top row: Avatar + profile info + RSVP status */}
+                    <div className="flex items-start gap-3">
                       <Avatar className="h-10 w-10 shrink-0">
                         <AvatarFallback className="bg-bg-tertiary text-gold-primary">
                           {getInitials(fullName)}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1 min-w-0 overflow-hidden">
-                        <p className="text-text-primary font-medium">{fullName}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-text-primary font-medium truncate">{fullName}</p>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {RSVP_ICONS[attendee.rsvpStatus]}
+                            <span className="text-sm text-text-secondary">{attendee.rsvpStatus}</span>
+                          </div>
+                        </div>
                         {/* Role and Company */}
                         {(cardSettings.role || cardSettings.company) && (role || company) && (
-                          <p className="text-text-secondary text-sm">
+                          <p className="text-text-secondary text-sm truncate">
                             {cardSettings.role && role && <span>{role}</span>}
                             {cardSettings.role && cardSettings.company && role && company && <span> @ </span>}
                             {cardSettings.company && company && <span>{company}</span>}
@@ -529,63 +554,64 @@ export default function EventOverviewPage() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      {attendee.overridesEditedBy && (
-                        <div className="flex items-center gap-1.5 text-xs text-text-tertiary">
-                          <Avatar className="h-5 w-5">
-                            <AvatarFallback className="text-[10px] bg-gold-subtle text-gold-primary">
-                              {getInitials(attendee.overridesEditedBy.name)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span>Edited by {attendee.overridesEditedBy.name}</span>
-                        </div>
-                      )}
-                      {attendee.questionnaireCompletedAt && (
-                        <Badge variant="outline" className="text-success border-success">
-                          Profile Complete
-                        </Badge>
-                      )}
-                      <div className="flex items-center gap-1">
-                        {RSVP_ICONS[attendee.rsvpStatus]}
-                        <span className="text-sm text-text-secondary">{attendee.rsvpStatus}</span>
+                    {/* Bottom row: badges + action buttons, aligned under profile text */}
+                    <div className="flex items-center justify-between mt-2 ml-[3.25rem]">
+                      <div className="flex items-center gap-2 flex-wrap min-w-0">
+                        {attendee.overridesEditedBy && (
+                          <div className="flex items-center gap-1.5 text-xs text-text-tertiary">
+                            <Avatar className="h-5 w-5 shrink-0">
+                              <AvatarFallback className="text-[10px] bg-gold-subtle text-gold-primary">
+                                {getInitials(attendee.overridesEditedBy.name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span>Edited by {attendee.overridesEditedBy.name}</span>
+                          </div>
+                        )}
+                        {attendee.questionnaireCompletedAt && (
+                          <Badge variant="outline" className="text-success border-success text-xs">
+                            Profile Complete
+                          </Badge>
+                        )}
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleCopyInviteLink(attendee.id, fullName)}
-                        disabled={copyingLinkFor === attendee.id}
-                        className="text-text-tertiary hover:text-gold-primary"
-                        title="Copy invite link"
-                      >
-                        {copyingLinkFor === attendee.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <LinkIcon className="w-4 h-4" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setEditingAttendeeId(attendee.id)}
-                        className="text-text-tertiary hover:text-gold-primary"
-                        title="Edit profile"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteAttendee(attendee.id, fullName)}
-                        disabled={deletingAttendeeId === attendee.id}
-                        className="text-text-tertiary hover:text-error"
-                        title="Remove attendee"
-                      >
-                        {deletingAttendeeId === attendee.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="w-4 h-4" />
-                        )}
-                      </Button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCopyInviteLink(attendee.id, fullName)}
+                          disabled={copyingLinkFor === attendee.id}
+                          className="text-text-tertiary hover:text-gold-primary h-8 w-8 p-0"
+                          title="Copy invite link"
+                        >
+                          {copyingLinkFor === attendee.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <LinkIcon className="w-4 h-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingAttendeeId(attendee.id)}
+                          className="text-text-tertiary hover:text-gold-primary h-8 w-8 p-0"
+                          title="Edit profile"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteAttendee(attendee.id, fullName)}
+                          disabled={deletingAttendeeId === attendee.id}
+                          className="text-text-tertiary hover:text-error h-8 w-8 p-0"
+                          title="Remove attendee"
+                        >
+                          {deletingAttendeeId === attendee.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 );
