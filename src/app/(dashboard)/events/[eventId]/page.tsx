@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import { copyToClipboard } from '@/lib/utils';
 import type { Profile, ProfileOverrides } from '@/lib/m33t/schemas';
 import { mergeProfileWithOverrides } from '@/lib/m33t/profile-utils';
 import { AttendeeProfileEditModal } from '@/components/m33t/AttendeeProfileEditModal';
@@ -198,23 +199,7 @@ export default function EventOverviewPage() {
       }
       const data = await res.json();
 
-      // Use clipboard API with fallback for mobile Safari
-      // Mobile Safari revokes clipboard permission after async fetch breaks user gesture chain
-      try {
-        await navigator.clipboard.writeText(data.url);
-      } catch {
-        // Fallback: use a temporary textarea element to copy
-        const textarea = document.createElement('textarea');
-        textarea.value = data.url;
-        textarea.style.position = 'fixed';
-        textarea.style.left = '-9999px';
-        textarea.style.top = '-9999px';
-        document.body.appendChild(textarea);
-        textarea.focus();
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-      }
+      await copyToClipboard(data.url);
 
       toast.success(`Invite link copied for ${attendeeName}`);
     } catch (error) {
