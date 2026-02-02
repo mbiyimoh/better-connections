@@ -30,8 +30,8 @@ export const GOLD_FOIL_GRADIENT = {
   WebkitBackgroundClip: "text",
   backgroundClip: "text",
   WebkitTextFillColor: "transparent",
-  // Subtle text shadow for depth
-  textShadow: "0 1px 2px rgba(0, 0, 0, 0.2)",
+  // Note: text-shadow removed — Chrome mobile renders it as a solid rectangle
+  // behind background-clip:text elements (shadow on transparent-filled text)
 } as const;
 
 /**
@@ -45,7 +45,6 @@ export const GOLD_FOIL_GRADIENT_MOBILE = {
   WebkitBackgroundClip: "text",
   backgroundClip: "text",
   WebkitTextFillColor: "transparent",
-  textShadow: "0 1px 2px rgba(0, 0, 0, 0.15)",
 } as const;
 
 /**
