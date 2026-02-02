@@ -27,7 +27,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import type { Profile } from '@/lib/m33t/schemas';
+import type { Profile, ProfileOverrides } from '@/lib/m33t/schemas';
+import { mergeProfileWithOverrides } from '@/lib/m33t/profile-utils';
 import { AttendeeProfileEditModal } from '@/components/m33t/AttendeeProfileEditModal';
 import { AttendeeOrderModal } from '@/components/m33t/AttendeeOrderModal';
 import { QuestionSetsManager, QuestionSetEditor } from '@/components/events/question-sets';
@@ -476,9 +477,10 @@ export default function EventOverviewPage() {
             <div className="space-y-2">
               {event.attendees.map((attendee) => {
                 const fullName = `${attendee.firstName} ${attendee.lastName || ''}`.trim();
-                // Get profile data from attendee.profile or fallback to linked contact
-                // Profile follows canonical ProfileSchema from @/lib/m33t/schemas
-                const profile = attendee.profile as Profile | null;
+                // Merge base profile with organizer overrides, then fallback to linked contact
+                const baseProfile = attendee.profile as Profile | null;
+                const overrides = attendee.profileOverrides as ProfileOverrides | null;
+                const profile = mergeProfileWithOverrides(baseProfile, overrides);
                 const contact = attendee.contact;
                 const role = profile?.role || contact?.title;
                 const company = profile?.company || contact?.company;
