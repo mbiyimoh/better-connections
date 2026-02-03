@@ -128,4 +128,23 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;  /* Chrome, Safari, Opera */
   }
+
+  /* Gold foil gradient text effect — CSS classes for reliable cross-browser rendering.
+     Chrome mobile can fail to apply background-clip:text via React inline styles
+     (camelCase WebkitBackgroundClip may not produce the correct vendor prefix). */
+  .gold-foil-text {
+    background: linear-gradient(135deg, #9a7520 0%, #cb9b51 15%, #f6e27a 40%, #f6f2c0 50%, #f6e27a 60%, #cb9b51 85%, #9a7520 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  .gold-foil-text-mobile {
+    background: linear-gradient(135deg, #cb9b51 0%, #d4a84a 15%, #f6e27a 35%, #f6f2c0 50%, #f6e27a 65%, #d4a84a 85%, #cb9b51 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
 }

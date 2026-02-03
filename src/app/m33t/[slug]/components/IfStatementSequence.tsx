@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { motion, useAnimate, AnimatePresence } from 'framer-motion';
-import { BRAND_GOLD, GOLD_FOIL_GRADIENT, GOLD_FOIL_GRADIENT_MOBILE } from '@/lib/design-system';
+import { BRAND_GOLD } from '@/lib/design-system';
 
 // ============================================================================
 // TYPES
@@ -90,10 +90,10 @@ interface Statement1Props {
   phase: AnimationPhase;
   onExitComplete: () => void;
   orbRef: React.RefObject<OrbControl | null>;
-  goldFoilStyle: React.CSSProperties;
+  goldFoilClass: string;
 }
 
-function Statement1({ phase, onExitComplete, orbRef, goldFoilStyle }: Statement1Props) {
+function Statement1({ phase, onExitComplete, orbRef, goldFoilClass }: Statement1Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const word1Ref = useRef<HTMLSpanElement>(null);
   const word2Ref = useRef<HTMLSpanElement>(null);
@@ -342,8 +342,7 @@ function Statement1({ phase, onExitComplete, orbRef, goldFoilStyle }: Statement1
         {/* "idea" - will animate */}
         <motion.span
           ref={word1Ref}
-          className="word-idea inline-block mr-2 font-semibold"
-          style={{ ...goldFoilStyle }}
+          className={`word-idea inline-block mr-2 font-semibold ${goldFoilClass}`}
         >
           {STATEMENT_1.word1}
         </motion.span>
@@ -358,8 +357,7 @@ function Statement1({ phase, onExitComplete, orbRef, goldFoilStyle }: Statement1
         {/* "execution" - will animate */}
         <motion.span
           ref={word2Ref}
-          className="word-execution inline-block mr-2 font-semibold"
-          style={{ ...goldFoilStyle }}
+          className={`word-execution inline-block mr-2 font-semibold ${goldFoilClass}`}
         >
           {STATEMENT_1.word2}
         </motion.span>
@@ -560,10 +558,10 @@ interface Statement3Props {
   phase: AnimationPhase;
   onExitComplete: () => void;
   orbRef: React.RefObject<OrbControl | null>;
-  goldFoilStyle: React.CSSProperties;
+  goldFoilClass: string;
 }
 
-function Statement3({ phase, onExitComplete, orbRef, goldFoilStyle }: Statement3Props) {
+function Statement3({ phase, onExitComplete, orbRef, goldFoilClass }: Statement3Props) {
   const [scope, animate] = useAnimate();
   const highlightRef = useRef<HTMLSpanElement>(null);
   const hasMigrated = useRef(false);
@@ -693,8 +691,7 @@ function Statement3({ phase, onExitComplete, orbRef, goldFoilStyle }: Statement3
       {STATEMENT_3.prefix}{' '}
       <span
         ref={highlightRef}
-        className="relative inline-block font-semibold"
-        style={{ ...goldFoilStyle }}
+        className={`relative inline-block font-semibold ${goldFoilClass}`}
       >
         {STATEMENT_3.highlight}
       </span>
@@ -710,10 +707,10 @@ interface RevelationProps {
   visible: boolean;
   textPhase: 'idle' | 'reveal' | 'complete';
   containerRef: React.RefObject<HTMLDivElement | null>;
-  goldFoilStyle: React.CSSProperties;
+  goldFoilClass: string;
 }
 
-function Revelation({ visible, textPhase, containerRef, goldFoilStyle }: RevelationProps) {
+function Revelation({ visible, textPhase, containerRef, goldFoilClass }: RevelationProps) {
   return (
     <div ref={containerRef} className="relative min-h-[100px] w-full flex items-center justify-center">
       {/* Final text - single string that expands from a point and dissolves into view */}
@@ -740,7 +737,7 @@ function Revelation({ visible, textPhase, containerRef, goldFoilStyle }: Revelat
       >
         {REVELATION.prefix}
         <br className="md:hidden" />
-        <span className="font-semibold" style={{ ...goldFoilStyle }}>
+        <span className={`font-semibold ${goldFoilClass}`}>
           {REVELATION.highlight}
         </span>
         {REVELATION.suffix}
@@ -766,7 +763,7 @@ export function IfStatementSequence({ isActive, onComplete }: IfStatementSequenc
 
   // Use brighter gold foil gradient on mobile for better visibility
   // Defaults to desktop gradient during SSR (isMobile === undefined)
-  const goldFoilStyle = isMobile ? GOLD_FOIL_GRADIENT_MOBILE : GOLD_FOIL_GRADIENT;
+  const goldFoilClass = isMobile ? 'gold-foil-text-mobile' : 'gold-foil-text';
 
   // Particle explosion state - rendered in main component to share orb's coordinate system
   const [particles, setParticles] = useState<Particle[]>([]);
@@ -1163,7 +1160,7 @@ export function IfStatementSequence({ isActive, onComplete }: IfStatementSequenc
             phase={phase}
             onExitComplete={handleExit1Complete}
             orbRef={orbRef}
-            goldFoilStyle={goldFoilStyle}
+            goldFoilClass={goldFoilClass}
           />
         )}
 
@@ -1182,13 +1179,13 @@ export function IfStatementSequence({ isActive, onComplete }: IfStatementSequenc
             phase={phase}
             onExitComplete={handleExit3Complete}
             orbRef={orbRef}
-            goldFoilStyle={goldFoilStyle}
+            goldFoilClass={goldFoilClass}
           />
         )}
       </AnimatePresence>
 
       {/* Revelation Text - persists */}
-      <Revelation visible={showRevelation} textPhase={textPhase} containerRef={revelationContainerRef} goldFoilStyle={goldFoilStyle} />
+      <Revelation visible={showRevelation} textPhase={textPhase} containerRef={revelationContainerRef} goldFoilClass={goldFoilClass} />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import type { EventData, InviteeContext } from '../types';
 import { formatEventDate, formatEventTime } from '@/lib/m33t';
-import { GOLD_FOIL_GRADIENT, GOLD_FOIL_BUTTON } from '@/lib/design-system';
+import { GOLD_FOIL_BUTTON } from '@/lib/design-system';
 import { MarkdownContent } from '@/components/ui/MarkdownContent';
 
 interface EventHeroProps {
@@ -21,8 +21,7 @@ export function EventHero({ event, rsvpUrl, inviteeContext }: EventHeroProps) {
   return (
     <section className="min-h-screen flex flex-col items-center justify-center px-4 text-center">
       <h1
-        className="font-display text-6xl md:text-8xl lg:text-9xl font-medium tracking-wide mb-4 pb-2"
-        style={{ ...GOLD_FOIL_GRADIENT }}
+        className="font-display text-6xl md:text-8xl lg:text-9xl font-medium tracking-wide mb-4 pb-2 gold-foil-text"
       >
         {mainTitle}
       </h1>

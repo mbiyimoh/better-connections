@@ -3,7 +3,7 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
-import { BRAND_GOLD, GOLD_FOIL_GRADIENT, GOLD_FOIL_GRADIENT_MOBILE } from '@/lib/design-system';
+import { BRAND_GOLD } from '@/lib/design-system';
 import { IfStatementSequence } from './IfStatementSequence';
 
 // ============================================================================
@@ -419,9 +419,10 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Use brighter gold foil gradient on mobile for better visibility
+  // Use CSS classes for gold foil gradient — inline styles with WebkitBackgroundClip
+  // fail on Chrome mobile (camelCase vendor prefix not applied correctly).
   // Defaults to desktop gradient during SSR (isMobile === undefined)
-  const goldFoilStyle = isMobile ? GOLD_FOIL_GRADIENT_MOBILE : GOLD_FOIL_GRADIENT;
+  const goldFoilClass = isMobile ? 'gold-foil-text-mobile' : 'gold-foil-text';
 
   // Calculate which slide is active based on scroll
   const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
@@ -463,7 +464,7 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
           <h1
             className="font-display text-3xl md:text-4xl lg:text-5xl font-medium leading-tight mb-12 md:mb-8"
           >
-            &ldquo;How do we adopt <span style={{ ...goldFoilStyle }}>AI</span> into our organization?&rdquo;
+            &ldquo;How do we adopt <span className={goldFoilClass}>AI</span> into our organization?&rdquo;
           </h1>
           <p className="font-body text-zinc-400 text-lg md:text-xl mb-4">
             But that question assumes your current way of working is a
@@ -493,7 +494,7 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
           >
             The constraints you&apos;re operating under
             <br />
-            <span className="font-medium pb-1 inline-block" style={{ ...goldFoilStyle }}>no longer exist.</span>
+            <span className={`font-medium ${goldFoilClass}`}>no longer exist.</span>
           </p>
           <h1
             className="font-display text-4xl md:text-5xl lg:text-6xl font-medium leading-tight"
@@ -501,7 +502,7 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
             Where you think there{' '}
             <span className="whitespace-nowrap">are edges,</span>
             <br />
-            <span className="font-medium" style={{ ...goldFoilStyle }}>there are not.</span>
+            <span className={`font-medium ${goldFoilClass}`}>there are not.</span>
           </h1>
         </div>
       </div>
@@ -527,7 +528,7 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
           >
             Those lines have
             <br />
-            <span className="font-medium pb-1 inline-block" style={{ ...goldFoilStyle }}>moved dramatically.</span>
+            <span className={`font-medium ${goldFoilClass}`}>moved dramatically.</span>
           </h2>
           <p
             className="font-display text-xl md:text-2xl text-zinc-400 mb-12"
@@ -581,8 +582,7 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
       >
         <div className="text-center max-w-3xl">
           <p
-            className="text-sm font-medium tracking-widest uppercase mb-8"
-            style={{ ...goldFoilStyle }}
+            className={`text-sm font-medium tracking-widest uppercase mb-8 ${goldFoilClass}`}
           >
             March 12, 2026 &bull; Austin, TX
           </p>
@@ -628,8 +628,7 @@ export function ScrollytellingSection({ onComplete }: ScrollytellingSectionProps
               >
                 Starting to{' '}
                 <span
-                  className="font-medium pb-1 inline-block"
-                  style={{ ...goldFoilStyle }}
+                  className={`font-medium ${goldFoilClass}`}
                 >
                   imagine what&apos;s possible
                 </span>{' '}
