@@ -18,34 +18,12 @@ export const BRAND_GOLD = {
 } as const;
 
 /**
- * Gold foil gradient effect for text and backgrounds.
- * Creates a metallic shine effect with multiple color stops.
- * Use with background-clip: text for text elements.
+ * Gold foil gradient text effect.
+ * IMPORTANT: Use CSS classes .gold-foil-text / .gold-foil-text-mobile (defined in globals.css)
+ * instead of inline styles. React inline styles with WebkitBackgroundClip don't reliably
+ * produce the correct -webkit-background-clip vendor prefix on Chrome mobile,
+ * causing gold rectangles instead of gradient text.
  */
-export const GOLD_FOIL_GRADIENT = {
-  // The gradient itself - diagonal for metallic sheen
-  // Uses darker gold (#9a7520) at edges instead of dark brown (#462523) for subtler effect
-  background: "linear-gradient(135deg, #9a7520 0%, #cb9b51 15%, #f6e27a 40%, #f6f2c0 50%, #f6e27a 60%, #cb9b51 85%, #9a7520 100%)",
-  // Required for text effect
-  WebkitBackgroundClip: "text",
-  backgroundClip: "text",
-  WebkitTextFillColor: "transparent",
-  // Note: text-shadow removed — Chrome mobile renders it as a solid rectangle
-  // behind background-clip:text elements (shadow on transparent-filled text)
-} as const;
-
-/**
- * Mobile-optimized gold foil gradient - brighter for better visibility on small screens.
- * The standard gradient's dark edges dominate on smaller text, making it appear muddy.
- * This version uses brighter edge colors and a higher midpoint for consistent gold appearance.
- */
-export const GOLD_FOIL_GRADIENT_MOBILE = {
-  // Brighter gradient with lighter edge colors for mobile visibility
-  background: "linear-gradient(135deg, #cb9b51 0%, #d4a84a 15%, #f6e27a 35%, #f6f2c0 50%, #f6e27a 65%, #d4a84a 85%, #cb9b51 100%)",
-  WebkitBackgroundClip: "text",
-  backgroundClip: "text",
-  WebkitTextFillColor: "transparent",
-} as const;
 
 /**
  * Gold foil style for buttons/backgrounds (not text)
