@@ -33,6 +33,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { DeleteAllContactsDialog } from "@/components/contacts/DeleteAllContactsDialog";
+import { ClarityCanvasCard } from "@/components/settings/ClarityCanvasCard";
+import { ConnectionSuccessModal } from "@/components/settings/ConnectionSuccessModal";
+import type { BaseSynthesis, SynthesisResponse } from "@/lib/clarity-canvas/types";
 
 interface UserProfile {
   id: string;
@@ -50,9 +53,44 @@ export default function SettingsPage() {
   const [contactCount, setContactCount] = useState(0);
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
 
+  // Clarity Canvas state
+  const [clarityConnected, setClarityConnected] = useState(false);
+  const [claritySynthesis, setClaritySynthesis] = useState<BaseSynthesis | null>(null);
+  const [claritySyncedAt, setClaritySyncedAt] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
   useEffect(() => {
     fetchUserProfile();
     fetchContactCount();
+
+    // Check for OAuth query params
+    const params = new URLSearchParams(window.location.search);
+    const errorParam = params.get('error');
+
+    if (errorParam) {
+      // Handle OAuth errors
+      const errorMessages: Record<string, string> = {
+        access_denied: 'You cancelled the Clarity Canvas connection.',
+        invalid_state: 'Connection failed - security validation error. Please try again.',
+        no_code: 'Connection failed - no authorization received. Please try again.',
+        token_exchange_failed: 'Connection failed - token exchange error. Please try again.',
+      };
+      toast({
+        title: 'Connection Failed',
+        description: errorMessages[errorParam] || 'An unknown error occurred. Please try again.',
+        variant: 'destructive',
+      });
+      window.history.replaceState({}, '', '/settings');
+      fetchClarityStatus();
+    } else if (params.get('clarity_connected') === 'true') {
+      fetchClarityStatus().then(() => {
+        setShowSuccessModal(true);
+      });
+      // Clean up URL
+      window.history.replaceState({}, '', '/settings');
+    } else {
+      fetchClarityStatus();
+    }
   }, []);
 
   const fetchContactCount = async () => {
@@ -64,6 +102,20 @@ export default function SettingsPage() {
       }
     } catch (error) {
       console.error("Failed to fetch contact count:", error);
+    }
+  };
+
+  const fetchClarityStatus = async () => {
+    try {
+      const response = await fetch("/api/clarity-canvas/synthesis");
+      if (response.ok) {
+        const data: SynthesisResponse = await response.json();
+        setClarityConnected(data.connected);
+        setClaritySynthesis(data.synthesis);
+        setClaritySyncedAt(data.syncedAt);
+      }
+    } catch (error) {
+      console.error("Failed to fetch Clarity Canvas status:", error);
     }
   };
 
@@ -215,6 +267,13 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Integrations Section (Clarity Canvas) */}
+        <ClarityCanvasCard
+          initialConnected={clarityConnected}
+          initialSynthesis={claritySynthesis}
+          initialSyncedAt={claritySyncedAt}
+        />
+
         {/* Data Management Section */}
         <Card className="bg-zinc-900 border-white/10">
           <CardHeader>
@@ -348,6 +407,15 @@ export default function SettingsPage() {
         }}
         contactCount={contactCount}
       />
+
+      {/* Clarity Canvas Connection Success Modal */}
+      {claritySynthesis && (
+        <ConnectionSuccessModal
+          open={showSuccessModal}
+          onOpenChange={setShowSuccessModal}
+          synthesis={claritySynthesis}
+        />
+      )}
     </div>
   );
 }

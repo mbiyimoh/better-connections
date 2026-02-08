@@ -45,6 +45,15 @@ model User {
   phoneVerifiedAt          DateTime?
   linkedAttendees          EventAttendee[] @relation("AttendeeLinkedUser")
   phoneVerificationOTPs    PhoneVerificationOTP[]
+
+  // Clarity Canvas OAuth integration (33 Strategies)
+  clarityCanvasConnected      Boolean   @default(false)
+  clarityCanvasAccessToken    String?   @db.Text
+  clarityCanvasRefreshToken   String?   @db.Text
+  clarityCanvasTokenExpiresAt DateTime?
+  clarityCanvasConnectedAt    DateTime?
+  clarityCanvasSynthesis      Json?     // Cached BaseSynthesis object
+  clarityCanvasSyncedAt       DateTime? // Last successful synthesis sync
 }
 
 /// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
@@ -664,6 +673,7 @@ model EventAttendee {
   matchRevealSentAt DateTime?
   eventReminderSentAt DateTime?
   questionSetNotifiedAt DateTime?  // Last time notified about question sets
+  newRsvpsNotifiedAt    DateTime?  // Last time "new RSVPs" notification was sent
 
   // Match view tracking
   matchesFirstViewedAt DateTime?  // When attendee first viewed their matches

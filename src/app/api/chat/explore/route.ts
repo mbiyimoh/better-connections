@@ -2,7 +2,10 @@ import { streamText } from "ai";
 import { z } from "zod";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
-import { gpt4oMini, EXPLORATION_SYSTEM_PROMPT } from "@/lib/openai";
+import { gpt4oMini } from "@/lib/openai";
+import { buildExploreSystemPrompt } from "@/lib/clarity-canvas/prompts";
+import { shouldRefreshSynthesis, fetchAndCacheSynthesis } from "@/lib/clarity-canvas/client";
+import type { BaseSynthesis } from "@/lib/clarity-canvas/types";
 
 // Input validation schema
 const exploreRequestSchema = z.object({
@@ -43,6 +46,37 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validatedInput = exploreRequestSchema.parse(body);
 
+    // Fetch user with Clarity Canvas data
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        clarityCanvasConnected: true,
+        clarityCanvasSynthesis: true,
+        clarityCanvasSyncedAt: true,
+      },
+    });
+
+    // Get synthesis if connected, with auto-refresh check
+    let synthesis: BaseSynthesis | null = null;
+    let synthesisError = false;
+
+    if (dbUser?.clarityCanvasConnected) {
+      try {
+        synthesis = dbUser.clarityCanvasSynthesis as BaseSynthesis | null;
+
+        // If synthesis is stale (>24h), try to refresh in background
+        if (shouldRefreshSynthesis(dbUser.clarityCanvasSyncedAt)) {
+          // Attempt refresh, but don't block on it
+          fetchAndCacheSynthesis(user.id).catch((err) => {
+            console.error('[clarity-canvas] Background refresh failed:', err);
+          });
+        }
+      } catch (error) {
+        console.error('[clarity-canvas] Failed to get synthesis:', error);
+        synthesisError = true;
+      }
+    }
+
     // Fetch user's contacts for context (limit to prevent token overflow)
     const contacts = await prisma.contact.findMany({
       where: { userId: user.id },
@@ -67,9 +101,10 @@ export async function POST(request: Request) {
       tags: c.tags.map((t) => sanitizeForPrompt(t.text)),
     }));
 
-    const systemPrompt = `${EXPLORATION_SYSTEM_PROMPT}
+    // Build enhanced system prompt with Clarity Canvas context
+    const systemPrompt = `${buildExploreSystemPrompt(synthesis)}
 
-User's contacts (${contacts.length} total):
+## User's Contacts (${contacts.length} total)
 ${JSON.stringify(contactContext, null, 2)}
 
 CRITICAL: When suggesting contacts, you MUST use their exact "id" field value from the JSON above.
@@ -84,6 +119,12 @@ The id field looks like "cm..." followed by random characters. Always use this e
 
     const response = result.toTextStreamResponse();
     response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+
+    // Add error flag for client-side toast
+    if (synthesisError) {
+      response.headers.set('X-Clarity-Canvas-Error', 'true');
+    }
+
     return response;
   } catch (error) {
     if (error instanceof z.ZodError) {
