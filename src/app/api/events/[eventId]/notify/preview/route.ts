@@ -65,6 +65,20 @@ export async function GET(request: NextRequest, context: RouteContext) {
         rsvpRespondedAt: true,
         newRsvpsNotifiedAt: true,
       },
+      orderBy: { rsvpRespondedAt: 'asc' },
+    });
+
+    // Get all RSVP timestamps for in-memory counting (avoids N+1 queries)
+    const allConfirmedRsvps = await prisma.eventAttendee.findMany({
+      where: {
+        eventId,
+        rsvpStatus: 'CONFIRMED',
+        rsvpRespondedAt: { not: null },
+      },
+      select: {
+        id: true,
+        rsvpRespondedAt: true,
+      },
     });
 
     // Build attendee list with eligibility info
@@ -94,15 +108,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
         continue;
       }
 
-      // Count new RSVPs for this attendee
-      const newRsvpCount = await prisma.eventAttendee.count({
-        where: {
-          eventId,
-          rsvpStatus: 'CONFIRMED',
-          rsvpRespondedAt: { gt: attendee.rsvpRespondedAt },
-          id: { not: attendee.id },
-        },
-      });
+      // Count RSVPs after this attendee's RSVP (in-memory to avoid N+1)
+      const newRsvpCount = allConfirmedRsvps.filter(
+        (r) => r.id !== attendee.id && r.rsvpRespondedAt! > attendee.rsvpRespondedAt!
+      ).length;
 
       const isEligible = newRsvpCount > 0;
       const name = `${attendee.firstName} ${attendee.lastName || ''}`.trim();
