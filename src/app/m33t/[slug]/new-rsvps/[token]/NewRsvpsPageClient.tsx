@@ -88,7 +88,7 @@ export function NewRsvpsPageClient({ slug, token }: NewRsvpsPageClientProps) {
           {/* Title */}
           <div className="text-center space-y-2">
             <h1 className="text-2xl font-semibold text-white">
-              {data.totalCount} New {data.totalCount === 1 ? 'Person' : 'People'} Since You RSVP'd
+              {data.totalCount} New {data.totalCount === 1 ? 'Person' : 'People'} Since You RSVP&apos;d
             </h1>
             <p className="text-zinc-400">for {data.event.name}</p>
           </div>

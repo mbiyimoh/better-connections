@@ -246,7 +246,7 @@ export function NewRsvpsNotifyDialog({
               <div className="space-y-2">
                 <p className="text-sm font-medium text-text-secondary">Message preview</p>
                 <div className="rounded-lg bg-bg-tertiary p-3 text-sm text-text-primary">
-                  "{selectedSampleCount} more people RSVP'd for {eventName} on {formattedDate}! See who they are: [link]"
+                  &quot;{selectedSampleCount} more people RSVP&apos;d for {eventName} on {formattedDate}! See who they are: [link]&quot;
                 </div>
               </div>
             )}

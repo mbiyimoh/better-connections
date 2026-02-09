@@ -16,7 +16,7 @@ export function NewRsvpCard({ attendee, onClick }: NewRsvpCardProps) {
       {/* Timestamp badge */}
       <div className="absolute top-2 right-2 z-10">
         <Badge className="bg-amber-500/20 text-amber-400 border-0 text-xs">
-          RSVP'd {formatRelativeDate(attendee.rsvpRespondedAt)}
+          RSVP&apos;d {formatRelativeDate(attendee.rsvpRespondedAt)}
         </Badge>
       </div>
 
