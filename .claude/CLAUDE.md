@@ -18,7 +18,7 @@ Guru Builder is a platform for creating AI teaching assistants ("gurus") through
 
 ### Tech Stack
 - **Frontend:** Next.js 15 + React 19 + Tailwind CSS + shadcn/ui
-- **Database:** PostgreSQL (Neon) + Prisma ORM
+- **Database:** Supabase PostgreSQL + Prisma ORM
 - **Auth:** Supabase (email/password with whitelist)
 - **AI:** Vercel AI SDK v5 + OpenAI GPT-4o
 - **Background Jobs:** Inngest (asynchronous research runs)

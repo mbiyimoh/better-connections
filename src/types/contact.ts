@@ -48,6 +48,8 @@ export interface Contact {
   twitterUrl: string | null;
   githubUrl: string | null;
   instagramUrl: string | null;
+  websiteUrl: string | null;
+  referredBy: string | null;
 }
 
 // Helper function for display name

@@ -4,66 +4,28 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AnimatePresence } from 'framer-motion';
-import {
-  ArrowLeft,
-  Edit,
-  Trash2,
-  Mail,
-  Phone,
-  MapPin,
-  Linkedin,
-  Building,
-  Sparkles,
-  Calendar,
-  MoreHorizontal,
-  Twitter,
-  Github,
-  Instagram,
-} from 'lucide-react';
+import { ArrowLeft, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { formatPhoneForDisplay } from '@/lib/phone';
 import type { Contact } from '@/types/contact';
-import { getDisplayName, getInitials as getContactInitials, getAvatarColor } from '@/types/contact';
+import { getDisplayName } from '@/types/contact';
+import { SECTION_FIELDS } from '@/lib/validations/contact-sections';
+import { useInlineEdit } from './hooks/useInlineEdit';
 import { EnrichmentScoreCard } from './EnrichmentScoreCard';
 import { TagsSection } from './TagsSection';
+import {
+  ProfileHeaderSection,
+  ContactInfoSection,
+  SocialLinksSection,
+  RelationshipSection,
+  WhyNowSection,
+  ExpertiseInterestsSection,
+  NotesSection,
+} from './sections';
 import { ResearchButton, type Recommendation } from '@/components/research';
 import { ResearchApplyCelebration } from '@/components/research/ResearchApplyCelebration';
 import { ResearchRunHistory } from '@/components/research/ResearchRunHistory';
 import type { ResearchRunTileData } from '@/components/research/ResearchRunTile';
-
-function formatDate(dateString: string | null): string {
-  if (!dateString) return 'Not set';
-  return new Date(dateString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
-
-const strengthLabels = ['', 'Weak', 'Casual', 'Good', 'Strong'];
-
-const strengthDescriptions: Record<number, string> = {
-  1: "Distant connection - know through others or met briefly",
-  2: "Friendly acquaintance - met a few times, positive rapport",
-  3: "Solid relationship - regular contact, would help if asked",
-  4: "Close connection - trusted relationship, can reach out anytime",
-};
 
 // Type for serialized research run from server
 export interface SerializedResearchRun {
@@ -104,29 +66,78 @@ export function ContactDetail({ contact, researchRuns = [], totalContacts = 1, a
   const [isDeleting, setIsDeleting] = useState(false);
   const [celebrationData, setCelebrationData] = useState<CelebrationData | null>(null);
 
+  // Handle score improvement celebration from inline editing
+  const handleScoreImproved = useCallback(async (previousScore: number, newScore: number) => {
+    try {
+      const rankRes = await fetch(`/api/contacts/${contact.id}/ranking`);
+      if (rankRes.ok) {
+        const rankData = await rankRes.json();
+        const scoreDelta = newScore - previousScore;
+        const estimatedPreviousRank = Math.min(
+          rankData.currentRank + Math.ceil(scoreDelta / 5),
+          rankData.totalContacts
+        );
+        setCelebrationData({
+          previousScore,
+          newScore,
+          appliedChangesSummary: ['Updated profile fields'],
+          currentRank: rankData.currentRank,
+          previousRank: estimatedPreviousRank,
+        });
+      } else {
+        setCelebrationData({
+          previousScore,
+          newScore,
+          appliedChangesSummary: ['Updated profile fields'],
+          currentRank: 1,
+          previousRank: 1,
+        });
+      }
+    } catch {
+      setCelebrationData({
+        previousScore,
+        newScore,
+        appliedChangesSummary: ['Updated profile fields'],
+        currentRank: 1,
+        previousRank: 1,
+      });
+    }
+  }, [contact.id]);
+
+  // Inline editing hook
+  const {
+    editingSection,
+    startEditing,
+    formData,
+    updateField,
+    saveSection,
+    cancelEdit,
+    isSaving,
+    localContact,
+  } = useInlineEdit({
+    contact,
+    onScoreImproved: handleScoreImproved,
+  });
+
   // Refresh contact data after tag changes
   const handleTagAdded = useCallback(() => {
     router.refresh();
   }, [router]);
 
-  // Handle successful apply - show celebration if score improved
+  // Handle successful apply from research - show celebration if score improved
   const handleApplySuccess = useCallback(async (data: {
     previousScore: number;
     newScore: number;
     appliedChangesSummary: string[];
   }) => {
-    // Only show celebration if score improved
     if (data.newScore > data.previousScore) {
-      // Fetch ranking data
       try {
         const rankRes = await fetch(`/api/contacts/${contact.id}/ranking`);
         if (rankRes.ok) {
           const rankData = await rankRes.json();
-          // Calculate approximate previous rank based on score improvement
-          // This is an estimation - actual previous rank would need to be calculated before apply
           const scoreDelta = data.newScore - data.previousScore;
           const estimatedPreviousRank = Math.min(
-            rankData.currentRank + Math.ceil(scoreDelta / 5), // Rough estimate: 5 points per rank position
+            rankData.currentRank + Math.ceil(scoreDelta / 5),
             rankData.totalContacts
           );
           setCelebrationData({
@@ -137,7 +148,6 @@ export function ContactDetail({ contact, researchRuns = [], totalContacts = 1, a
             previousRank: estimatedPreviousRank,
           });
         } else {
-          // Show celebration without rank data
           setCelebrationData({
             previousScore: data.previousScore,
             newScore: data.newScore,
@@ -147,7 +157,6 @@ export function ContactDetail({ contact, researchRuns = [], totalContacts = 1, a
           });
         }
       } catch {
-        // Show celebration without rank data
         setCelebrationData({
           previousScore: data.previousScore,
           newScore: data.newScore,
@@ -157,7 +166,6 @@ export function ContactDetail({ contact, researchRuns = [], totalContacts = 1, a
         });
       }
     } else {
-      // No score improvement - just show toast and refresh
       toast({
         title: 'Recommendations applied',
         description: `${data.appliedChangesSummary.length} changes made to profile`,
@@ -210,6 +218,11 @@ export function ContactDetail({ contact, researchRuns = [], totalContacts = 1, a
     }
   };
 
+  // Handle EnrichmentScoreCard suggestion click
+  const handleEditSection = useCallback((sectionId: string) => {
+    startEditing(sectionId);
+  }, [startEditing]);
+
   return (
     <div className="h-full overflow-auto p-6 pl-16 md:pl-6">
       <div className="mx-auto max-w-3xl">
@@ -225,62 +238,24 @@ export function ContactDetail({ contact, researchRuns = [], totalContacts = 1, a
         </div>
 
         {/* Profile Header */}
-        <div className="mb-8 flex items-start justify-between rounded-xl border border-border bg-bg-secondary p-6">
-          <div className="flex gap-5">
-            <Avatar className="h-20 w-20">
-              <AvatarFallback
-                style={{ background: getAvatarColor(contact) }}
-                className="text-2xl font-semibold text-white/90"
-              >
-                {getContactInitials(contact)}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <h1 className="text-2xl font-bold text-white">{getDisplayName(contact)}</h1>
-              {(contact.title || contact.organizationalTitle || contact.company) && (
-                <p className="mt-1 text-sm text-text-secondary">
-                  {contact.organizationalTitle}
-                  {contact.organizationalTitle && (contact.title || contact.company) && ', '}
-                  {contact.title}
-                  {contact.title && contact.company && ' at '}
-                  {contact.company}
-                </p>
-              )}
-            </div>
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Link href={`/contacts/${contact.id}/edit`}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Mail className="mr-2 h-4 w-4" />
-                Draft Intro
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="text-destructive"
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="mb-8">
+          <ProfileHeaderSection
+            contact={localContact}
+            isEditing={editingSection === 'profileHeader'}
+            onEditStart={() => startEditing('profileHeader')}
+            onSave={async () => { await saveSection('profileHeader', SECTION_FIELDS.profileHeader); }}
+            onCancel={cancelEdit}
+            isSaving={isSaving}
+            formData={formData}
+            updateField={updateField}
+            onDelete={handleDelete}
+            isDeleting={isDeleting}
+          />
         </div>
 
         {/* Enrichment Score Card */}
         <div className="mb-6">
-          <EnrichmentScoreCard contact={contact} />
+          <EnrichmentScoreCard contact={localContact} onEditSection={handleEditSection} />
         </div>
 
         {/* Action Buttons: Enrich & Research */}
@@ -289,15 +264,15 @@ export function ContactDetail({ contact, researchRuns = [], totalContacts = 1, a
             className="flex-1 bg-gold-primary hover:bg-gold-light text-bg-primary font-semibold"
             asChild
           >
-            <Link href={`/enrichment/session?contact=${contact.id}`}>
+            <Link href={`/enrichment/session?contact=${localContact.id}`}>
               <Sparkles className="mr-2 h-4 w-4" />
               Enrich: Personal Context
             </Link>
           </Button>
           <ResearchButton
-            contactId={contact.id}
-            contactName={`${contact.firstName} ${contact.lastName || ''}`.trim()}
-            disabled={!contact.firstName || !contact.lastName}
+            contactId={localContact.id}
+            contactName={`${localContact.firstName} ${localContact.lastName || ''}`.trim()}
+            disabled={!localContact.firstName || !localContact.lastName}
             className="flex-1"
             label="Enrich: Online Research"
             autoOpen={autoOpenResearch}
@@ -306,7 +281,7 @@ export function ContactDetail({ contact, researchRuns = [], totalContacts = 1, a
 
         {/* Tags Section */}
         <div className="mb-6">
-          <TagsSection contact={contact} onTagAdded={handleTagAdded} />
+          <TagsSection contact={localContact} onTagAdded={handleTagAdded} />
         </div>
 
         {/* Celebration UI - shows after successful apply with score improvement */}
@@ -317,7 +292,7 @@ export function ContactDetail({ contact, researchRuns = [], totalContacts = 1, a
                 previousScore={celebrationData.previousScore}
                 newScore={celebrationData.newScore}
                 appliedChangesSummary={celebrationData.appliedChangesSummary}
-                contactName={getDisplayName(contact)}
+                contactName={getDisplayName(localContact)}
                 currentRank={celebrationData.currentRank}
                 previousRank={celebrationData.previousRank}
                 totalContacts={totalContacts}
@@ -332,211 +307,89 @@ export function ContactDetail({ contact, researchRuns = [], totalContacts = 1, a
           <div className="mb-6">
             <ResearchRunHistory
               researchRuns={researchRunTileData}
-              contactId={contact.id}
+              contactId={localContact.id}
               onApplySuccess={handleApplySuccess}
             />
           </div>
         )}
 
-        {/* Why Now - Key Section */}
-        {contact.whyNow && (
-          <div className="mb-6 rounded-xl border border-gold-primary/30 bg-gold-subtle p-6">
-            <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-gold-primary">
-              <Sparkles className="h-4 w-4" />
-              Why Now
-            </h2>
-            <p className="text-white">{contact.whyNow}</p>
-          </div>
-        )}
-
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Contact Info */}
-          <div className="rounded-xl border border-border bg-bg-secondary p-6">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-text-tertiary">
-              Contact Information
-            </h2>
-            <div className="space-y-4">
-              {contact.primaryEmail && (
-                <div className="flex items-center gap-3">
-                  <Mail className="h-4 w-4 text-text-tertiary" />
-                  <a href={`mailto:${contact.primaryEmail}`} className="text-white hover:text-gold-primary">
-                    {contact.primaryEmail}
-                  </a>
-                </div>
-              )}
-              {contact.secondaryEmail && (
-                <div className="flex items-center gap-3">
-                  <Mail className="h-4 w-4 text-text-tertiary opacity-50" />
-                  <a href={`mailto:${contact.secondaryEmail}`} className="text-text-tertiary hover:text-gold-primary">
-                    {contact.secondaryEmail}
-                  </a>
-                </div>
-              )}
-              {contact.primaryPhone && (
-                <div className="flex items-center gap-3">
-                  <Phone className="h-4 w-4 text-text-tertiary" />
-                  <a href={`tel:${contact.primaryPhone}`} className="text-white hover:text-gold-primary">
-                    {formatPhoneForDisplay(contact.primaryPhone)}
-                  </a>
-                </div>
-              )}
-              {contact.secondaryPhone && (
-                <div className="flex items-center gap-3">
-                  <Phone className="h-4 w-4 text-text-tertiary opacity-50" />
-                  <a href={`tel:${contact.secondaryPhone}`} className="text-text-tertiary hover:text-gold-primary">
-                    {formatPhoneForDisplay(contact.secondaryPhone)}
-                  </a>
-                </div>
-              )}
-              {contact.location && (
-                <div className="flex items-center gap-3">
-                  <MapPin className="h-4 w-4 text-text-tertiary" />
-                  <span className="text-text-secondary">{contact.location}</span>
-                </div>
-              )}
-              {contact.company && (
-                <div className="flex items-center gap-3">
-                  <Building className="h-4 w-4 text-text-tertiary" />
-                  <span className="text-text-secondary">{contact.company}</span>
-                </div>
-              )}
-              {contact.linkedinUrl && (
-                <div className="flex items-center gap-3">
-                  <Linkedin className="h-4 w-4 text-text-tertiary" />
-                  <a
-                    href={contact.linkedinUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-white hover:text-gold-primary"
-                  >
-                    LinkedIn Profile
-                  </a>
-                </div>
-              )}
-              {contact.twitterUrl && (
-                <div className="flex items-center gap-3">
-                  <Twitter className="h-4 w-4 text-text-tertiary" />
-                  <a
-                    href={contact.twitterUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-white hover:text-gold-primary"
-                  >
-                    Twitter/X Profile
-                  </a>
-                </div>
-              )}
-              {contact.githubUrl && (
-                <div className="flex items-center gap-3">
-                  <Github className="h-4 w-4 text-text-tertiary" />
-                  <a
-                    href={contact.githubUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-white hover:text-gold-primary"
-                  >
-                    GitHub Profile
-                  </a>
-                </div>
-              )}
-              {contact.instagramUrl && (
-                <div className="flex items-center gap-3">
-                  <Instagram className="h-4 w-4 text-text-tertiary" />
-                  <a
-                    href={contact.instagramUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-white hover:text-gold-primary"
-                  >
-                    Instagram Profile
-                  </a>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Relationship */}
-          <div className="rounded-xl border border-border bg-bg-secondary p-6">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-text-tertiary">
-              Relationship
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <p className="mb-1 text-sm text-text-tertiary">Strength</p>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="flex items-center gap-2 cursor-help">
-                        <div className="flex gap-1">
-                          {[1, 2, 3, 4].map((level) => (
-                            <div
-                              key={level}
-                              className={cn(
-                                'h-2 w-6 rounded-full',
-                                level <= contact.relationshipStrength
-                                  ? 'bg-gold-primary'
-                                  : 'bg-white/10'
-                              )}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-sm text-text-secondary">
-                          {strengthLabels[contact.relationshipStrength]}
-                        </span>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="max-w-xs">
-                      <p>{strengthDescriptions[contact.relationshipStrength]}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              {contact.howWeMet && (
-                <div>
-                  <p className="mb-1 text-sm text-text-tertiary">How We Met</p>
-                  <p className="text-white">{contact.howWeMet}</p>
-                </div>
-              )}
-              <div>
-                <p className="mb-1 text-sm text-text-tertiary">Last Contact</p>
-                <div className="flex items-center gap-2 text-text-secondary">
-                  <Calendar className="h-4 w-4" />
-                  {formatDate(contact.lastContactDate)}
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Why Now - Key Section (always visible) */}
+        <div className="mb-6">
+          <WhyNowSection
+            contact={localContact}
+            isEditing={editingSection === 'whyNow'}
+            onEditStart={() => startEditing('whyNow')}
+            onSave={async () => { await saveSection('whyNow', SECTION_FIELDS.whyNow); }}
+            onCancel={cancelEdit}
+            isSaving={isSaving}
+            formData={formData}
+            updateField={updateField}
+          />
         </div>
 
-        {/* Additional Info */}
-        {(contact.expertise || contact.interests || contact.notes) && (
-          <div className="mt-6 space-y-6">
-            {contact.expertise && (
-              <div className="rounded-xl border border-border bg-bg-secondary p-6">
-                <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-text-tertiary">
-                  Expertise
-                </h2>
-                <p className="text-white">{contact.expertise}</p>
-              </div>
-            )}
-            {contact.interests && (
-              <div className="rounded-xl border border-border bg-bg-secondary p-6">
-                <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-text-tertiary">
-                  Interests
-                </h2>
-                <p className="text-white">{contact.interests}</p>
-              </div>
-            )}
-            {contact.notes && (
-              <div className="rounded-xl border border-border bg-bg-secondary p-6">
-                <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-text-tertiary">
-                  Notes
-                </h2>
-                <p className="text-white whitespace-pre-wrap">{contact.notes}</p>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Two-column grid for Contact Info and Relationship */}
+        <div className="mb-6 grid gap-6 md:grid-cols-2">
+          <ContactInfoSection
+            contact={localContact}
+            isEditing={editingSection === 'contactInfo'}
+            onEditStart={() => startEditing('contactInfo')}
+            onSave={async () => { await saveSection('contactInfo', SECTION_FIELDS.contactInfo); }}
+            onCancel={cancelEdit}
+            isSaving={isSaving}
+            formData={formData}
+            updateField={updateField}
+          />
+
+          <RelationshipSection
+            contact={localContact}
+            isEditing={editingSection === 'relationship'}
+            onEditStart={() => startEditing('relationship')}
+            onSave={async () => { await saveSection('relationship', SECTION_FIELDS.relationship); }}
+            onCancel={cancelEdit}
+            isSaving={isSaving}
+            formData={formData}
+            updateField={updateField}
+          />
+        </div>
+
+        {/* Two-column grid for Social Links and Expertise/Interests */}
+        <div className="mb-6 grid gap-6 md:grid-cols-2">
+          <SocialLinksSection
+            contact={localContact}
+            isEditing={editingSection === 'socialLinks'}
+            onEditStart={() => startEditing('socialLinks')}
+            onSave={async () => { await saveSection('socialLinks', SECTION_FIELDS.socialLinks); }}
+            onCancel={cancelEdit}
+            isSaving={isSaving}
+            formData={formData}
+            updateField={updateField}
+          />
+
+          <ExpertiseInterestsSection
+            contact={localContact}
+            isEditing={editingSection === 'expertiseInterests'}
+            onEditStart={() => startEditing('expertiseInterests')}
+            onSave={async () => { await saveSection('expertiseInterests', SECTION_FIELDS.expertiseInterests); }}
+            onCancel={cancelEdit}
+            isSaving={isSaving}
+            formData={formData}
+            updateField={updateField}
+          />
+        </div>
+
+        {/* Notes Section */}
+        <div className="mb-6">
+          <NotesSection
+            contact={localContact}
+            isEditing={editingSection === 'notes'}
+            onEditStart={() => startEditing('notes')}
+            onSave={async () => { await saveSection('notes', SECTION_FIELDS.notes); }}
+            onCancel={cancelEdit}
+            isSaving={isSaving}
+            formData={formData}
+            updateField={updateField}
+          />
+        </div>
       </div>
     </div>
   );

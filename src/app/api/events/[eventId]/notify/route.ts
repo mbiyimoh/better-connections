@@ -98,6 +98,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
       const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3333';
 
+      console.log('[new_rsvps] Processing notification request', {
+        eventId,
+        requestedAttendeeIds: attendeeIds,
+        attendeeCount: attendeeIds?.length ?? 'all',
+      });
+
       // Get CONFIRMED attendees with phone numbers (filtered by attendeeIds if provided)
       const newRsvpsAttendees = await prisma.eventAttendee.findMany({
         where: {
@@ -117,7 +123,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
         },
       });
 
+      console.log('[new_rsvps] Found attendees matching criteria:', {
+        foundCount: newRsvpsAttendees.length,
+        attendeeNames: newRsvpsAttendees.map(a => `${a.firstName} ${a.lastName}`),
+      });
+
       if (newRsvpsAttendees.length === 0) {
+        console.log('[new_rsvps] No eligible attendees found - returning early');
         return NextResponse.json({
           success: true,
           sent: 0,
@@ -138,6 +150,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         smsSent: boolean;
         skipped: boolean;
         errors: string[];
+        messageId?: string;
       }> = [];
 
       for (const attendee of newRsvpsAttendees) {
@@ -153,8 +166,16 @@ export async function POST(request: NextRequest, context: RouteContext) {
           },
         });
 
+        console.log(`[new_rsvps] Processing ${attendeeName}:`, {
+          attendeeId: attendee.id,
+          rsvpRespondedAt: attendee.rsvpRespondedAt,
+          newRsvpCount,
+          phone: attendee.phone ? `${attendee.phone.slice(0, 4)}...` : null,
+        });
+
         // Skip if no new RSVPs
         if (newRsvpCount === 0) {
+          console.log(`[new_rsvps] Skipping ${attendeeName} - no new RSVPs for them`);
           newRsvpsResults.push({
             attendeeId: attendee.id,
             name: attendeeName,
@@ -176,7 +197,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
         // Send SMS
         const formattedPhone = formatPhoneE164(attendee.phone!);
 
+        console.log(`[new_rsvps] Phone formatting for ${attendeeName}:`, {
+          rawPhone: attendee.phone ? `${attendee.phone.slice(0, 4)}...` : null,
+          formattedPhone: formattedPhone ? `${formattedPhone.slice(0, 5)}...` : null,
+          isValid: isValidE164(formattedPhone),
+        });
+
         if (!isValidE164(formattedPhone)) {
+          console.log(`[new_rsvps] Invalid phone for ${attendeeName}:`, {
+            rawPhone: attendee.phone,
+            formatted: formattedPhone,
+          });
           newRsvpsResults.push({
             attendeeId: attendee.id,
             name: attendeeName,
@@ -195,7 +226,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
           viewUrl,
         });
 
+        console.log(`[new_rsvps] Sending SMS to ${attendeeName}...`);
         const smsResult = await sendSMS({ to: formattedPhone, body: smsBody });
+        console.log(`[new_rsvps] SMS result for ${attendeeName}:`, {
+          success: smsResult.success,
+          messageId: smsResult.messageId,
+          error: smsResult.error,
+        });
 
         if (smsResult.success) {
           // Update notification timestamp
@@ -212,6 +249,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
           smsSent: smsResult.success,
           skipped: false,
           errors: smsResult.error ? [smsResult.error] : [],
+          messageId: smsResult.messageId, // Include for tracking
         });
       }
 

@@ -332,6 +332,34 @@ Normalize to E.164 (`+1XXXXXXXXXX`) **before** saving to database. Invalid numbe
 
 ---
 
+### M33T New RSVPs Notification
+
+**Purpose:** Allow organizers to notify CONFIRMED attendees about new people who RSVPed since them.
+
+**Files:**
+- `src/app/api/events/[eventId]/notify/route.ts` - Extended with `type: 'new_rsvps'`
+- `src/app/api/events/[eventId]/notify/preview/route.ts` - Preview counts endpoint
+- `src/app/api/public/events/[slug]/new-rsvps/route.ts` - Public API for fetching new RSVPs
+- `src/app/m33t/[slug]/new-rsvps/[token]/` - Public page components
+- `src/components/events/NewRsvpsNotifyDialog.tsx` - Organizer trigger dialog
+
+**Flow:**
+1. Organizer clicks "New RSVPs Update" in event dashboard Quick Actions
+2. Dialog shows eligible count (attendees with new RSVPs) and 24h warning if applicable
+3. On send, each CONFIRMED attendee with phone receives personalized SMS
+4. Attendees with 0 new RSVPs after them are skipped (not notified)
+5. Attendee clicks link → sees page with new RSVPs sorted by recency
+6. Each card shows "RSVP'd X ago" badge with relative timestamp
+
+**Gotchas:**
+- Only SMS supported (no email channel for this notification type)
+- `newRsvpsNotifiedAt` tracks when notification was sent per attendee
+- Uses existing token authentication (same as other RSVP pages)
+- Character limit: Template ~130 chars (under 160 SMS limit)
+- Public API excludes email, phone, questionnaireResponses for privacy
+
+---
+
 ### M33T 33 Strategies Questionnaire Styling
 
 **Files:** `src/components/m33t/RSVPForm.tsx`, `src/components/m33t/questions/` (SingleSelect, MultiSelect, Slider, Ranking, OpenText)

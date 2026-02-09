@@ -132,7 +132,7 @@ User actions: Add Context / Enrich Now / Create Contact
 | **string-similarity (npm)** | Simple API, server-side | No phonetic matching |
 
 **Recommendation:** Two-tier approach:
-1. **Primary:** PostgreSQL pg_trgm for fuzzy search (requires Neon extension enablement)
+1. **Primary:** PostgreSQL pg_trgm for fuzzy search (requires Supabase extension enablement)
 2. **Fallback:** Server-side Jaro-Winkler + Metaphone for phonetic matching on voice transcripts
 
 #### 3. Database Schema for Contact Relationships
@@ -235,7 +235,7 @@ This supports the full workflow: extraction → matching → user decision → l
    - If yes: Use database-native fuzzy search
    - If no: Use server-side string matching (fallback)
    - *This affects implementation complexity*
-   - **Resolution:** Using Supabase PostgreSQL (not Neon). pg_trgm can be enabled via SQL migration: `CREATE EXTENSION IF NOT EXISTS pg_trgm;`
+   - **Resolution:** Using Supabase PostgreSQL. pg_trgm can be enabled via SQL migration: `CREATE EXTENSION IF NOT EXISTS pg_trgm;`
 
 8. **Phonetic matching priority:** For voice transcripts, how important is phonetic matching (e.g., "Jon" matching "John")?
    - a) Critical - names are often misheard/misspelled
@@ -364,7 +364,7 @@ export const mentionExtractionResponseSchema = z.object({
 ### Phase 1: Data Layer (2 days)
 - Add `ContactMention` model to Prisma schema
 - Create migration
-- Enable pg_trgm extension on Neon (if available)
+- Enable pg_trgm extension on Supabase (if available)
 - Add fuzzy matching utility functions
 
 ### Phase 2: AI Extraction (2 days)

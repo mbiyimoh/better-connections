@@ -14,6 +14,7 @@ interface RankingData {
 
 interface EnrichmentScoreCardProps {
   contact: Contact;
+  onEditSection?: (sectionId: string) => void;
 }
 
 // Score color thresholds matching ScoreImprovementBar
@@ -37,7 +38,7 @@ function getScoreColorClasses(score: number): { bg: string; text: string; border
   return { bg: 'bg-green-500/20', text: 'text-green-400', border: 'border-green-500/30' };
 }
 
-export function EnrichmentScoreCard({ contact }: EnrichmentScoreCardProps) {
+export function EnrichmentScoreCard({ contact, onEditSection }: EnrichmentScoreCardProps) {
   const [ranking, setRanking] = useState<RankingData | null>(null);
   const [isLoadingRanking, setIsLoadingRanking] = useState(true);
 
@@ -120,6 +121,7 @@ export function EnrichmentScoreCard({ contact }: EnrichmentScoreCardProps) {
                     key={suggestion.field}
                     suggestion={suggestion}
                     contactId={contact.id}
+                    onEditSection={onEditSection}
                   />
                 ))}
               </div>
@@ -142,9 +144,54 @@ export function EnrichmentScoreCard({ contact }: EnrichmentScoreCardProps) {
 interface SuggestionChipProps {
   suggestion: FieldSuggestion;
   contactId: string;
+  onEditSection?: (sectionId: string) => void;
 }
 
-function SuggestionChip({ suggestion, contactId }: SuggestionChipProps) {
+// Map field names to section IDs for inline editing
+function getFieldSection(field: string): string {
+  const mapping: Record<string, string> = {
+    whyNow: 'whyNow',
+    howWeMet: 'relationship',
+    expertise: 'expertiseInterests',
+    interests: 'expertiseInterests',
+    notes: 'notes',
+    linkedinUrl: 'socialLinks',
+    location: 'contactInfo',
+    tags: 'tags', // Special case - tags section handles itself
+  };
+  return mapping[field] || 'profileHeader';
+}
+
+function SuggestionChip({ suggestion, contactId, onEditSection }: SuggestionChipProps) {
+  // If onEditSection is provided, use inline editing instead of navigation
+  if (onEditSection) {
+    const sectionId = getFieldSection(suggestion.field);
+
+    // Tags are handled by TagsSection, not inline editing
+    if (sectionId === 'tags') {
+      return (
+        <Link
+          href={`/contacts/${contactId}/edit?focus=${suggestion.field}`}
+          className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-text-secondary hover:bg-white/10 hover:text-white transition-colors"
+        >
+          <span className="font-medium">{suggestion.label}</span>
+          <span className="text-gold-primary">+{suggestion.points}</span>
+        </Link>
+      );
+    }
+
+    return (
+      <button
+        onClick={() => onEditSection(sectionId)}
+        className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-text-secondary hover:bg-white/10 hover:text-white transition-colors"
+      >
+        <span className="font-medium">{suggestion.label}</span>
+        <span className="text-gold-primary">+{suggestion.points}</span>
+      </button>
+    );
+  }
+
+  // Fallback to navigation (for backwards compatibility)
   return (
     <Link
       href={`/contacts/${contactId}/edit?focus=${suggestion.field}`}

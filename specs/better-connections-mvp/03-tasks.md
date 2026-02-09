@@ -3788,7 +3788,7 @@ Write a brief, warm introduction message. The email should:
 **Technical Requirements:**
 - Railway project setup
 - Environment variables configured
-- Database connection (use existing Neon)
+- Database connection (use existing Supabase PostgreSQL)
 - Custom domain (optional)
 - SSL/HTTPS enabled
 

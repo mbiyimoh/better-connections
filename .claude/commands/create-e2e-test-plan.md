@@ -84,7 +84,7 @@ The test plan MUST follow this exact structure and be saved as `e2e-testing-plan
 ## Test Environment
 - **Application URL**: http://localhost:3009
 - **API Base URL**: http://localhost:3009/api
-- **Database**: PostgreSQL (Neon) via DATABASE_URL
+- **Database**: Supabase PostgreSQL via DATABASE_URL
 - **Browser**: Chromium (Playwright default)
 - **Authentication**: E2E_TEST_MODE bypass (no OAuth required)
 - **Test User**: test@example.com (ID: test000000000000000000001)

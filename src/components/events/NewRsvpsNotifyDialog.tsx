@@ -135,7 +135,19 @@ export function NewRsvpsNotifyDialog({
         throw new Error(result.error || 'Failed to send');
       }
 
-      toast.success(`Sent to ${result.sent} attendees`);
+      // Show detailed result
+      if (result.sent > 0) {
+        toast.success(`Sent to ${result.sent} attendee${result.sent !== 1 ? 's' : ''}`);
+      } else if (result.skipped > 0 && result.failed === 0) {
+        toast.error(`All ${result.skipped} attendees skipped (no new RSVPs for them)`);
+      } else if (result.failed > 0) {
+        // Show first error from results
+        const firstError = result.results?.find((r: { errors?: string[] }) => (r.errors?.length ?? 0) > 0);
+        const errorMsg = firstError?.errors?.[0] || 'SMS sending failed';
+        toast.error(`Failed: ${errorMsg}`);
+      } else {
+        toast.error('No messages sent - check server logs');
+      }
       onClose();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to send notifications');

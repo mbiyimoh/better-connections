@@ -186,11 +186,10 @@ Since this is greenfield, all code is new. Key integration points:
 
 | Option | Pros | Cons | Cost |
 |--------|------|------|------|
-| **Neon** | Serverless scaling, branching, AI-optimized | Newer service | Free tier generous |
-| Supabase | Integrated with auth, real-time | Less flexible Postgres | Free tier good |
+| **Supabase** | Integrated with auth, real-time, generous free tier | Less flexible Postgres | Free tier good |
 | Railway | Simple deploy, good DX | No serverless scaling | $5/month minimum |
 
-**Recommendation:** Neon PostgreSQL or Supabase (if using Supabase Auth)
+**Recommendation:** Supabase PostgreSQL (integrated with Supabase Auth)
 - Serverless scale-to-zero for MVP cost efficiency
 - Database branching for dev/staging
 - Sufficient for 500+ contacts
@@ -311,9 +310,9 @@ const useUIStore = create((set) => ({
 Before implementation, the following decisions would benefit from user input:
 
 ### 1. Hosting Provider
-**Question:** All-in-one Supabase (auth + database) or split services (Supabase Auth + Neon DB)?
+**Question:** All-in-one Supabase (auth + database) or split services?
 - **Option A:** Supabase for everything — Simpler, integrated, good for MVP
-- **Option B:** Supabase Auth + Neon DB — More flexible, better Postgres features
+- **Option B:** Split auth and database providers — More flexible, better Postgres features
 - **Recommendation:** Option A for faster MVP
 >> Option A
 
