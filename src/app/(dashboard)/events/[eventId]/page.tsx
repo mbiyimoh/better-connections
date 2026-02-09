@@ -36,6 +36,7 @@ import { QuestionSetsManager, QuestionSetEditor } from '@/components/events/ques
 import { RsvpReminderDialog } from '@/components/m33t/RsvpReminderDialog';
 import { EventReminderDialog } from '@/components/m33t/EventReminderDialog';
 import { InviteDialog } from '@/components/m33t/InviteDialog';
+import { NewRsvpsNotifyDialog } from '@/components/events/NewRsvpsNotifyDialog';
 
 interface AttendeeContact {
   id: string;
@@ -156,6 +157,7 @@ export default function EventOverviewPage() {
   const [showRsvpReminderDialog, setShowRsvpReminderDialog] = useState(false);
   const [showEventReminderDialog, setShowEventReminderDialog] = useState(false);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [showNewRsvpsDialog, setShowNewRsvpsDialog] = useState(false);
   const [copyingLinkFor, setCopyingLinkFor] = useState<string | null>(null);
 
   const fetchEvent = useCallback(async () => {
@@ -411,6 +413,15 @@ export default function EventOverviewPage() {
 
           <Button
             variant="outline"
+            onClick={() => setShowNewRsvpsDialog(true)}
+            disabled={confirmedCount === 0}
+          >
+            <Users className="w-4 h-4 mr-2" />
+            New RSVPs Update
+          </Button>
+
+          <Button
+            variant="outline"
             onClick={() => setShowOrderModal(true)}
           >
             <ArrowUpDown className="w-4 h-4 mr-2" />
@@ -655,6 +666,15 @@ export default function EventOverviewPage() {
         eventId={eventId}
         eligibleCount={pendingCount}
         onSuccess={fetchEvent}
+      />
+
+      {/* New RSVPs Notify Dialog */}
+      <NewRsvpsNotifyDialog
+        isOpen={showNewRsvpsDialog}
+        onClose={() => setShowNewRsvpsDialog(false)}
+        eventId={eventId}
+        eventName={event.name}
+        eventDate={eventDate}
       />
     </div>
   );

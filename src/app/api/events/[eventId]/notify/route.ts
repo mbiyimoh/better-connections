@@ -18,7 +18,7 @@ type RouteContext = {
 };
 
 const NotifyRequestSchema = z.object({
-  type: z.enum(['invitation', 'rsvp_reminder', 'match_reveal', 'event_reminder']),
+  type: z.enum(['invitation', 'rsvp_reminder', 'match_reveal', 'event_reminder', 'new_rsvps']),
   attendeeIds: z.array(z.string()).optional(), // If not provided, sends to all eligible
   channels: z.enum(['email', 'sms', 'both', 'none']).optional().default('both'), // Which channels to use
 });
@@ -86,13 +86,161 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const body = await request.json();
     const { type, attendeeIds, channels } = NotifyRequestSchema.parse(body);
 
+    // Handle new_rsvps notification type separately (different logic)
+    if (type === 'new_rsvps') {
+      // Only SMS supported for this notification type
+      if (channels !== 'sms') {
+        return NextResponse.json(
+          { error: 'new_rsvps notifications only support SMS channel', code: 'INVALID_CHANNEL', retryable: false },
+          { status: 400 }
+        );
+      }
+
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3333';
+
+      // Get CONFIRMED attendees with phone numbers (filtered by attendeeIds if provided)
+      const newRsvpsAttendees = await prisma.eventAttendee.findMany({
+        where: {
+          eventId,
+          rsvpStatus: 'CONFIRMED',
+          phone: { not: null },
+          rsvpRespondedAt: { not: null },
+          ...(attendeeIds ? { id: { in: attendeeIds } } : {}),
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          phone: true,
+          rsvpRespondedAt: true,
+        },
+      });
+
+      if (newRsvpsAttendees.length === 0) {
+        return NextResponse.json({
+          success: true,
+          sent: 0,
+          skipped: 0,
+          failed: 0,
+          smsSent: 0,
+          total: 0,
+          channels: 'sms',
+          results: [],
+          message: 'No eligible attendees for new RSVPs notification',
+        });
+      }
+
+      const newRsvpsResults: Array<{
+        attendeeId: string;
+        name: string;
+        newRsvpCount: number;
+        smsSent: boolean;
+        skipped: boolean;
+        errors: string[];
+      }> = [];
+
+      for (const attendee of newRsvpsAttendees) {
+        const attendeeName = `${attendee.firstName} ${attendee.lastName || ''}`.trim();
+
+        // Count RSVPs after this attendee's RSVP
+        const newRsvpCount = await prisma.eventAttendee.count({
+          where: {
+            eventId,
+            rsvpStatus: 'CONFIRMED',
+            rsvpRespondedAt: { gt: attendee.rsvpRespondedAt! },
+            id: { not: attendee.id },
+          },
+        });
+
+        // Skip if no new RSVPs
+        if (newRsvpCount === 0) {
+          newRsvpsResults.push({
+            attendeeId: attendee.id,
+            name: attendeeName,
+            newRsvpCount: 0,
+            smsSent: false,
+            skipped: true,
+            errors: [],
+          });
+          continue;
+        }
+
+        // Generate personalized URL
+        const token = generateRSVPToken(eventId, attendee.email, attendee.id, event.date);
+        const viewUrl = `${baseUrl}/m33t/${event.slug}/new-rsvps/${token}`;
+
+        // Format event date
+        const eventDate = event.date.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+
+        // Send SMS
+        const formattedPhone = formatPhoneE164(attendee.phone!);
+
+        if (!isValidE164(formattedPhone)) {
+          newRsvpsResults.push({
+            attendeeId: attendee.id,
+            name: attendeeName,
+            newRsvpCount,
+            smsSent: false,
+            skipped: false,
+            errors: ['Invalid phone number format'],
+          });
+          continue;
+        }
+
+        const smsBody = SMS_TEMPLATES.newRsvps({
+          eventName: event.name,
+          eventDate,
+          newCount: newRsvpCount,
+          viewUrl,
+        });
+
+        const smsResult = await sendSMS({ to: formattedPhone, body: smsBody });
+
+        if (smsResult.success) {
+          // Update notification timestamp
+          await prisma.eventAttendee.update({
+            where: { id: attendee.id },
+            data: { newRsvpsNotifiedAt: new Date() },
+          });
+        }
+
+        newRsvpsResults.push({
+          attendeeId: attendee.id,
+          name: attendeeName,
+          newRsvpCount,
+          smsSent: smsResult.success,
+          skipped: false,
+          errors: smsResult.error ? [smsResult.error] : [],
+        });
+      }
+
+      const newRsvpsSent = newRsvpsResults.filter((r) => r.smsSent).length;
+      const newRsvpsSkipped = newRsvpsResults.filter((r) => r.skipped).length;
+      const newRsvpsFailed = newRsvpsResults.filter((r) => !r.smsSent && !r.skipped).length;
+
+      return NextResponse.json({
+        success: true,
+        sent: newRsvpsSent,
+        skipped: newRsvpsSkipped,
+        failed: newRsvpsFailed,
+        smsSent: newRsvpsSent,
+        total: newRsvpsResults.length,
+        channels: 'sms',
+        results: newRsvpsResults,
+      });
+    }
+
+    // At this point, type is one of the standard notification types
+    const standardType = type as 'invitation' | 'rsvp_reminder' | 'match_reveal' | 'event_reminder';
+
     // Handle 'none' channel - just mark timestamps without sending (for link copy)
     if (channels === 'none') {
-      const attendees = await getEligibleAttendees(eventId, type, attendeeIds);
+      const attendees = await getEligibleAttendees(eventId, standardType, attendeeIds);
 
       // Mark all attendees with notification timestamps without sending
       for (const attendee of attendees) {
-        await updateNotificationTimestamp(attendee.id, type, 'LINK_COPIED');
+        await updateNotificationTimestamp(attendee.id, standardType, 'LINK_COPIED');
       }
 
       return NextResponse.json({
@@ -114,7 +262,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     // Get eligible attendees based on notification type
-    const attendees = await getEligibleAttendees(eventId, type, attendeeIds);
+    const attendees = await getEligibleAttendees(eventId, standardType, attendeeIds);
 
     if (attendees.length === 0) {
       return NextResponse.json({
@@ -146,7 +294,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         // Build email content based on type
         let emailContent: { subject: string; html: string; text: string };
 
-        switch (type) {
+        switch (standardType) {
           case 'invitation':
           case 'rsvp_reminder':
             emailContent = generateInvitationEmail({
@@ -229,7 +377,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
           if (isValidE164(formattedPhone)) {
             let smsBody: string;
 
-            switch (type) {
+            switch (standardType) {
               case 'invitation':
                 smsBody = SMS_TEMPLATES.invitation({ eventName: event.name, rsvpUrl });
                 break;
@@ -268,7 +416,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         // Update notification timestamp with method tracking for invitations
         const inviteMethod =
           channels === 'both' ? 'BOTH' : channels === 'email' ? 'EMAIL' : channels === 'sms' ? 'SMS' : undefined;
-        await updateNotificationTimestamp(attendee.id, type, inviteMethod);
+        await updateNotificationTimestamp(attendee.id, standardType, inviteMethod);
       } catch (error) {
         result.email = {
           success: false,

@@ -160,6 +160,13 @@ interface QuestionSetParams {
   isNewSet: boolean;
 }
 
+interface NewRsvpsParams {
+  eventName: string;
+  eventDate: string;  // Formatted as "March 12"
+  newCount: number;
+  viewUrl: string;
+}
+
 export const SMS_TEMPLATES = {
   /**
    * Event invitation SMS
@@ -204,6 +211,13 @@ export const SMS_TEMPLATES = {
     const action = params.isNewSet ? 'New questions available' : 'Reminder';
     return `${action} for ${params.eventName}: "${params.questionSetTitle}". Complete here: ${params.url}`;
   },
+
+  /**
+   * New RSVPs notification SMS
+   * Notifies attendees about new people who RSVPed since they did
+   */
+  newRsvps: (params: NewRsvpsParams) =>
+    `${params.newCount} more people RSVP'd for ${params.eventName} on ${params.eventDate}! See who they are: ${params.viewUrl}`,
 } as const;
 
 export type SMSTemplateType = keyof typeof SMS_TEMPLATES;
