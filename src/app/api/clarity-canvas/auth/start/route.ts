@@ -45,6 +45,14 @@ export async function POST(request: NextRequest) {
   // Build authorization URL
   const authUrl = getAuthorizationUrl(redirectUri, state, challenge);
 
+  // Temporary debug logging - remove after fixing
+  console.log('[clarity-canvas] DEBUG env vars:', {
+    issuer: process.env.CLARITY_CANVAS_ISSUER,
+    clientId: process.env.CLARITY_CANVAS_CLIENT_ID ? '***set***' : '***missing***',
+    apiUrl: process.env.CLARITY_CANVAS_API_URL,
+    authUrl: authUrl,
+  });
+
   // Store state and verifier in secure cookies
   const cookieStore = await cookies();
 
