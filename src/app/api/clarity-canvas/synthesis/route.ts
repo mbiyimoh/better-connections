@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (!user?.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -24,9 +24,11 @@ export async function GET(request: NextRequest) {
   const forceRefresh = searchParams.get('refresh') === 'true';
 
   try {
+    // Look up Prisma user by email (Supabase ID != Prisma ID)
     const dbUser = await prisma.user.findUnique({
-      where: { id: user.id },
+      where: { email: user.email },
       select: {
+        id: true,
         clarityCanvasConnected: true,
         clarityCanvasSynthesis: true,
         clarityCanvasSyncedAt: true,
@@ -47,7 +49,7 @@ export async function GET(request: NextRequest) {
 
     // Refresh if requested or no cached data
     if (forceRefresh || !synthesis) {
-      const freshSynthesis = await fetchAndCacheSynthesis(user.id);
+      const freshSynthesis = await fetchAndCacheSynthesis(dbUser.id);
       if (freshSynthesis) {
         synthesis = freshSynthesis;
         syncedAt = new Date();

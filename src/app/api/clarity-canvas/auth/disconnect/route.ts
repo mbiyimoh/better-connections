@@ -13,17 +13,30 @@ export async function POST() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (!user?.email) {
     return NextResponse.json(
       { error: 'Unauthorized' },
       { status: 401, headers: { 'Cache-Control': 'no-store' } }
     );
   }
 
+  // Look up Prisma user by email (Supabase ID != Prisma ID)
+  const dbUser = await prisma.user.findUnique({
+    where: { email: user.email },
+    select: { id: true },
+  });
+
+  if (!dbUser) {
+    return NextResponse.json(
+      { error: 'User not found' },
+      { status: 404, headers: { 'Cache-Control': 'no-store' } }
+    );
+  }
+
   try {
     // Clear all Clarity Canvas data
     await prisma.user.update({
-      where: { id: user.id },
+      where: { id: dbUser.id },
       data: {
         clarityCanvasConnected: false,
         clarityCanvasAccessToken: null,
