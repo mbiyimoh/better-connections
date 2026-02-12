@@ -81,6 +81,10 @@ export function ClarityCanvasCard({
 
       if (data.error === 'no_profile') {
         setProfileError('no_profile');
+        toast({
+          title: 'Profile not found',
+          description: 'Complete your profile on 33 Strategies to enable sync.',
+        });
         return;
       }
 

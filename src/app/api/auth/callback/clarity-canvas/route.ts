@@ -82,12 +82,16 @@ export async function GET(request: NextRequest) {
     });
 
     // Fetch and cache synthesis immediately
-    await fetchAndCacheSynthesis(dbUser.id);
+    const result = await fetchAndCacheSynthesis(dbUser.id);
 
-    // Clear OAuth cookies and redirect to settings with success flag
-    const response = NextResponse.redirect(
-      new URL('/settings?clarity_connected=true', appUrl)
-    );
+    // Determine redirect URL based on result
+    let redirectUrl = '/settings?clarity_connected=true';
+    if (!result.success && result.error === 'NO_PROFILE') {
+      redirectUrl = '/settings?clarity_connected=true&no_profile=true';
+    }
+
+    // Clear OAuth cookies and redirect to settings
+    const response = NextResponse.redirect(new URL(redirectUrl, appUrl));
     response.cookies.delete('clarity_oauth_state');
     response.cookies.delete('clarity_code_verifier');
 

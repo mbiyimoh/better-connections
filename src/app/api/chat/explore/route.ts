@@ -67,8 +67,10 @@ export async function POST(request: Request) {
         // If synthesis is stale (>24h), try to refresh in background
         if (shouldRefreshSynthesis(dbUser.clarityCanvasSyncedAt)) {
           // Attempt refresh, but don't block on it
-          fetchAndCacheSynthesis(user.id).catch((err) => {
-            console.error('[clarity-canvas] Background refresh failed:', err);
+          void fetchAndCacheSynthesis(user.id).then((result) => {
+            if (!result.success) {
+              console.error('[clarity-canvas] Background refresh failed:', result.error);
+            }
           });
         }
       } catch (error) {

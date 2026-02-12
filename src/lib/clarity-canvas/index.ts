@@ -30,6 +30,7 @@ export {
   fetchAndCacheSynthesis,
   shouldRefreshSynthesis,
 } from './client';
+export type { SynthesisFetchResult } from './client';
 
 // Prompt builder
 export { buildExploreSystemPrompt } from './prompts';
