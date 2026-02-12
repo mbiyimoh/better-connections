@@ -53,17 +53,30 @@ export async function exchangeCodeForTokens(
   codeVerifier: string
 ): Promise<ClarityCanvasTokens> {
   const config = getClarityCanvasConfig();
+
+  const requestBody = {
+    grant_type: 'authorization_code',
+    code,
+    client_id: config.clientId,
+    client_secret: config.clientSecret,
+    redirect_uri: redirectUri,
+    code_verifier: codeVerifier,
+  };
+
+  // Debug: Log what we're sending (mask secrets)
+  console.log('[clarity-canvas] Token exchange request:', {
+    url: `${config.issuer}/api/oauth/token`,
+    client_id: config.clientId,
+    client_secret_length: config.clientSecret?.length || 0,
+    redirect_uri: redirectUri,
+    code_length: code?.length || 0,
+    code_verifier_length: codeVerifier?.length || 0,
+  });
+
   const response = await fetch(`${config.issuer}/api/oauth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      grant_type: 'authorization_code',
-      code,
-      client_id: config.clientId,
-      client_secret: config.clientSecret,
-      redirect_uri: redirectUri,
-      code_verifier: codeVerifier,
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
@@ -72,6 +85,7 @@ export async function exchangeCodeForTokens(
       status: response.status,
       error: error.error,
       description: error.error_description,
+      full_error: JSON.stringify(error),
       redirectUri,
     });
     throw new Error(
