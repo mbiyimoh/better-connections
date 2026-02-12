@@ -16,7 +16,7 @@ import { formatRelativeTime } from '@/lib/utils';
 import { SynthesisSummary } from '@/components/clarity-canvas/SynthesisSummary';
 import { SynthesisDetails } from '@/components/clarity-canvas/SynthesisDetails';
 import { DisconnectDialog } from '@/components/clarity-canvas/DisconnectDialog';
-import type { BaseSynthesis, SynthesisResponse } from '@/lib/clarity-canvas/types';
+import type { BaseSynthesis, SynthesisResponse, ClarityCanvasError } from '@/lib/clarity-canvas/types';
 
 interface ClarityCanvasCardProps {
   initialConnected?: boolean;
@@ -37,6 +37,7 @@ export function ClarityCanvasCard({
   const [refreshing, setRefreshing] = useState(false);
   const [showDisconnect, setShowDisconnect] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [profileError, setProfileError] = useState<ClarityCanvasError | null>(null);
 
   // Sync state when props change (e.g., after OAuth callback completes)
   useEffect(() => {
@@ -71,11 +72,18 @@ export function ClarityCanvasCard({
 
   const handleRefresh = async () => {
     setRefreshing(true);
+    setProfileError(null);
     try {
       const response = await fetch('/api/clarity-canvas/synthesis?refresh=true');
       if (!response.ok) throw new Error('Refresh failed');
 
       const data: SynthesisResponse = await response.json();
+
+      if (data.error === 'no_profile') {
+        setProfileError('no_profile');
+        return;
+      }
+
       setSynthesis(data.synthesis);
       setSyncedAt(data.syncedAt);
 
@@ -181,6 +189,20 @@ export function ClarityCanvasCard({
                     )}
                   </div>
                 </>
+              ) : profileError === 'no_profile' ? (
+                // Connected but no Clarity Canvas profile exists
+                <div className="text-center py-4">
+                  <p className="text-sm text-zinc-400 mb-3">
+                    No Clarity Canvas profile found. Complete your profile on 33 Strategies to enable personalized recommendations.
+                  </p>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => window.open('https://33strategies.ai', '_blank')}
+                  >
+                    Go to 33 Strategies
+                  </Button>
+                </div>
               ) : (
                 // Connected but no synthesis yet
                 <div className="text-center py-4">

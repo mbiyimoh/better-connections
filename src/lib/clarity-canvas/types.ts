@@ -78,6 +78,7 @@ export interface SynthesisResponse {
   synthesis: BaseSynthesis | null;
   syncedAt: string | null;
   connected: boolean;
+  error?: ClarityCanvasError;
 }
 
 /**
@@ -88,4 +89,5 @@ export type ClarityCanvasError =
   | 'token_expired'
   | 'api_error'
   | 'network_error'
-  | 'invalid_state';
+  | 'invalid_state'
+  | 'no_profile';

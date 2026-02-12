@@ -17,8 +17,6 @@ interface ClarityCanvasClient {
 export async function getClarityClient(
   userId: string
 ): Promise<ClarityCanvasClient | null> {
-  console.log('[clarity-canvas] getClarityClient called for userId:', userId);
-
   // Fetch user's tokens
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -30,16 +28,7 @@ export async function getClarityClient(
     },
   });
 
-  console.log('[clarity-canvas] User lookup result:', {
-    found: !!user,
-    connected: user?.clarityCanvasConnected,
-    hasAccessToken: !!user?.clarityCanvasAccessToken,
-    hasRefreshToken: !!user?.clarityCanvasRefreshToken,
-    tokenExpiresAt: user?.clarityCanvasTokenExpiresAt,
-  });
-
   if (!user?.clarityCanvasConnected || !user.clarityCanvasAccessToken) {
-    console.log('[clarity-canvas] User not connected or missing token');
     return null;
   }
 
@@ -83,11 +72,9 @@ export async function getClarityClient(
 
   // Create authenticated fetch helper
   const config = getClarityCanvasConfig();
-  console.log('[clarity-canvas] API URL configured as:', config.apiUrl);
 
   const authFetch = async (endpoint: string, options: RequestInit = {}) => {
     const url = `${config.apiUrl}${endpoint}`;
-    console.log('[clarity-canvas] Fetching:', url);
 
     const response = await fetch(url, {
       ...options,
@@ -97,12 +84,21 @@ export async function getClarityClient(
       },
     });
 
-    console.log('[clarity-canvas] Response status:', response.status);
-
     if (!response.ok) {
       const errorText = await response.text().catch(() => 'Unable to read error');
-      console.error('[clarity-canvas] API error response:', errorText);
-      throw new Error(`Companion API error: ${response.status} - ${errorText}`);
+
+      // Parse error for specific handling
+      let errorMessage = `Companion API error: ${response.status}`;
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.error === 'No profile found for user') {
+          errorMessage = 'NO_PROFILE';
+        }
+      } catch {
+        // Not JSON, use generic message
+      }
+
+      throw new Error(errorMessage);
     }
 
     return response.json();
@@ -117,29 +113,26 @@ export async function getClarityClient(
 }
 
 /**
+ * Result type for synthesis fetch
+ */
+export type SynthesisFetchResult =
+  | { success: true; synthesis: BaseSynthesis }
+  | { success: false; error: 'NO_PROFILE' | 'NOT_CONNECTED' | 'FETCH_FAILED' };
+
+/**
  * Fetch and cache synthesis for a user
- * Returns the synthesis or null if fetch fails
+ * Returns result object with synthesis or error type
  */
 export async function fetchAndCacheSynthesis(
   userId: string
-): Promise<BaseSynthesis | null> {
-  console.log('[clarity-canvas] fetchAndCacheSynthesis called for userId:', userId);
-
+): Promise<SynthesisFetchResult> {
   const client = await getClarityClient(userId);
   if (!client) {
-    console.log('[clarity-canvas] getClarityClient returned null - user not connected or no token');
-    return null;
+    return { success: false, error: 'NOT_CONNECTED' };
   }
-
-  console.log('[clarity-canvas] Client created, fetching synthesis...');
 
   try {
     const synthesis = await client.getBaseSynthesis();
-    console.log('[clarity-canvas] Synthesis fetched successfully:', {
-      hasIdentity: !!synthesis?.identity,
-      goalsCount: synthesis?.goals?.length || 0,
-      personasCount: synthesis?.personas?.length || 0,
-    });
 
     // Cache in database
     await prisma.user.update({
@@ -150,11 +143,13 @@ export async function fetchAndCacheSynthesis(
       },
     });
 
-    console.log('[clarity-canvas] Synthesis cached in database');
-    return synthesis;
+    return { success: true, synthesis };
   } catch (error) {
-    console.error('[clarity-canvas] Failed to fetch synthesis:', error);
-    return null;
+    // Check for specific error types
+    if (error instanceof Error && error.message === 'NO_PROFILE') {
+      return { success: false, error: 'NO_PROFILE' };
+    }
+    return { success: false, error: 'FETCH_FAILED' };
   }
 }
 

@@ -46,13 +46,16 @@ export async function GET(request: NextRequest) {
 
     let synthesis = dbUser.clarityCanvasSynthesis as BaseSynthesis | null;
     let syncedAt = dbUser.clarityCanvasSyncedAt;
+    let error: SynthesisResponse['error'] = undefined;
 
     // Refresh if requested or no cached data
     if (forceRefresh || !synthesis) {
-      const freshSynthesis = await fetchAndCacheSynthesis(dbUser.id);
-      if (freshSynthesis) {
-        synthesis = freshSynthesis;
+      const result = await fetchAndCacheSynthesis(dbUser.id);
+      if (result.success) {
+        synthesis = result.synthesis;
         syncedAt = new Date();
+      } else if (result.error === 'NO_PROFILE') {
+        error = 'no_profile';
       }
     }
 
@@ -60,6 +63,7 @@ export async function GET(request: NextRequest) {
       synthesis,
       syncedAt: syncedAt?.toISOString() || null,
       connected: true,
+      error,
     };
 
     return NextResponse.json(response, {

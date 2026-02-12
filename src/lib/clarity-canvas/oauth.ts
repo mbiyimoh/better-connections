@@ -63,16 +63,6 @@ export async function exchangeCodeForTokens(
     code_verifier: codeVerifier,
   };
 
-  // Debug: Log what we're sending (mask secrets)
-  console.log('[clarity-canvas] Token exchange request:', {
-    url: `${config.issuer}/api/oauth/token`,
-    client_id: config.clientId,
-    client_secret_length: config.clientSecret?.length || 0,
-    redirect_uri: redirectUri,
-    code_length: code?.length || 0,
-    code_verifier_length: codeVerifier?.length || 0,
-  });
-
   const response = await fetch(`${config.issuer}/api/oauth/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -81,13 +71,6 @@ export async function exchangeCodeForTokens(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
-    console.error('[clarity-canvas] Token exchange failed:', {
-      status: response.status,
-      error: error.error,
-      description: error.error_description,
-      full_error: JSON.stringify(error),
-      redirectUri,
-    });
     throw new Error(
       error.error_description || error.error || 'Token exchange failed'
     );
