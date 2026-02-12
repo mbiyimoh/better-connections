@@ -121,7 +121,7 @@ export function ClarityCanvasCard({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {connected && synthesis ? (
+        {connected ? (
           // Connected State
           <div className="rounded-lg border border-white/10 overflow-hidden">
             {/* Header */}
@@ -131,9 +131,11 @@ export function ClarityCanvasCard({
                 <span className="text-white font-medium">Clarity Canvas Connected</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-500">
-                  Last synced: {formatRelativeTime(syncedAt)}
-                </span>
+                {syncedAt && (
+                  <span className="text-xs text-zinc-500">
+                    Last synced: {formatRelativeTime(syncedAt)}
+                  </span>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -152,23 +154,52 @@ export function ClarityCanvasCard({
 
             {/* Content */}
             <div className="p-4 space-y-4">
-              {/* Summary */}
-              <SynthesisSummary synthesis={synthesis} />
+              {synthesis ? (
+                <>
+                  {/* Summary */}
+                  <SynthesisSummary synthesis={synthesis} />
 
-              {/* Expandable Details */}
-              <div>
-                <button
-                  onClick={() => setShowDetails(!showDetails)}
-                  className="text-sm text-gold-primary hover:text-gold-light transition-colors"
-                >
-                  {showDetails ? '▼ Hide Details' : '▶ View Details'}
-                </button>
-                {showDetails && (
-                  <div className="mt-3">
-                    <SynthesisDetails synthesis={synthesis} defaultExpanded />
+                  {/* Expandable Details */}
+                  <div>
+                    <button
+                      onClick={() => setShowDetails(!showDetails)}
+                      className="text-sm text-gold-primary hover:text-gold-light transition-colors"
+                    >
+                      {showDetails ? '▼ Hide Details' : '▶ View Details'}
+                    </button>
+                    {showDetails && (
+                      <div className="mt-3">
+                        <SynthesisDetails synthesis={synthesis} defaultExpanded />
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </>
+              ) : (
+                // Connected but no synthesis yet
+                <div className="text-center py-4">
+                  <p className="text-sm text-zinc-400 mb-3">
+                    Connection established. Click refresh to load your profile data.
+                  </p>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                  >
+                    {refreshing ? (
+                      <>
+                        <Loader2 size={14} className="animate-spin mr-2" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw size={14} className="mr-2" />
+                        Load Profile Data
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Footer */}

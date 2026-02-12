@@ -11,7 +11,7 @@ import type { BaseSynthesis } from '@/lib/clarity-canvas/types';
 interface ConnectionSuccessModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  synthesis: BaseSynthesis;
+  synthesis: BaseSynthesis | null;
 }
 
 export function ConnectionSuccessModal({
@@ -24,6 +24,10 @@ export function ConnectionSuccessModal({
   const handleExplore = () => {
     onOpenChange(false);
     router.push('/explore');
+  };
+
+  const handleClose = () => {
+    onOpenChange(false);
   };
 
   return (
@@ -39,33 +43,54 @@ export function ConnectionSuccessModal({
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Summary */}
-          <div className="p-4 rounded-lg bg-white/5 border border-white/10">
-            <SynthesisSummary synthesis={synthesis} />
-          </div>
+          {synthesis ? (
+            <>
+              {/* Summary */}
+              <div className="p-4 rounded-lg bg-white/5 border border-white/10">
+                <SynthesisSummary synthesis={synthesis} />
+              </div>
 
-          {/* What we'll use */}
-          <div>
-            <p className="text-sm text-zinc-400 mb-4">
-              Here&apos;s what we&apos;ll use to personalize your experience:
-            </p>
-            <SynthesisDetails synthesis={synthesis} defaultExpanded />
-          </div>
+              {/* What we'll use */}
+              <div>
+                <p className="text-sm text-zinc-400 mb-4">
+                  Here&apos;s what we&apos;ll use to personalize your experience:
+                </p>
+                <SynthesisDetails synthesis={synthesis} defaultExpanded />
+              </div>
 
-          {/* CTA */}
-          <div className="pt-4 border-t border-white/10 space-y-3">
-            <p className="text-sm text-zinc-400 text-center">
-              Your Explore chat will now suggest contacts based on these goals and
-              priorities.
-            </p>
-            <Button
-              onClick={handleExplore}
-              className="w-full bg-gold-primary hover:bg-gold-light text-black"
-            >
-              <Sparkles size={16} className="mr-2" />
-              Explore Your Network
-            </Button>
-          </div>
+              {/* CTA */}
+              <div className="pt-4 border-t border-white/10 space-y-3">
+                <p className="text-sm text-zinc-400 text-center">
+                  Your Explore chat will now suggest contacts based on these goals and
+                  priorities.
+                </p>
+                <Button
+                  onClick={handleExplore}
+                  className="w-full bg-gold-primary hover:bg-gold-light text-black"
+                >
+                  <Sparkles size={16} className="mr-2" />
+                  Explore Your Network
+                </Button>
+              </div>
+            </>
+          ) : (
+            // Connected but synthesis not loaded yet
+            <div className="text-center py-4 space-y-4">
+              <p className="text-zinc-400">
+                Your account is now connected to Clarity Canvas.
+              </p>
+              <p className="text-sm text-zinc-500">
+                Click &quot;Refresh&quot; in the Integrations section to load your profile data.
+              </p>
+              <Button
+                onClick={handleClose}
+                variant="secondary"
+                className="w-full"
+              >
+                Got it
+              </Button>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

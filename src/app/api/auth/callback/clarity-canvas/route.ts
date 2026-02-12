@@ -44,8 +44,18 @@ export async function GET(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (!user?.email) {
     return NextResponse.redirect(new URL('/login', appUrl));
+  }
+
+  // Look up Prisma user by email (Supabase ID != Prisma ID)
+  const dbUser = await prisma.user.findUnique({
+    where: { email: user.email },
+  });
+
+  if (!dbUser) {
+    console.error('[clarity-canvas] No Prisma user found for email:', user.email);
+    return NextResponse.redirect(new URL('/settings?error=user_not_found', appUrl));
   }
 
   try {
@@ -59,7 +69,7 @@ export async function GET(request: NextRequest) {
 
     // Store tokens in database
     await prisma.user.update({
-      where: { id: user.id },
+      where: { id: dbUser.id },
       data: {
         clarityCanvasAccessToken: tokens.access_token,
         clarityCanvasRefreshToken: tokens.refresh_token,
@@ -72,7 +82,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Fetch and cache synthesis immediately
-    await fetchAndCacheSynthesis(user.id);
+    await fetchAndCacheSynthesis(dbUser.id);
 
     // Clear OAuth cookies and redirect to settings with success flag
     const response = NextResponse.redirect(

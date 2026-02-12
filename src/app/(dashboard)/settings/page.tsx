@@ -74,6 +74,7 @@ export default function SettingsPage() {
         invalid_state: 'Connection failed - security validation error. Please try again.',
         no_code: 'Connection failed - no authorization received. Please try again.',
         token_exchange_failed: 'Connection failed - token exchange error. Please try again.',
+        user_not_found: 'Connection failed - user account not found. Please contact support.',
       };
       toast({
         title: 'Connection Failed',
@@ -409,13 +410,11 @@ export default function SettingsPage() {
       />
 
       {/* Clarity Canvas Connection Success Modal */}
-      {claritySynthesis && (
-        <ConnectionSuccessModal
-          open={showSuccessModal}
-          onOpenChange={setShowSuccessModal}
-          synthesis={claritySynthesis}
-        />
-      )}
+      <ConnectionSuccessModal
+        open={showSuccessModal}
+        onOpenChange={setShowSuccessModal}
+        synthesis={claritySynthesis}
+      />
     </div>
   );
 }
