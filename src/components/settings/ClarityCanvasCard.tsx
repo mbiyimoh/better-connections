@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Link2, Check, RefreshCw, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -37,6 +37,13 @@ export function ClarityCanvasCard({
   const [refreshing, setRefreshing] = useState(false);
   const [showDisconnect, setShowDisconnect] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+
+  // Sync state when props change (e.g., after OAuth callback completes)
+  useEffect(() => {
+    setConnected(initialConnected);
+    setSynthesis(initialSynthesis);
+    setSyncedAt(initialSyncedAt);
+  }, [initialConnected, initialSynthesis, initialSyncedAt]);
 
   const handleConnect = async () => {
     setConnecting(true);
