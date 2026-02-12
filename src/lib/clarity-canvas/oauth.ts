@@ -68,6 +68,12 @@ export async function exchangeCodeForTokens(
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
+    console.error('[clarity-canvas] Token exchange failed:', {
+      status: response.status,
+      error: error.error,
+      description: error.error_description,
+      redirectUri,
+    });
     throw new Error(
       error.error_description || error.error || 'Token exchange failed'
     );
