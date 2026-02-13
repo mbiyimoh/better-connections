@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Search, MessageSquare, Users, MessageSquarePlus } from "lucide-react";
 import Link from "next/link";
 import { ChatMessage } from "@/components/chat/ChatMessage";
+import { type ResolvedContact } from "@/components/chat/MessageContent";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ContactCard } from "@/components/chat/ContactCard";
 import { DraftIntroModal } from "@/components/chat/DraftIntroModal";
@@ -66,6 +67,9 @@ export default function ExplorePage() {
   const [hoveredContactId, setHoveredContactId] = useState<string | null>(null);
   // Maps identifiers (IDs, emails, names) to actual contact IDs for chip hover/click
   const identifierToIdMap = useRef<Map<string, string>>(new Map());
+  // Single source of truth: resolved contacts map passed to MessageContent
+  // This ensures chat chips and panel cards show the SAME contacts
+  const [resolvedContacts, setResolvedContacts] = useState<Map<string, ResolvedContact>>(new Map());
 
   // Mobile-specific state
   const [mobileOverlayOpen, setMobileOverlayOpen] = useState(false);
@@ -140,6 +144,9 @@ export default function ExplorePage() {
         const newSuggested: SuggestedContact[] = [];
         // Additive mapping: accumulate identifiers across all messages
         // This allows chips from previous messages to still work
+        // Build resolvedContacts map - this is the SINGLE SOURCE OF TRUTH
+        // for determining which contacts to show as chips vs plain text
+        const newResolvedContacts = new Map<string, ResolvedContact>(resolvedContacts);
 
         for (const suggestion of suggestions) {
           // Try exact ID match first
@@ -153,9 +160,6 @@ export default function ExplorePage() {
             contact = contactsRef.current.find(
               (c) => c.primaryEmail?.toLowerCase() === emailLower
             );
-            if (contact) {
-              // Email fallback match successful
-            }
           }
 
           // Fallback: Try case-insensitive name match as last resort
@@ -165,9 +169,6 @@ export default function ExplorePage() {
               const displayName = `${c.firstName}${c.lastName ? ' ' + c.lastName : ''}`.toLowerCase();
               return displayName === nameLower;
             });
-            if (contact) {
-              // Name fallback match successful
-            }
           }
 
           if (contact) {
@@ -175,6 +176,16 @@ export default function ExplorePage() {
             // This allows chip hover/click to work even when AI uses email/name
             identifierToIdMap.current.set(suggestion.contactId, contact.id);
             identifierToIdMap.current.set(suggestion.name.trim().toLowerCase(), contact.id);
+
+            // Build the resolved contact data for MessageContent
+            const displayName = `${contact.firstName}${contact.lastName ? ' ' + contact.lastName : ''}`;
+            const resolvedData: ResolvedContact = {
+              resolvedId: contact.id,
+              displayName,
+            };
+            // Map both the parsed contactId and normalized name to the resolved data
+            newResolvedContacts.set(suggestion.contactId, resolvedData);
+            newResolvedContacts.set(suggestion.name.trim().toLowerCase(), resolvedData);
 
             // Avoid duplicates
             if (!newSuggested.some(s => s.contact.id === contact!.id)) {
@@ -185,8 +196,13 @@ export default function ExplorePage() {
             }
           }
           // Note: Unmatched contacts are silently skipped - this is expected when
-          // AI references contacts outside the loaded set
+          // AI references contacts outside the loaded set. MessageContent will
+          // render these as bold text instead of chips.
         }
+
+        // Update resolvedContacts state - this is passed to ChatMessage components
+        setResolvedContacts(newResolvedContacts);
+
         if (newSuggested.length > 0) {
           setSuggestedContacts(newSuggested);
         }
@@ -556,6 +572,7 @@ export default function ExplorePage() {
                 isUser={message.role === "user"}
                 onContactHover={handleContactHover}
                 onContactClick={handleContactClick}
+                resolvedContacts={resolvedContacts}
               />
             ))}
 
@@ -684,6 +701,7 @@ export default function ExplorePage() {
                 isUser={message.role === "user"}
                 onContactHover={handleContactHover}
                 onContactClick={handleContactClick}
+                resolvedContacts={resolvedContacts}
               />
             ))}
 

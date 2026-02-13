@@ -13,6 +13,17 @@
 
 import type { Twilio } from 'twilio';
 import { normalizePhone } from '@/lib/phone';
+import { prisma } from '@/lib/db';
+
+// Notification types for SMS tracking
+export type NotificationType =
+  | 'invitation'
+  | 'rsvp_reminder'
+  | 'match_reveal'
+  | 'event_reminder'
+  | 'new_rsvps'
+  | 'question_set'
+  | 'phone_verification';
 
 // Lazy-load Twilio client to avoid build-time errors
 let twilioClient: Twilio | null = null;
@@ -43,6 +54,16 @@ export interface SMSOptions {
   to: string;
   body: string;
   scheduledAt?: Date;
+}
+
+/**
+ * Extended SMS options with tracking context
+ * Use this when sending SMS that should be tracked per-attendee
+ */
+export interface TrackedSMSOptions extends SMSOptions {
+  eventId: string;
+  attendeeId: string;
+  notificationType: NotificationType;
 }
 
 /**
@@ -99,6 +120,100 @@ export async function sendSMS(options: SMSOptions): Promise<SMSResult> {
     };
   } catch (error) {
     console.error('SMS send failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * Send a tracked SMS message via Twilio with delivery status tracking
+ *
+ * This enhanced version:
+ * 1. Sends the SMS via Twilio with statusCallback URL for webhook updates
+ * 2. Creates an SMSMessage record in the database for tracking
+ * 3. Returns the result with messageId for reference
+ *
+ * Use this for all event-related SMS that should appear in attendee SMS history.
+ */
+export async function sendTrackedSMS(options: TrackedSMSOptions): Promise<SMSResult> {
+  const { to, body, eventId, attendeeId, notificationType, scheduledAt } = options;
+
+  try {
+    const client = await getClient();
+    const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+    const fromNumber = process.env.TWILIO_PHONE_NUMBER;
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+
+    if (!messagingServiceSid && !fromNumber) {
+      throw new Error('Set TWILIO_MESSAGING_SERVICE_SID or TWILIO_PHONE_NUMBER');
+    }
+
+    // Build webhook callback URL for status updates
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.bettercontacts.ai';
+    const statusCallbackUrl = `${appUrl}/api/webhooks/twilio/status`;
+
+    // Build message options
+    const messageOptions: {
+      to: string;
+      body: string;
+      messagingServiceSid?: string;
+      from?: string;
+      statusCallback?: string;
+      scheduleType?: 'fixed';
+      sendAt?: Date;
+    } = {
+      to,
+      body,
+      statusCallback: statusCallbackUrl,
+    };
+
+    if (messagingServiceSid) {
+      messageOptions.messagingServiceSid = messagingServiceSid;
+    } else if (fromNumber) {
+      messageOptions.from = fromNumber;
+    }
+
+    // Add scheduling if provided (Twilio supports up to 7 days in advance)
+    if (scheduledAt) {
+      const now = new Date();
+      const scheduleTime = new Date(scheduledAt);
+
+      // Twilio requires at least 15 minutes in the future
+      if (scheduleTime.getTime() - now.getTime() >= 15 * 60 * 1000) {
+        messageOptions.scheduleType = 'fixed';
+        messageOptions.sendAt = scheduleTime;
+      }
+    }
+
+    // Send the message via Twilio
+    const message = await client.messages.create(messageOptions);
+
+    // Store the message in our database for tracking
+    // Initial status from Twilio is typically "queued" or "accepted"
+    await prisma.sMSMessage.create({
+      data: {
+        messageSid: message.sid,
+        accountSid: accountSid || null,
+        messagingServiceSid: messagingServiceSid || null,
+        toPhone: to,
+        fromPhone: message.from || fromNumber || '',
+        body: body,
+        numSegments: message.numSegments ? parseInt(String(message.numSegments)) : 1,
+        status: message.status || 'queued',
+        eventId,
+        attendeeId,
+        notificationType,
+      },
+    });
+
+    return {
+      success: true,
+      messageId: message.sid,
+    };
+  } catch (error) {
+    console.error('Tracked SMS send failed:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

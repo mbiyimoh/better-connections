@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import { z } from 'zod';
-import { sendSMS, formatPhoneE164, isValidE164, SMS_TEMPLATES } from '@/lib/notifications/sms';
+import { sendSMS, sendTrackedSMS, formatPhoneE164, isValidE164, SMS_TEMPLATES, type NotificationType } from '@/lib/notifications/sms';
 import {
   sendEmail,
   generateInvitationEmail,
@@ -227,7 +227,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
         });
 
         console.log(`[new_rsvps] Sending SMS to ${attendeeName}...`);
-        const smsResult = await sendSMS({ to: formattedPhone, body: smsBody });
+        const smsResult = await sendTrackedSMS({
+          to: formattedPhone,
+          body: smsBody,
+          eventId,
+          attendeeId: attendee.id,
+          notificationType: 'new_rsvps',
+        });
         console.log(`[new_rsvps] SMS result for ${attendeeName}:`, {
           success: smsResult.success,
           messageId: smsResult.messageId,
@@ -442,7 +448,21 @@ export async function POST(request: NextRequest, context: RouteContext) {
                 break;
             }
 
-            const smsResult = await sendSMS({ to: formattedPhone, body: smsBody });
+            // Map standardType to NotificationType for tracking
+            const notificationTypeMap: Record<typeof standardType, NotificationType> = {
+              invitation: 'invitation',
+              rsvp_reminder: 'rsvp_reminder',
+              match_reveal: 'match_reveal',
+              event_reminder: 'event_reminder',
+            };
+
+            const smsResult = await sendTrackedSMS({
+              to: formattedPhone,
+              body: smsBody,
+              eventId,
+              attendeeId: attendee.id,
+              notificationType: notificationTypeMap[standardType],
+            });
             result.sms = smsResult;
           } else {
             result.sms = { success: false, error: 'Invalid phone number format' };

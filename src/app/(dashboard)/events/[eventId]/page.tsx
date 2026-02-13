@@ -24,6 +24,7 @@ import {
   Trash2,
   ArrowUpDown,
   Link as LinkIcon,
+  MessageSquare,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -37,6 +38,7 @@ import { RsvpReminderDialog } from '@/components/m33t/RsvpReminderDialog';
 import { EventReminderDialog } from '@/components/m33t/EventReminderDialog';
 import { InviteDialog } from '@/components/m33t/InviteDialog';
 import { NewRsvpsNotifyDialog } from '@/components/events/NewRsvpsNotifyDialog';
+import { SMSHistoryPanel } from '@/components/m33t/sms';
 
 interface AttendeeContact {
   id: string;
@@ -159,6 +161,7 @@ export default function EventOverviewPage() {
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [showNewRsvpsDialog, setShowNewRsvpsDialog] = useState(false);
   const [copyingLinkFor, setCopyingLinkFor] = useState<string | null>(null);
+  const [smsHistoryAttendee, setSmsHistoryAttendee] = useState<{ id: string; name: string } | null>(null);
 
   const fetchEvent = useCallback(async () => {
     try {
@@ -596,6 +599,15 @@ export default function EventOverviewPage() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          onClick={() => setSmsHistoryAttendee({ id: attendee.id, name: fullName })}
+                          className="text-text-tertiary hover:text-gold-primary h-8 w-8 p-0"
+                          title="SMS History"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           onClick={() => handleDeleteAttendee(attendee.id, fullName)}
                           disabled={deletingAttendeeId === attendee.id}
                           className="text-text-tertiary hover:text-error h-8 w-8 p-0"
@@ -676,6 +688,27 @@ export default function EventOverviewPage() {
         eventName={event.name}
         eventDate={eventDate}
       />
+
+      {/* SMS History Panel */}
+      {smsHistoryAttendee && (
+        <SMSHistoryPanel
+          eventId={eventId}
+          attendeeId={smsHistoryAttendee.id}
+          attendeeName={smsHistoryAttendee.name}
+          onClose={() => setSmsHistoryAttendee(null)}
+          onRetry={async (messageId) => {
+            const response = await fetch(`/api/events/${eventId}/sms/${messageId}/retry`, {
+              method: 'POST',
+            });
+            if (!response.ok) {
+              const data = await response.json();
+              toast.error(data.error || 'Failed to retry SMS');
+            } else {
+              toast.success('SMS retry sent successfully');
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

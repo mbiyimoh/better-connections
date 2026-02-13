@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db';
 import { checkEventAccess, generateRSVPToken, buildRsvpUrl } from '@/lib/m33t';
 import { getCurrentUser } from '@/lib/auth-helpers';
 import { sendEmail, generateQuestionSetEmail } from '@/lib/notifications/email';
-import { sendSMS, formatPhoneE164, isValidE164, SMS_TEMPLATES } from '@/lib/notifications/sms';
+import { sendTrackedSMS, formatPhoneE164, isValidE164, SMS_TEMPLATES } from '@/lib/notifications/sms';
 import { sendWithRetry, type NotificationResult } from '@/lib/notifications/utils';
 
 const publishSchema = z.object({
@@ -172,7 +172,7 @@ export async function POST(
           if (isValidE164(formattedPhone)) {
             try {
               const smsResult = await sendWithRetry(() =>
-                sendSMS({
+                sendTrackedSMS({
                   to: formattedPhone,
                   body: SMS_TEMPLATES.questionSet({
                     eventName: questionSet.event.name,
@@ -180,6 +180,9 @@ export async function POST(
                     url: questionSetUrl,
                     isNewSet: true,
                   }),
+                  eventId,
+                  attendeeId: attendee.id,
+                  notificationType: 'question_set',
                 })
               );
               notificationResult.sms = smsResult;

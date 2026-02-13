@@ -2,13 +2,18 @@
 
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { MessageContent } from "./MessageContent";
+import { MessageContent, type ResolvedContact } from "./MessageContent";
 
 interface ChatMessageProps {
   content: string;
   isUser: boolean;
   onContactHover?: (id: string | null) => void;
   onContactClick?: (id: string) => void;
+  /**
+   * Map of parsed identifiers to resolved contact data.
+   * Passed through to MessageContent for chip/text rendering decisions.
+   */
+  resolvedContacts?: Map<string, ResolvedContact>;
 }
 
 export function ChatMessage({
@@ -16,6 +21,7 @@ export function ChatMessage({
   isUser,
   onContactHover,
   onContactClick,
+  resolvedContacts,
 }: ChatMessageProps) {
   return (
     <motion.div
@@ -38,6 +44,7 @@ export function ChatMessage({
             content={content}
             onContactHover={onContactHover ?? (() => {})}
             onContactClick={onContactClick ?? (() => {})}
+            resolvedContacts={resolvedContacts}
           />
         )}
       </div>

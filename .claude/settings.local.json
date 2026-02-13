@@ -46,7 +46,8 @@
       "WebFetch(domain:community.cloudflare.com)",
       "WebFetch(domain:www.indragie.com)",
       "WebFetch(domain:dimillian.medium.com)",
-      "WebFetch(domain:bundlephobia.com)"
+      "WebFetch(domain:bundlephobia.com)",
+      "WebFetch(domain:www.twilio.com)"
     ],
     "deny": [],
     "ask": []
