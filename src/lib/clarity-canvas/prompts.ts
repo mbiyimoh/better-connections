@@ -100,7 +100,7 @@ When recommending contacts, you MUST:
 
 4. **Match to Personas**: If a contact matches or can introduce them to one of their target personas, highlight this explicitly.
 
-5. **Project-Aware Suggestions**: For active projects like "${synthesis.activeProjects[0]?.name || 'their current initiative'}", suggest contacts who can directly accelerate progress.
+5. **Project-Aware Suggestions**: For active projects like "${synthesis.activeProjects[0]?.name ?? 'their current initiatives'}", suggest contacts who can directly accelerate progress.
 
 ## Output Format
 
