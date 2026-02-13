@@ -372,6 +372,36 @@ Normalize to E.164 (`+1XXXXXXXXXX`) **before** saving to database. Invalid numbe
 
 ---
 
+### M33T SMS History Tracking
+
+**Purpose:** Track SMS delivery status for all event notifications with retry capability for failed messages.
+
+**Comprehensive guide:** `developer-guides/12-m33t-sms-tracking-guide.md`
+
+**Files:**
+- `src/lib/notifications/sms.ts` - `sendTrackedSMS()` function with DB tracking
+- `src/lib/notifications/sms-error-codes.ts` - Twilio error code mapping
+- `src/app/api/webhooks/twilio/status/route.ts` - Status callback webhook
+- `src/app/api/events/[eventId]/attendees/[attendeeId]/sms-history/route.ts` - History API
+- `src/app/api/events/[eventId]/sms/[messageId]/retry/route.ts` - Retry endpoint
+- `src/components/m33t/sms/` - UI components (SMSStatusBadge, SMSHistoryPanel)
+
+**Flow:**
+1. Notification sent via `sendTrackedSMS()` → creates SMSMessage record in DB
+2. Twilio calls webhook with status updates (queued→sent→delivered or failed)
+3. Organizer clicks chat icon on attendee → sees SMS history panel
+4. Failed messages show error explanation + retry button (if not permanent)
+
+**Gotchas:**
+- Webhook uses update-only pattern (returns success if message not yet in DB - race condition handling)
+- Production requires `TWILIO_AUTH_TOKEN` for signature validation
+- Retry endpoint has 60-second deduplication (prevents double-sends from rapid clicks)
+- Use `sendTrackedSMS` for event SMS, `sendSMS` only for non-event (OTP verification)
+
+**Environment:** Requires `TWILIO_AUTH_TOKEN` in production for webhook security
+
+---
+
 ### M33T Questionnaire Response Viewer
 
 **Purpose:** Organizer-facing viewer for attendee responses to published question sets. Dual-view architecture: by-question (aggregated) and by-attendee (individual).
@@ -467,4 +497,4 @@ interface Tag { id: string; text: string; category: 'relationship' | 'opportunit
 | Auth | Supabase (email/password) |
 | Design | Dark theme, gold (#d4a54a), glassmorphism |
 | Core Feature | "Why Now" contextual relevance + AI-powered contact research |
-| Last Updated | 2026-02-01 |
+| Last Updated | 2026-02-13 |
