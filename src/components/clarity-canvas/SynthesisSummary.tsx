@@ -9,9 +9,10 @@ interface SynthesisSummaryProps {
 
 /**
  * Generate a natural language summary from synthesis data
+ * Now includes richer context from the enriched synthesis
  */
 function generateSummary(synthesis: BaseSynthesis): string {
-  const { identity, goals, activeProjects } = synthesis;
+  const { identity, goals, activeProjects, background, values, product, market } = synthesis;
 
   // Build role description
   const roleDesc = identity.role ? `a ${identity.role.toLowerCase()}` : 'working';
@@ -28,9 +29,16 @@ function generateSummary(synthesis: BaseSynthesis): string {
     ? ` in the ${identity.industry.toLowerCase()} space`
     : '';
 
+  // Build expertise snippet
+  let expertiseDesc = '';
+  if (background?.expertise && background.expertise.length > 0) {
+    const topExpertise = background.expertise.slice(0, 2).join(' and ');
+    expertiseDesc = ` with expertise in ${topExpertise}`;
+  }
+
   // Get top priority goals
   const topGoals = goals
-    .filter((g) => g.priority === 'high' || g.timeframe === 'immediate')
+    .filter((g) => g.priority === 'high' || g.timeframe === 'now' || g.timeframe === 'immediate')
     .slice(0, 2)
     .map((g) => g.goal.toLowerCase());
 
@@ -48,7 +56,29 @@ function generateSummary(synthesis: BaseSynthesis): string {
     focusDesc = `, working on ${activeProjectNames[0]}`;
   }
 
-  return `You're ${roleDesc} ${companyDesc}${stageDesc}${industryDesc}${focusDesc}.`;
+  // Build product/market snippet if available
+  let businessContext = '';
+  if (product?.coreProduct) {
+    businessContext = ` Building ${product.coreProduct.toLowerCase()}`;
+    if (market?.targetMarket) {
+      businessContext += ` for ${market.targetMarket.toLowerCase()}`;
+    }
+    businessContext += '.';
+  }
+
+  // Build values snippet if available
+  let valuesDesc = '';
+  if (values?.coreValues && values.coreValues.length > 0) {
+    const topValues = values.coreValues.slice(0, 2).join(' and ');
+    valuesDesc = ` Driven by ${topValues.toLowerCase()}.`;
+  }
+
+  const mainSentence = `You're ${roleDesc} ${companyDesc}${stageDesc}${industryDesc}${expertiseDesc}${focusDesc}.`;
+
+  // Only add extra context if we have it
+  const extraContext = businessContext || valuesDesc;
+
+  return extraContext ? `${mainSentence}${extraContext}` : mainSentence;
 }
 
 export function SynthesisSummary({ synthesis, className }: SynthesisSummaryProps) {
